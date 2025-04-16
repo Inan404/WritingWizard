@@ -38,8 +38,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize Supabase database
-  await initializeSupabase();
+  // We'll implement Supabase later when we have the correct credentials
+  // await initializeSupabase();
   
   const server = await registerRoutes(app);
 

@@ -1,9 +1,11 @@
+// Use the types from shared schema
 import { 
-  writingEntries, type WritingEntry, type InsertWritingEntry,
-  chatHistory, type ChatHistory, type InsertChatHistory,
+  type WritingEntry, type InsertWritingEntry,
+  type ChatHistory, type InsertChatHistory,
   type SupabaseUser, type ChatMessage 
 } from "@shared/schema";
-import { supabase } from "./supabase";
+// We'll integrate Supabase properly later
+// import { supabase } from "./supabase";
 import { eq } from "drizzle-orm";
 
 // Interface for database operations with Supabase
@@ -356,5 +358,5 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Export the appropriate storage implementation
-export const storage = process.env.SUPABASE_URL ? new SupabaseStorage() : new MemStorage();
+// Temporarily use only memory storage until we fix Supabase integration
+export const storage = new MemStorage();
