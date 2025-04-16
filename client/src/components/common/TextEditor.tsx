@@ -101,7 +101,10 @@ export default function TextEditor({
         className={`w-full h-full p-2 border-0 focus:ring-0 focus:outline-none resize-none bg-card ${className}`}
         placeholder={placeholder}
         value={internalContent}
-        onChange={handleContentChange}
+        onChange={(e) => {
+          setInternalContent(e.target.value);
+          onChange(e.target.value);
+        }}
         disabled={!editable}
       />
     );
@@ -114,7 +117,11 @@ export default function TextEditor({
         ref={editorRef as React.RefObject<HTMLDivElement>}
         className={`content-editable p-2 ${className}`}
         contentEditable={editable}
-        onInput={handleContentChange}
+        onInput={(e) => {
+          const newContent = (e.target as HTMLDivElement).innerText;
+          setInternalContent(newContent);
+          onChange(newContent);
+        }}
         suppressContentEditableWarning={true}
         data-tool={highlightText ? (activeTool === 'ai-check' ? "ai-check" : "grammar") : ""}
         dangerouslySetInnerHTML={{ __html: highlightText ? getHighlightedContent() : internalContent }}

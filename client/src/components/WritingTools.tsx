@@ -24,6 +24,16 @@ export default function WritingTools() {
     setActiveTool(tab);
   };
 
+  // Create a direct object mapping instead of using conditional rendering
+  // This ensures proper rendering for the tab switching
+  const toolComponents = {
+    "grammar": <GrammarChecker key="grammar" />,
+    "paraphrase": <Paraphraser key="paraphrase" />,
+    "ai-check": <AIChecker key="ai-check" />,
+    "humanizer": <Humanizer key="humanizer" />,
+    "chat": <ChatGenerator key="chat" />
+  };
+
   return (
     <div className="flex-1 container mx-auto py-4 px-4 md:px-6">
       {/* Feature Navigation Tabs */}
@@ -68,21 +78,9 @@ export default function WritingTools() {
       </motion.div>
 
       {/* Feature Content Area */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTool}
-          variants={tabVariants}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-        >
-          {activeTool === "grammar" && <GrammarChecker />}
-          {activeTool === "paraphrase" && <Paraphraser />}
-          {activeTool === "ai-check" && <AIChecker />}
-          {activeTool === "humanizer" && <Humanizer />}
-          {activeTool === "chat" && <ChatGenerator />}
-        </motion.div>
-      </AnimatePresence>
+      <div className="mb-20">
+        {toolComponents[activeTool as keyof typeof toolComponents]}
+      </div>
 
       {/* Chat Input Component */}
       <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-3xl px-4">
