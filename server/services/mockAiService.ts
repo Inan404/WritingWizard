@@ -8,7 +8,8 @@ import {
   ParaphraseResult, 
   HumanizedResult, 
   AICheckResult, 
-  GenerateWritingResult
+  GenerateWritingResult,
+  GenerateWritingParams
 } from './aiServiceTypes';
 
 /**
@@ -274,7 +275,7 @@ export async function generateWriting({
   length = '500 words',
   style = 'Academic',
   additionalInstructions = ''
-}): Promise<GenerateWritingResult> {
+}: GenerateWritingParams): Promise<GenerateWritingResult> {
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 2000));
   

@@ -278,6 +278,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error retrieving chat histories" });
     }
   });
+  
+  // Get writing chats - temporary non-authenticated route for testing
+  app.get("/api/writing-chats", async (req, res) => {
+    try {
+      // For development purposes, return mock data until we have proper auth
+      res.json({
+        chats: [
+          {
+            id: 1,
+            name: "Sample Essay on Climate Change",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: 2,
+            name: "Research Paper on Artificial Intelligence",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        ]
+      });
+    } catch (error) {
+      console.error("Get writing chats error:", error);
+      res.status(500).json({ message: "Error retrieving writing chats" });
+    }
+  });
 
   return httpServer;
 }
