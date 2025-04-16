@@ -1,172 +1,360 @@
-import { users, type User, type InsertUser, writingChats, type WritingChat, type InsertWritingChat } from "@shared/schema";
-import { db } from "./db";
+import { 
+  writingEntries, type WritingEntry, type InsertWritingEntry,
+  chatHistory, type ChatHistory, type InsertChatHistory,
+  type SupabaseUser, type ChatMessage 
+} from "@shared/schema";
+import { supabase } from "./supabase";
 import { eq } from "drizzle-orm";
 
-// Interface for database operations
+// Interface for database operations with Supabase
 export interface IStorage {
-  // User operations
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  // Authentication operations
+  getCurrentUser(): Promise<SupabaseUser | null>;
+  signUp(email: string, password: string): Promise<SupabaseUser | null>;
+  signIn(email: string, password: string): Promise<SupabaseUser | null>;
+  signOut(): Promise<void>;
   
-  // Writing chat operations
-  getWritingChat(id: number): Promise<WritingChat | undefined>;
-  getWritingChatsByUserId(userId: number): Promise<WritingChat[]>;
-  createWritingChat(chat: InsertWritingChat): Promise<WritingChat>;
-  updateWritingChat(id: number, chat: Partial<InsertWritingChat>): Promise<WritingChat | undefined>;
-  deleteWritingChat(id: number): Promise<boolean>;
+  // Writing entry operations
+  getWritingEntry(id: number): Promise<WritingEntry | null>;
+  getWritingEntriesByUserId(userId: string): Promise<WritingEntry[]>;
+  createWritingEntry(entry: InsertWritingEntry): Promise<WritingEntry | null>;
+  updateWritingEntry(id: number, entry: Partial<InsertWritingEntry>): Promise<WritingEntry | null>;
+  deleteWritingEntry(id: number): Promise<boolean>;
+  
+  // Chat history operations
+  getChatHistory(id: number): Promise<ChatHistory | null>;
+  getChatHistoriesByUserId(userId: string): Promise<ChatHistory[]>;
+  createChatHistory(history: InsertChatHistory): Promise<ChatHistory | null>;
+  updateChatHistory(id: number, history: Partial<InsertChatHistory>): Promise<ChatHistory | null>;
+  deleteChatHistory(id: number): Promise<boolean>;
 }
 
-// Database storage implementation
-export class DatabaseStorage implements IStorage {
-  // User operations
-  async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+// Supabase storage implementation
+export class SupabaseStorage implements IStorage {
+  // Authentication operations
+  async getCurrentUser(): Promise<SupabaseUser | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user as SupabaseUser | null;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
+  async signUp(email: string, password: string): Promise<SupabaseUser | null> {
+    const { data: { user }, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    
+    if (error) {
+      console.error('Error signing up:', error);
+      return null;
+    }
+    
+    return user as SupabaseUser | null;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
-    return user;
+  async signIn(email: string, password: string): Promise<SupabaseUser | null> {
+    const { data: { user }, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    if (error) {
+      console.error('Error signing in:', error);
+      return null;
+    }
+    
+    return user as SupabaseUser | null;
+  }
+
+  async signOut(): Promise<void> {
+    await supabase.auth.signOut();
   }
   
-  // Writing chat operations
-  async getWritingChat(id: number): Promise<WritingChat | undefined> {
-    const [chat] = await db.select().from(writingChats).where(eq(writingChats.id, id));
-    return chat || undefined;
+  // Writing entry operations
+  async getWritingEntry(id: number): Promise<WritingEntry | null> {
+    const { data, error } = await supabase
+      .from('writing_entries')
+      .select('*')
+      .eq('id', id)
+      .single();
+      
+    if (error || !data) {
+      console.error('Error fetching writing entry:', error);
+      return null;
+    }
+    
+    return data as WritingEntry;
   }
   
-  async getWritingChatsByUserId(userId: number): Promise<WritingChat[]> {
-    return await db
+  async getWritingEntriesByUserId(userId: string): Promise<WritingEntry[]> {
+    const { data, error } = await supabase
+      .from('writing_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching writing entries:', error);
+      return [];
+    }
+    
+    return data as WritingEntry[] || [];
+  }
+  
+  async createWritingEntry(entry: InsertWritingEntry): Promise<WritingEntry | null> {
+    const { data, error } = await supabase
+      .from('writing_entries')
+      .insert(entry)
       .select()
-      .from(writingChats)
-      .where(eq(writingChats.userId, userId))
-      .orderBy(writingChats.createdAt);
+      .single();
+      
+    if (error || !data) {
+      console.error('Error creating writing entry:', error);
+      return null;
+    }
+    
+    return data as WritingEntry;
   }
   
-  async createWritingChat(chat: InsertWritingChat): Promise<WritingChat> {
-    const [newChat] = await db
-      .insert(writingChats)
-      .values(chat)
-      .returning();
-    return newChat;
-  }
-  
-  async updateWritingChat(id: number, chat: Partial<InsertWritingChat>): Promise<WritingChat | undefined> {
-    const [updatedChat] = await db
-      .update(writingChats)
-      .set({
-        ...chat,
-        updatedAt: new Date()
+  async updateWritingEntry(id: number, entry: Partial<InsertWritingEntry>): Promise<WritingEntry | null> {
+    const { data, error } = await supabase
+      .from('writing_entries')
+      .update({
+        ...entry,
+        updated_at: new Date().toISOString()
       })
-      .where(eq(writingChats.id, id))
-      .returning();
-    return updatedChat;
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error || !data) {
+      console.error('Error updating writing entry:', error);
+      return null;
+    }
+    
+    return data as WritingEntry;
   }
   
-  async deleteWritingChat(id: number): Promise<boolean> {
-    const [deleted] = await db
-      .delete(writingChats)
-      .where(eq(writingChats.id, id))
-      .returning({ id: writingChats.id });
-    return !!deleted;
+  async deleteWritingEntry(id: number): Promise<boolean> {
+    const { error } = await supabase
+      .from('writing_entries')
+      .delete()
+      .eq('id', id);
+      
+    return !error;
+  }
+  
+  // Chat history operations
+  async getChatHistory(id: number): Promise<ChatHistory | null> {
+    const { data, error } = await supabase
+      .from('chat_history')
+      .select('*')
+      .eq('id', id)
+      .single();
+      
+    if (error || !data) {
+      console.error('Error fetching chat history:', error);
+      return null;
+    }
+    
+    return data as ChatHistory;
+  }
+  
+  async getChatHistoriesByUserId(userId: string): Promise<ChatHistory[]> {
+    const { data, error } = await supabase
+      .from('chat_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching chat histories:', error);
+      return [];
+    }
+    
+    return data as ChatHistory[] || [];
+  }
+  
+  async createChatHistory(history: InsertChatHistory): Promise<ChatHistory | null> {
+    const { data, error } = await supabase
+      .from('chat_history')
+      .insert(history)
+      .select()
+      .single();
+      
+    if (error || !data) {
+      console.error('Error creating chat history:', error);
+      return null;
+    }
+    
+    return data as ChatHistory;
+  }
+  
+  async updateChatHistory(id: number, history: Partial<InsertChatHistory>): Promise<ChatHistory | null> {
+    const { data, error } = await supabase
+      .from('chat_history')
+      .update({
+        ...history,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error || !data) {
+      console.error('Error updating chat history:', error);
+      return null;
+    }
+    
+    return data as ChatHistory;
+  }
+  
+  async deleteChatHistory(id: number): Promise<boolean> {
+    const { error } = await supabase
+      .from('chat_history')
+      .delete()
+      .eq('id', id);
+      
+    return !error;
   }
 }
 
-// In-memory storage implementation for development/testing
+// In-memory mock storage implementation for testing without Supabase
 export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private writingChats: Map<number, WritingChat>;
-  private userIdCounter: number;
-  private chatIdCounter: number;
+  private writingEntries: Map<number, WritingEntry>;
+  private chatHistories: Map<number, ChatHistory>;
+  private currentUser: SupabaseUser | null;
+  private entryIdCounter: number;
+  private historyIdCounter: number;
 
   constructor() {
-    this.users = new Map();
-    this.writingChats = new Map();
-    this.userIdCounter = 1;
-    this.chatIdCounter = 1;
+    this.writingEntries = new Map();
+    this.chatHistories = new Map();
+    this.currentUser = null;
+    this.entryIdCounter = 1;
+    this.historyIdCounter = 1;
   }
 
-  // User operations
-  async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+  // Authentication operations
+  async getCurrentUser(): Promise<SupabaseUser | null> {
+    return this.currentUser;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async signUp(email: string, password: string): Promise<SupabaseUser | null> {
+    this.currentUser = {
+      id: `user-${Date.now()}`,
+      email,
+      user_metadata: {
+        full_name: email.split('@')[0]
+      }
+    };
+    return this.currentUser;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async signIn(email: string, password: string): Promise<SupabaseUser | null> {
+    // For testing, simply create a user on sign in
+    return this.signUp(email, password);
+  }
+
+  async signOut(): Promise<void> {
+    this.currentUser = null;
   }
   
-  // Writing chat operations
-  async getWritingChat(id: number): Promise<WritingChat | undefined> {
-    return this.writingChats.get(id);
+  // Writing entry operations
+  async getWritingEntry(id: number): Promise<WritingEntry | null> {
+    return this.writingEntries.get(id) || null;
   }
   
-  async getWritingChatsByUserId(userId: number): Promise<WritingChat[]> {
-    return Array.from(this.writingChats.values())
-      .filter(chat => chat.userId === userId)
+  async getWritingEntriesByUserId(userId: string): Promise<WritingEntry[]> {
+    return Array.from(this.writingEntries.values())
+      .filter(entry => entry.userId === userId)
       .sort((a, b) => {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
   }
   
-  async createWritingChat(chat: InsertWritingChat): Promise<WritingChat> {
-    const id = this.chatIdCounter++;
+  async createWritingEntry(entry: InsertWritingEntry): Promise<WritingEntry | null> {
+    const id = this.entryIdCounter++;
     const now = new Date();
-    const newChat: WritingChat = {
+    const newEntry: WritingEntry = {
       id,
-      rawText: chat.rawText,
-      grammarResult: chat.grammarResult || null,
-      paraphraseResult: chat.paraphraseResult || null,
-      aiCheckResult: chat.aiCheckResult || null,
-      humanizeResult: chat.humanizeResult || null,
-      userId: chat.userId || null,
+      userId: entry.userId,
+      inputText: entry.inputText,
+      grammarResult: entry.grammarResult !== undefined ? entry.grammarResult : null,
+      paraphraseResult: entry.paraphraseResult !== undefined ? entry.paraphraseResult : null,
+      aiCheckResult: entry.aiCheckResult !== undefined ? entry.aiCheckResult : null,
+      humanizerResult: entry.humanizerResult !== undefined ? entry.humanizerResult : null,
       createdAt: now,
       updatedAt: now,
     };
-    this.writingChats.set(id, newChat);
-    return newChat;
+    this.writingEntries.set(id, newEntry);
+    return newEntry;
   }
   
-  async updateWritingChat(id: number, chat: Partial<InsertWritingChat>): Promise<WritingChat | undefined> {
-    const existingChat = this.writingChats.get(id);
-    if (!existingChat) return undefined;
+  async updateWritingEntry(id: number, entry: Partial<InsertWritingEntry>): Promise<WritingEntry | null> {
+    const existingEntry = this.writingEntries.get(id);
+    if (!existingEntry) return null;
     
-    // Create a properly typed updated chat object
-    const updatedChat: WritingChat = {
-      ...existingChat,
-      rawText: chat.rawText !== undefined ? chat.rawText : existingChat.rawText,
-      grammarResult: chat.grammarResult !== undefined ? chat.grammarResult : existingChat.grammarResult,
-      paraphraseResult: chat.paraphraseResult !== undefined ? chat.paraphraseResult : existingChat.paraphraseResult,
-      aiCheckResult: chat.aiCheckResult !== undefined ? chat.aiCheckResult : existingChat.aiCheckResult,
-      humanizeResult: chat.humanizeResult !== undefined ? chat.humanizeResult : existingChat.humanizeResult,
-      userId: chat.userId !== undefined ? chat.userId : existingChat.userId,
+    const updatedEntry: WritingEntry = {
+      ...existingEntry,
+      inputText: entry.inputText !== undefined ? entry.inputText : existingEntry.inputText,
+      grammarResult: entry.grammarResult !== undefined ? entry.grammarResult : existingEntry.grammarResult,
+      paraphraseResult: entry.paraphraseResult !== undefined ? entry.paraphraseResult : existingEntry.paraphraseResult,
+      aiCheckResult: entry.aiCheckResult !== undefined ? entry.aiCheckResult : existingEntry.aiCheckResult,
+      humanizerResult: entry.humanizerResult !== undefined ? entry.humanizerResult : existingEntry.humanizerResult,
       updatedAt: new Date(),
     };
-    this.writingChats.set(id, updatedChat);
-    return updatedChat;
+    this.writingEntries.set(id, updatedEntry);
+    return updatedEntry;
   }
   
-  async deleteWritingChat(id: number): Promise<boolean> {
-    return this.writingChats.delete(id);
+  async deleteWritingEntry(id: number): Promise<boolean> {
+    return this.writingEntries.delete(id);
+  }
+  
+  // Chat history operations
+  async getChatHistory(id: number): Promise<ChatHistory | null> {
+    return this.chatHistories.get(id) || null;
+  }
+  
+  async getChatHistoriesByUserId(userId: string): Promise<ChatHistory[]> {
+    return Array.from(this.chatHistories.values())
+      .filter(history => history.userId === userId)
+      .sort((a, b) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+  }
+  
+  async createChatHistory(history: InsertChatHistory): Promise<ChatHistory | null> {
+    const id = this.historyIdCounter++;
+    const now = new Date();
+    const newHistory: ChatHistory = {
+      id,
+      userId: history.userId !== undefined ? history.userId : '',
+      messages: history.messages,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.chatHistories.set(id, newHistory);
+    return newHistory;
+  }
+  
+  async updateChatHistory(id: number, history: Partial<InsertChatHistory>): Promise<ChatHistory | null> {
+    const existingHistory = this.chatHistories.get(id);
+    if (!existingHistory) return null;
+    
+    const updatedHistory: ChatHistory = {
+      ...existingHistory,
+      messages: history.messages !== undefined ? history.messages : existingHistory.messages,
+      updatedAt: new Date(),
+    };
+    this.chatHistories.set(id, updatedHistory);
+    return updatedHistory;
+  }
+  
+  async deleteChatHistory(id: number): Promise<boolean> {
+    return this.chatHistories.delete(id);
   }
 }
 
-// Export the appropriate storage implementation based on environment
-export const storage = process.env.DATABASE_URL ? new DatabaseStorage() : new MemStorage();
+// Export the appropriate storage implementation
+export const storage = process.env.SUPABASE_URL ? new SupabaseStorage() : new MemStorage();

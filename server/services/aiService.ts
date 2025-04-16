@@ -231,33 +231,42 @@ export async function checkAIContent(text: string): Promise<AICheckResult> {
   }
 }
 
+interface GenerateWritingParams {
+  originalSample: string;
+  referenceUrl?: string;
+  topic: string;
+  length?: string;
+  style?: string;
+  additionalInstructions?: string;
+}
+
 // Writing generator function
-export async function generateWriting(
-  sample: string = '',
-  references: string = '',
-  instructions: string,
-  length: string = '500 words',
-  style: string = 'Academic',
-  format: string = 'Essay'
-): Promise<GenerateWritingResult> {
+export async function generateWriting({
+  originalSample = '',
+  referenceUrl = '',
+  topic,
+  length = '500 words',
+  style = 'Academic',
+  additionalInstructions = ''
+}: GenerateWritingParams): Promise<GenerateWritingResult> {
   try {
     let prompt = `
-      I want you to generate ${format} content based on the following instructions:
-      "${instructions}"
+      I want you to generate content based on the following instructions:
+      "${topic}"
 
       Length: ${length}
       Style: ${style}
-      Format: ${format}
+      Format: ${additionalInstructions || 'Essay'}
     `;
 
-    if (sample) {
+    if (originalSample) {
       prompt += `\n\nHere is a sample of my writing style to emulate:
-      "${sample}"`;
+      "${originalSample}"`;
     }
 
-    if (references) {
+    if (referenceUrl) {
       prompt += `\n\nHere are reference materials to incorporate:
-      "${references}"`;
+      "${referenceUrl}"`;
     }
 
     prompt += `\n\nPlease generate original content that follows these specifications. Do not include any introduction
