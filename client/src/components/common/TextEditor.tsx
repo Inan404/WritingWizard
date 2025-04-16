@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import DOMPurify from 'dompurify';
-import { useWriting, TextContent } from '@/context/WritingContext';
+import { useWriting, TextContent, WritingTool } from '@/context/WritingContext';
 
 interface TextEditorProps {
   content: string;
@@ -23,7 +23,7 @@ export default function TextEditor({
 }: TextEditorProps) {
   const [internalContent, setInternalContent] = useState(content);
   const editorRef = useRef<HTMLDivElement | HTMLTextAreaElement>(null);
-  const { grammarText, aiCheckText } = useWriting();
+  const { grammarText, aiCheckText, activeTool } = useWriting();
   
   useEffect(() => {
     setInternalContent(content);
@@ -47,7 +47,7 @@ export default function TextEditor({
   const getHighlightedContent = () => {
     if (!highlightText) return internalContent;
     
-    const textToUse = highlightText && editorRef.current?.getAttribute('data-tool') === 'ai-check' 
+    const textToUse = activeTool === 'ai-check' 
       ? aiCheckText
       : grammarText;
       
@@ -93,6 +93,7 @@ export default function TextEditor({
     return DOMPurify.sanitize(html);
   };
 
+  // Return a simple textarea for better stability if isTextArea is true
   if (isTextArea) {
     return (
       <textarea
@@ -115,7 +116,7 @@ export default function TextEditor({
         contentEditable={editable}
         onInput={handleContentChange}
         suppressContentEditableWarning={true}
-        data-tool={highlightText ? (editorRef.current?.getAttribute('data-tool') === 'ai-check' ? "ai-check" : "grammar") : ""}
+        data-tool={highlightText ? (activeTool === 'ai-check' ? "ai-check" : "grammar") : ""}
         dangerouslySetInnerHTML={{ __html: highlightText ? getHighlightedContent() : internalContent }}
       >
       </div>

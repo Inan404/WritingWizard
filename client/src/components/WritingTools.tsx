@@ -20,6 +20,7 @@ export default function WritingTools() {
   };
 
   const handleTabChange = (tab: WritingTool) => {
+    console.log("Tab changed to:", tab);
     setActiveTool(tab);
   };
 
