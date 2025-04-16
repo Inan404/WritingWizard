@@ -103,7 +103,7 @@ export default function Dashboard() {
                         className="cursor-pointer hover:text-primary truncate"
                         variants={itemVariants}
                       >
-                        {chat.rawText.substring(0, 30)}...
+                        {chat.name || `Chat ${chat.id}`}
                       </motion.li>
                     ))
                   ) : (
