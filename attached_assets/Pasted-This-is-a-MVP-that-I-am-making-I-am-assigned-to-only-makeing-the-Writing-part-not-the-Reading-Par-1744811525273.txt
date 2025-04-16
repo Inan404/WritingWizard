@@ -1,0 +1,51 @@
+This is a MVP that I am making . I am assigned to only makeing the Writing part, not the Reading Part.
+When a user opens the writing part, he will see these features: writing, humanizer, paraphraser, grammar check, and AI check.
+Let’s talk about the writing part. What do we need to fix?
+Grammar part:
+The grammar part should be 100% similar to Grammarly.
+Current Version & the Problems:
+It only shows where it finds the errors by writing, then gives a score, and rewrites the writing.
+This part is a grammar checker, not a paraphraser, humanizer, or rewriter!
+But this version rewrites; it doesn’t suggest.
+The tab is also not clear to the users. Like, if I upload my writing. I cannot see where the problems are or where the model makes changes/wants me to change.
+What to fix:
+It should be one tab (not two parts like the other parts), like Grammarly.
+It will suggest the errors or potential rephrasing and allow the users to decide whether they will accept the changes or not.
+It will allow the users to choose what type of writing they have or what type of writing they want to have while making changes in the grammar. (Like Grammarly)
+It will allow users to see everything in a single tab without having the hassle of scrolling a lot.
+For better visualization, follow Grammarly.
+Humanizer:
+Current Version & the Problems:
+The output has lots of space, which makes it hard to understand and read the output.
+The Tab makes it hard for the users to see the old and new versions all together.
+What to fix?
+It should be like a normal piece of writing. No extra space other than two paragraphs.
+It should be like the Quillbot one kind of tab. You can see the old version and the new version in the same tab. An example (photo) has been added below:
+Paraphraser
+Current Version & the Problems:
+The space between two lines is huge.
+It doesn’t allow users to choose what type of writing they want as output.
+It makes the user experience complicated by not showing the input and output together.
+What to fix?
+The space problem needs to be fixed.
+Follow QuillBot for this. When a user clicks on the “Paraphrase” button, they will have some options right below the “Paraphrase” button, like “standard,” “fluency,” “formal,” “academic,” “custom,” etc. They will upload their writing and choose what type of writing they want as their output.
+It will show both the input and the output together in two parts: right and left. They’ll be able to change this part by concising or enlarging it using the divider. An example:
+AI Detection
+Current Version & the Problems:
+It only shows a percentage of the AI used for the writing. (which is boring/doesn’t look attractive! 😣)
+It doesn’t show which part/parts were used by AI for producing the writing.
+It doesn’t suggest where to paraphrase to make the writing more like a general one.
+What to fix?
+It should definitely show a percentage, but in a lucrative way? Like, a round-shaped thing/pie chart where the blue percentage will be original and the red one will be like the AI-generated one.
+It should show which parts are AI-generated and where the users need changes.
+It will suggest paraphrased sentences to make the writing more humanized/general.
+An example (But it’s also not that good; we need to add something extra that I mentioned above.):
+Chat/Writing Generate
+What do we need to do here?
+We need three things:
+We need a space at the top of the tab, where users will be able to upload their original writings as samples that the model will analyze.
+Then, we will have another space for uploading files or links that the AI model will analyze and generate writing based on the writing style of a user.
+There will be another space where students will give instructions on how to produce the writing. (length, style, size, etc.)
+Then, the model will generate writing like an original piece.
+Store the texts given in supabase table 'Writing_chats' in 4 columns . In general 6 , 4 for result, 1 for id and 1 for raw text .
+use Next.Js to code and also use gemini api and other free api for the tasks. Keep the design at it is with the images while introducing a toggle button for light and dark mode. Include little and different creative animation using framer motion or anime.js so that the site feels lively .
