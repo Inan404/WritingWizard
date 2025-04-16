@@ -1,151 +1,135 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { db } from "./db";
 import { storage } from "./storage";
+import { generateGrammarCheck, generateParaphrase, generateHumanized, checkAIContent, generateWriting } from "./services/aiService";
+import { saveWritingChat } from "./services/writingService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // All API routes should be prefixed with /api
-  
-  // Grammar check API
-  app.post('/api/grammar-check', async (req, res) => {
+  // Create HTTP server
+  const httpServer = createServer(app);
+
+  // Grammar check endpoint
+  app.post("/api/grammar-check", async (req, res) => {
     try {
       const { text } = req.body;
       
-      if (!text || typeof text !== 'string') {
-        return res.status(400).json({ message: "Text is required" });
+      if (!text || typeof text !== "string") {
+        return res.status(400).json({ message: "Invalid text input" });
       }
       
-      // Import the grammar check functionality
-      const { checkGrammar } = await import('./api/grammar-check');
-      const result = await checkGrammar(text);
-      
-      return res.json(result);
+      const result = await generateGrammarCheck(text);
+      res.json(result);
     } catch (error) {
       console.error("Grammar check error:", error);
-      return res.status(500).json({ message: "Failed to check grammar" });
+      res.status(500).json({ message: "Error checking grammar" });
     }
   });
-  
-  // Paraphrase API
-  app.post('/api/paraphrase', async (req, res) => {
+
+  // Paraphrase endpoint
+  app.post("/api/paraphrase", async (req, res) => {
     try {
       const { text, style } = req.body;
       
-      if (!text || typeof text !== 'string') {
-        return res.status(400).json({ message: "Text is required" });
+      if (!text || typeof text !== "string") {
+        return res.status(400).json({ message: "Invalid text input" });
       }
       
-      // Import the paraphrase functionality
-      const { paraphraseText } = await import('./api/paraphrase');
-      const result = await paraphraseText(text, style);
-      
-      return res.json(result);
+      const result = await generateParaphrase(text, style);
+      res.json(result);
     } catch (error) {
       console.error("Paraphrase error:", error);
-      return res.status(500).json({ message: "Failed to paraphrase text" });
+      res.status(500).json({ message: "Error paraphrasing text" });
     }
   });
-  
-  // Humanize API
-  app.post('/api/humanize', async (req, res) => {
+
+  // Humanize endpoint
+  app.post("/api/humanize", async (req, res) => {
     try {
       const { text, style } = req.body;
       
-      if (!text || typeof text !== 'string') {
-        return res.status(400).json({ message: "Text is required" });
+      if (!text || typeof text !== "string") {
+        return res.status(400).json({ message: "Invalid text input" });
       }
       
-      // Import the humanize functionality
-      const { humanizeText } = await import('./api/humanize');
-      const result = await humanizeText(text, style);
-      
-      return res.json(result);
+      const result = await generateHumanized(text, style);
+      res.json(result);
     } catch (error) {
       console.error("Humanize error:", error);
-      return res.status(500).json({ message: "Failed to humanize text" });
+      res.status(500).json({ message: "Error humanizing text" });
     }
   });
-  
-  // AI Check API
-  app.post('/api/ai-check', async (req, res) => {
+
+  // AI check endpoint
+  app.post("/api/ai-check", async (req, res) => {
     try {
       const { text } = req.body;
       
-      if (!text || typeof text !== 'string') {
-        return res.status(400).json({ message: "Text is required" });
+      if (!text || typeof text !== "string") {
+        return res.status(400).json({ message: "Invalid text input" });
       }
       
-      // Import the AI check functionality
-      const { checkAIContent } = await import('./api/ai-check');
       const result = await checkAIContent(text);
-      
-      return res.json(result);
+      res.json(result);
     } catch (error) {
       console.error("AI check error:", error);
-      return res.status(500).json({ message: "Failed to check AI content" });
+      res.status(500).json({ message: "Error checking AI content" });
     }
   });
-  
-  // Generate Writing API
-  app.post('/api/generate-writing', async (req, res) => {
+
+  // Generate writing endpoint
+  app.post("/api/generate-writing", async (req, res) => {
     try {
-      const { 
-        originalSample, 
-        referenceUrl, 
-        topic, 
-        length, 
-        style, 
-        additionalInstructions 
-      } = req.body;
+      const { sample, references, instructions, length, style, format } = req.body;
       
-      if (!originalSample || typeof originalSample !== 'string') {
-        return res.status(400).json({ message: "Original writing sample is required" });
+      if (!instructions || typeof instructions !== "string") {
+        return res.status(400).json({ message: "Instructions are required" });
       }
       
-      if (!topic || typeof topic !== 'string') {
-        return res.status(400).json({ message: "Topic is required" });
-      }
-      
-      // Import the generate writing functionality
-      const { generateWriting } = await import('./api/generate-writing');
-      const result = await generateWriting({
-        originalSample,
-        referenceUrl,
-        topic,
-        length,
-        style,
-        additionalInstructions
-      });
-      
-      // Store the chat in Supabase
-      try {
-        const { storeWritingChat } = await import('./utils/ai-utils');
-        await storeWritingChat({
-          rawText: originalSample,
-          prompt: {
-            topic,
-            style,
-            length,
-            additionalInstructions
-          },
-          result: result.generatedText,
-          metadata: {
-            referenceUrl: referenceUrl || null
-          }
-        });
-      } catch (dbError) {
-        console.error("Failed to store writing chat:", dbError);
-        // Continue with the response even if storage fails
-      }
-      
-      return res.json(result);
+      const result = await generateWriting(sample, references, instructions, length, style, format);
+      res.json(result);
     } catch (error) {
       console.error("Generate writing error:", error);
-      return res.status(500).json({ message: "Failed to generate writing" });
+      res.status(500).json({ message: "Error generating writing" });
     }
   });
-  
-  const httpServer = createServer(app);
-  
+
+  // Save writing chat endpoint
+  app.post("/api/save-writing-chat", async (req, res) => {
+    try {
+      const { rawText, grammarResult, paraphraseResult, aiCheckResult, humanizeResult } = req.body;
+      
+      if (!rawText || typeof rawText !== "string") {
+        return res.status(400).json({ message: "Raw text is required" });
+      }
+      
+      const result = await saveWritingChat(
+        rawText, 
+        grammarResult, 
+        paraphraseResult, 
+        aiCheckResult, 
+        humanizeResult
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Save writing chat error:", error);
+      res.status(500).json({ message: "Error saving writing chat" });
+    }
+  });
+
+  // Get writing chats endpoint
+  app.get("/api/writing-chats", async (req, res) => {
+    try {
+      // Since we don't have authentication in this MVP, we'll return all chats
+      // In a real app, we'd filter by authenticated user ID
+      const userId = 1; // Default user for now
+      const chats = await storage.getWritingChatsByUserId(userId);
+      res.json({ chats });
+    } catch (error) {
+      console.error("Get writing chats error:", error);
+      res.status(500).json({ message: "Error retrieving writing chats" });
+    }
+  });
+
   return httpServer;
 }

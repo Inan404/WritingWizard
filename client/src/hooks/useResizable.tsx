@@ -1,81 +1,67 @@
-import { useRef, useEffect, useState } from "react";
+import { useState, useRef, useEffect, RefObject } from 'react';
 
-interface ResizableOptions {
-  minWidth?: number;
-  maxWidth?: number;
-  initialWidth?: number;
-  direction?: 'horizontal' | 'vertical';
+interface UseResizableReturn {
+  leftWidth: number;
+  containerRef: RefObject<HTMLDivElement>;
+  handleRef: RefObject<HTMLDivElement>;
+  startResizing: (e: React.MouseEvent) => void;
 }
 
-export default function useResizable({
-  minWidth = 25,
-  maxWidth = 75,
-  initialWidth = 50,
-  direction = 'horizontal'
-}: ResizableOptions = {}) {
+export default function useResizable(
+  initialLeftWidth: number = 50,
+  minLeftWidth: number = 20,
+  minRightWidth: number = 20
+): UseResizableReturn {
+  const [leftWidth, setLeftWidth] = useState(initialLeftWidth);
   const containerRef = useRef<HTMLDivElement>(null);
-  const resizerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState<number>(initialWidth);
-  
+  const handleRef = useRef<HTMLDivElement>(null);
+  const resizingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startLeftWidthRef = useRef(0);
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    resizingRef.current = true;
+    startXRef.current = e.clientX;
+    startLeftWidthRef.current = leftWidth;
+    document.body.style.cursor = 'col-resize';
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', stopResizing);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!resizingRef.current || !containerRef.current) return;
+    
+    const containerWidth = containerRef.current.offsetWidth;
+    const deltaX = e.clientX - startXRef.current;
+    const deltaPercentage = (deltaX / containerWidth) * 100;
+    
+    const newLeftWidth = Math.min(
+      Math.max(startLeftWidthRef.current + deltaPercentage, minLeftWidth),
+      100 - minRightWidth
+    );
+    
+    setLeftWidth(newLeftWidth);
+  };
+
+  const stopResizing = () => {
+    resizingRef.current = false;
+    document.body.style.cursor = '';
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', stopResizing);
+  };
+
   useEffect(() => {
-    const container = containerRef.current;
-    const resizer = resizerRef.current;
-    
-    if (!container || !resizer) return;
-    
-    let isResizing = false;
-    let startPos = 0;
-    let startSize = 0;
-    
-    const startResize = (e: MouseEvent) => {
-      isResizing = true;
-      startPos = direction === 'horizontal' ? e.clientX : e.clientY;
-      startSize = direction === 'horizontal' ? container.offsetWidth : container.offsetHeight;
-      
-      document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
-      document.body.style.userSelect = 'none';
-      document.addEventListener('mousemove', resize);
-      document.addEventListener('mouseup', stopResize);
-    };
-    
-    const resize = (e: MouseEvent) => {
-      if (!isResizing) return;
-      
-      const parentElement = container.parentElement;
-      if (!parentElement) return;
-      
-      const parentSize = direction === 'horizontal' ? parentElement.offsetWidth : parentElement.offsetHeight;
-      const currentPos = direction === 'horizontal' ? e.clientX : e.clientY;
-      const newSize = startSize + (currentPos - startPos);
-      
-      // Convert pixel values to percentages
-      const newPercentage = (newSize / parentSize) * 100;
-      const constrainedPercentage = Math.max(minWidth, Math.min(maxWidth, newPercentage));
-      
-      setWidth(constrainedPercentage);
-      if (direction === 'horizontal') {
-        container.style.width = `${constrainedPercentage}%`;
-      } else {
-        container.style.height = `${constrainedPercentage}%`;
-      }
-    };
-    
-    const stopResize = () => {
-      isResizing = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      document.removeEventListener('mousemove', resize);
-      document.removeEventListener('mouseup', stopResize);
-    };
-    
-    resizer.addEventListener('mousedown', startResize);
-    
     return () => {
-      resizer.removeEventListener('mousedown', startResize);
-      document.removeEventListener('mousemove', resize);
-      document.removeEventListener('mouseup', stopResize);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', stopResizing);
     };
-  }, [direction, minWidth, maxWidth]);
-  
-  return { containerRef, resizerRef, width };
+  }, []);
+
+  return {
+    leftWidth,
+    containerRef,
+    handleRef,
+    startResizing
+  };
 }
