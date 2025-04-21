@@ -33,36 +33,6 @@ export default function ChatGenerator() {
     }
   }, [messages]);
 
-  // Expose handleSendMessage to window so WritingTools can access it
-  useEffect(() => {
-    // @ts-ignore
-    window.handleChatMessage = (message: string) => {
-      if (!message.trim()) return;
-      
-      // Add user message to chat
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: 'user',
-          content: message,
-          timestamp: Date.now()
-        }
-      ]);
-      
-      // Show typing indicator
-      setIsLoading(true);
-      
-      // Call API to get response
-      generateMutation.mutate(message);
-    };
-
-    return () => {
-      // @ts-ignore
-      delete window.handleChatMessage;
-    };
-  }, []);
-
   const generateMutation = useMutation({
     mutationFn: async (message: string) => {
       const response = await apiRequest('POST', '/api/generate-writing', { 
@@ -100,6 +70,36 @@ export default function ChatGenerator() {
       ]);
     }
   });
+
+  // Expose handleSendMessage to window so WritingTools can access it
+  useEffect(() => {
+    // @ts-ignore
+    window.handleChatMessage = (message: string) => {
+      if (!message.trim()) return;
+      
+      // Add user message to chat
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: 'user',
+          content: message,
+          timestamp: Date.now()
+        }
+      ]);
+      
+      // Show typing indicator
+      setIsLoading(true);
+      
+      // Call API to get response
+      generateMutation.mutate(message);
+    };
+
+    return () => {
+      // @ts-ignore
+      delete window.handleChatMessage;
+    };
+  }, [generateMutation]);
 
   // Format timestamp
   const formatTime = (timestamp: number) => {

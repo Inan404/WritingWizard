@@ -123,9 +123,14 @@ export default function WritingTools() {
               className="absolute right-4 top-1/2 transform -translate-y-1/2 text-primary hover:text-primary/80"
               onClick={() => {
                 if (promptText.trim()) {
-                  // Handle sending message here
+                  // Send message via global function
                   console.log('Sending message:', promptText);
-                  setPromptText('');
+                  // @ts-ignore
+                  if (window.handleChatMessage) {
+                    // @ts-ignore
+                    window.handleChatMessage(promptText);
+                    setPromptText('');
+                  }
                 }
               }}
             >
