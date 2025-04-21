@@ -43,17 +43,19 @@ export default function GrammarChecker() {
     }
   });
 
-  useEffect(() => {
-    // Check grammar when text changes (with debounce)
-    const timer = setTimeout(() => {
-      if (grammarText.original.trim().length > 10) {
-        setIsProcessing(true);
-        grammarCheckMutation.mutate(grammarText.original);
-      }
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [grammarText.original]);
+  // Remove auto-checking to prevent random popups
+  const checkGrammar = () => {
+    if (grammarText.original.trim().length > 10) {
+      setIsProcessing(true);
+      grammarCheckMutation.mutate(grammarText.original);
+    } else {
+      toast({
+        title: "Text too short",
+        description: "Please enter at least 10 characters to check grammar.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleTextChange = (text: string) => {
     setGrammarText({
@@ -82,13 +84,26 @@ export default function GrammarChecker() {
   };
 
   const LeftPanel = (
-    <TextEditor
-      content={grammarText.original}
-      onChange={handleTextChange}
-      highlightText={true}
-      className="text-foreground"
-      placeholder="Enter or paste your text here to check grammar..."
-    />
+    <div className="h-full flex flex-col">
+      <div className="flex-1">
+        <TextEditor
+          content={grammarText.original}
+          onChange={handleTextChange}
+          highlightText={true}
+          className="text-foreground"
+          placeholder="Enter or paste your text here to check grammar..."
+        />
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button 
+          onClick={checkGrammar}
+          disabled={isProcessing}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        >
+          {isProcessing ? 'Checking...' : 'Check Grammar'}
+        </button>
+      </div>
+    </div>
   );
 
   const RightPanel = (

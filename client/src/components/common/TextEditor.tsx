@@ -75,29 +75,21 @@ export default function TextEditor({
     );
   }
 
-  // Use a simpler approach for contentEditable to avoid issues
+  // Use a textarea to avoid text direction issues
   return (
     <div className="relative w-full h-full">
-      <div
-        ref={editorRef as React.RefObject<HTMLDivElement>}
-        className={`content-editable p-2 ${className}`}
-        contentEditable={editable}
-        onInput={(e) => {
-          const newContent = (e.target as HTMLDivElement).innerText;
-          setInternalContent(newContent);
-          onChange(newContent);
+      <textarea
+        ref={editorRef as React.RefObject<HTMLTextAreaElement>}
+        className={`w-full h-full p-2 border-0 focus:ring-0 focus:outline-none resize-none bg-card ${className}`}
+        placeholder={placeholder}
+        value={internalContent}
+        onChange={(e) => {
+          setInternalContent(e.target.value);
+          onChange(e.target.value);
         }}
-        suppressContentEditableWarning={true}
-        data-tool={highlightText ? (activeTool === 'ai-check' ? "ai-check" : "grammar") : ""}
-        dangerouslySetInnerHTML={{ __html: highlightText ? getHighlightedContent() : internalContent }}
-      >
-      </div>
-      
-      {!internalContent && (
-        <div className="absolute top-2 left-2 pointer-events-none text-muted-foreground opacity-60">
-          {placeholder}
-        </div>
-      )}
+        disabled={!editable}
+        style={{ direction: 'ltr' }} // Force left-to-right text direction
+      />
     </div>
   );
 }
