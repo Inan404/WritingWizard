@@ -118,12 +118,11 @@ export function setupAuth(app: Express) {
       // Hash password
       const hashedPassword = await hashPassword(req.body.password);
 
-      // Create user
+      // Create user (only using required fields)
       const [user] = await db.insert(users).values({
         username: req.body.username,
-        email: req.body.email || null,
         password: hashedPassword,
-        fullName: req.body.fullName || null,
+        // Remove email, fullName fields
       }).returning();
 
       // Log user in
@@ -163,6 +162,6 @@ export function setupAuth(app: Express) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
     const user = req.user as User;
-    return res.json({ id: user.id, username: user.username, email: user.email });
+    return res.json({ id: user.id, username: user.username });
   });
 }
