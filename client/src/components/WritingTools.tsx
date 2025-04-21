@@ -12,7 +12,7 @@ export default function WritingTools() {
   const { activeTool, setActiveTool } = useWriting();
   const [promptText, setPromptText] = useState("");
   const [currentTool, setCurrentTool] = useState<WritingTool>(activeTool);
-  const chatComponentRef = useRef<{ handleSendMessage?: (message: string) => void }>({}); 
+  // We'll use the global function exposed by ChatGenerator
 
   // Update local state when context changes
   useEffect(() => {
@@ -108,9 +108,14 @@ export default function WritingTools() {
               onChange={(e) => setPromptText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && promptText.trim()) {
-                  // Handle sending message here
+                  // Send message via global function
                   console.log('Sending message:', promptText);
-                  setPromptText('');
+                  // @ts-ignore
+                  if (window.handleChatMessage) {
+                    // @ts-ignore
+                    window.handleChatMessage(promptText);
+                    setPromptText('');
+                  }
                 }
               }}
             />

@@ -4,7 +4,7 @@ import { useWriting } from '@/context/WritingContext';
 import { apiRequest } from '@/lib/queryClient';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
-import { Bot, Send, User } from 'lucide-react';
+import { Bot, User } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -14,7 +14,7 @@ interface Message {
 }
 
 export default function ChatGenerator() {
-  const { chatText, setChatText } = useWriting();
+  const { chatText } = useWriting();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -32,6 +32,36 @@ export default function ChatGenerator() {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Expose handleSendMessage to window so WritingTools can access it
+  useEffect(() => {
+    // @ts-ignore
+    window.handleChatMessage = (message: string) => {
+      if (!message.trim()) return;
+      
+      // Add user message to chat
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: 'user',
+          content: message,
+          timestamp: Date.now()
+        }
+      ]);
+      
+      // Show typing indicator
+      setIsLoading(true);
+      
+      // Call API to get response
+      generateMutation.mutate(message);
+    };
+
+    return () => {
+      // @ts-ignore
+      delete window.handleChatMessage;
+    };
+  }, []);
 
   const generateMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -70,29 +100,6 @@ export default function ChatGenerator() {
       ]);
     }
   });
-
-  // This function is called from WritingTools when the send button is clicked
-  // It will be connected later. For now we'll use the scrolling chat view
-  const handleSendMessage = (message: string) => {
-    if (!message.trim()) return;
-    
-    // Add user message to chat
-    setMessages(prev => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        role: 'user',
-        content: message,
-        timestamp: Date.now()
-      }
-    ]);
-    
-    // Show typing indicator
-    setIsLoading(true);
-    
-    // Call API to get response
-    generateMutation.mutate(message);
-  };
 
   // Format timestamp
   const formatTime = (timestamp: number) => {
@@ -173,29 +180,31 @@ export default function ChatGenerator() {
       </div>
       
       {/* Input box is now handled by the WritingTools component */}
-      <style jsx>{`
-        .typing-animation {
-          display: inline-flex;
-          align-items: center;
-        }
-        .dot {
-          height: 6px;
-          width: 6px;
-          margin: 0 1px;
-          background-color: currentColor;
-          border-radius: 50%;
-          display: inline-block;
-          opacity: 0.7;
-          animation: typing 1.4s infinite ease-in-out;
-        }
-        .dot:nth-child(1) { animation-delay: 0s; }
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes typing {
-          0%, 60%, 100% { transform: translateY(0); }
-          30% { transform: translateY(-4px); }
-        }
-      `}</style>
+      <style>
+        {`
+          .typing-animation {
+            display: inline-flex;
+            align-items: center;
+          }
+          .dot {
+            height: 6px;
+            width: 6px;
+            margin: 0 1px;
+            background-color: currentColor;
+            border-radius: 50%;
+            display: inline-block;
+            opacity: 0.7;
+            animation: typing 1.4s infinite ease-in-out;
+          }
+          .dot:nth-child(1) { animation-delay: 0s; }
+          .dot:nth-child(2) { animation-delay: 0.2s; }
+          .dot:nth-child(3) { animation-delay: 0.4s; }
+          @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-4px); }
+          }
+        `}
+      </style>
     </div>
   );
 }
