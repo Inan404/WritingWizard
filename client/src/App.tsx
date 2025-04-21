@@ -27,7 +27,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <div className={theme}>
+        <div className={`${theme} min-h-screen bg-background text-foreground`}>
           <Router />
           <Toaster />
         </div>
