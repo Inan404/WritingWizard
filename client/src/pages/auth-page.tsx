@@ -13,7 +13,6 @@ export default function AuthPage() {
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [registerForm, setRegisterForm] = useState({
     username: "",
-    email: "",
     password: "",
     passwordConfirm: "",
   });
@@ -164,15 +163,7 @@ export default function AuthPage() {
                         required
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="register-email">Email (optional)</Label>
-                      <Input 
-                        id="register-email" 
-                        type="email" 
-                        value={registerForm.email}
-                        onChange={(e) => updateRegisterForm("email", e.target.value)}
-                      />
-                    </div>
+                    {/* Email field removed */}
                     <div className="space-y-2">
                       <Label htmlFor="register-password">Password</Label>
                       <Input 
