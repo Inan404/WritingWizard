@@ -4,8 +4,8 @@ import {
   type ChatHistory, type InsertChatHistory,
   type SupabaseUser, type ChatMessage 
 } from "@shared/schema";
-// We'll integrate Supabase properly later
-// import { supabase } from "./supabase";
+// Importing Supabase client for authentication and data storage
+import { supabase } from "./supabase";
 import { eq } from "drizzle-orm";
 
 // Interface for database operations with Supabase
@@ -358,7 +358,5 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Temporarily use only memory storage until we fix Supabase integration
-// Use Supabase storage
-import { supabase } from './supabase';
+// Use Supabase storage for production
 export const storage = new SupabaseStorage();
