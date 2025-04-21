@@ -281,10 +281,10 @@ export class MemStorage implements IStorage {
       id,
       userId: entry.userId,
       inputText: entry.inputText,
-      grammarResult: entry.grammarResult !== undefined ? entry.grammarResult : null,
-      paraphraseResult: entry.paraphraseResult !== undefined ? entry.paraphraseResult : null,
-      aiCheckResult: entry.aiCheckResult !== undefined ? entry.aiCheckResult : null,
-      humanizerResult: entry.humanizerResult !== undefined ? entry.humanizerResult : null,
+      grammarResult: entry.grammarResult ?? null,
+      paraphraseResult: entry.paraphraseResult ?? null,
+      aiCheckResult: entry.aiCheckResult ?? null,
+      humanizerResult: entry.humanizerResult ?? null,
       createdAt: now,
       updatedAt: now,
     };
@@ -331,7 +331,7 @@ export class MemStorage implements IStorage {
     const now = new Date();
     const newHistory: ChatHistory = {
       id,
-      userId: history.userId !== undefined ? history.userId : '',
+      userId: history.userId ?? '',
       messages: history.messages,
       createdAt: now,
       updatedAt: now,
