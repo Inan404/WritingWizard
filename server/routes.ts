@@ -116,69 +116,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth endpoints
-  app.post("/api/auth/signup", async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
-      }
-      
-      const user = await storage.signUp(email, password);
-      
-      if (!user) {
-        return res.status(400).json({ message: "Failed to create user" });
-      }
-      
-      res.json({ user });
-    } catch (error) {
-      console.error("Signup error:", error);
-      res.status(500).json({ message: "Error signing up" });
-    }
-  });
-  
-  app.post("/api/auth/signin", async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
-      }
-      
-      const user = await storage.signIn(email, password);
-      
-      if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-      
-      res.json({ user });
-    } catch (error) {
-      console.error("Signin error:", error);
-      res.status(500).json({ message: "Error signing in" });
-    }
-  });
-  
-  app.post("/api/auth/signout", async (req, res) => {
-    try {
-      await storage.signOut();
-      res.json({ message: "Signed out successfully" });
-    } catch (error) {
-      console.error("Signout error:", error);
-      res.status(500).json({ message: "Error signing out" });
-    }
-  });
-  
-  app.get("/api/auth/user", async (req, res) => {
-    try {
-      const user = await storage.getCurrentUser();
-      res.json({ user });
-    } catch (error) {
-      console.error("Get user error:", error);
-      res.status(500).json({ message: "Error getting user" });
-    }
-  });
-
   // Writing entries endpoints
   app.post("/api/writing-entries", async (req, res) => {
     try {
@@ -248,7 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entry = await storage.getWritingEntry(id);
       
       // Convert both IDs to strings for comparison to handle different types
-      if (!entry || entry.userId.toString() !== user.id.toString()) {
+      if (!entry || !user.id || entry.userId.toString() !== user.id.toString()) {
         return res.status(404).json({ message: "Entry not found" });
       }
       
@@ -319,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const session = await storage.getChatSession(sessionId);
       const user = await storage.getCurrentUser();
       
-      if (!session || !user || session.userId.toString() !== user.id.toString()) {
+      if (!session || !user || !user.id || session.userId.toString() !== user.id.toString()) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -348,7 +285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const session = await storage.getChatSession(sessionId);
       const user = await storage.getCurrentUser();
       
-      if (!session || !user || session.userId.toString() !== user.id.toString()) {
+      if (!session || !user || !user.id || session.userId.toString() !== user.id.toString()) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -455,7 +392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Compare both as strings to handle type differences
       const userId = req.user?.id;
-      if (entry.userId.toString() !== userId.toString()) {
+      if (!userId || entry.userId.toString() !== userId.toString()) {
         return res.status(403).json({ error: 'Access denied' });
       }
       
@@ -522,7 +459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.id;
       
       // Compare both as strings to handle type differences
-      if (!session || session.userId.toString() !== userId.toString()) {
+      if (!session || !userId || session.userId.toString() !== userId.toString()) {
         return res.status(403).json({ error: 'Access denied' });
       }
       
@@ -546,7 +483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.id;
       
       // Compare both as strings to handle type differences
-      if (!session || session.userId.toString() !== userId.toString()) {
+      if (!session || !userId || session.userId.toString() !== userId.toString()) {
         return res.status(403).json({ error: 'Access denied' });
       }
       
