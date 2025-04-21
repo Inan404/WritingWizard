@@ -3,20 +3,20 @@ import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
 import session from 'express-session';
 import { db } from './db';
-import { users, type User } from '@shared/schema';
+import { users } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import connectPgSimple from 'connect-pg-simple';
 import { pool } from './db';
 
+// Define custom User interface for Express session
 declare global {
   namespace Express {
-    // Define what the User object looks like in the request
+    // Define what the User object looks like in the request - match actual DB columns
     interface User {
       id: number;
       username: string;
-      email: string | null;
-      fullName: string | null;
+      password: string;
     }
   }
 }
@@ -109,20 +109,26 @@ export function setupAuth(app: Express) {
   // Register user
   app.post('/api/register', async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Get required fields
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+      }
+      
       // Check if username exists
-      const [existingUser] = await db.select().from(users).where(eq(users.username, req.body.username));
+      const [existingUser] = await db.select().from(users).where(eq(users.username, username));
       if (existingUser) {
         return res.status(400).json({ error: 'Username already exists' });
       }
 
       // Hash password
-      const hashedPassword = await hashPassword(req.body.password);
+      const hashedPassword = await hashPassword(password);
 
-      // Create user (only using required fields)
+      // Create user with just username and password
       const [user] = await db.insert(users).values({
-        username: req.body.username,
+        username,
         password: hashedPassword,
-        // Remove email, fullName fields
       }).returning();
 
       // Log user in
@@ -131,15 +137,16 @@ export function setupAuth(app: Express) {
         return res.status(201).json({ id: user.id, username: user.username });
       });
     } catch (err) {
-      next(err);
+      console.error('Registration error:', err);
+      return res.status(500).json({ error: 'Registration failed' });
     }
   });
 
   // Login user
   app.post('/api/login', (req: Request, res: Response, next: NextFunction) => {
-    passport.authenticate('local', (err: any, user: User, info: any) => {
+    passport.authenticate('local', (err: any, user: Express.User, info: any) => {
       if (err) return next(err);
-      if (!user) return res.status(401).json({ error: info.message || 'Authentication failed' });
+      if (!user) return res.status(401).json({ error: info?.message || 'Authentication failed' });
       
       req.login(user, (err) => {
         if (err) return next(err);
@@ -161,7 +168,9 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
-    const user = req.user as User;
-    return res.json({ id: user.id, username: user.username });
+    return res.json({ 
+      id: req.user.id, 
+      username: req.user.username 
+    });
   });
 }

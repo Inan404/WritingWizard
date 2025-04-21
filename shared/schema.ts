@@ -12,15 +12,11 @@ export interface SupabaseUser {
   };
 }
 
-// Local users table for database authentication
+// Local users table for database authentication - matches actual DB structure
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
-  email: text("email").unique(),
   password: text("password").notNull(),
-  fullName: text("full_name"),
-  avatarUrl: text("avatar_url"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Writing entries table for storing writing data
@@ -58,7 +54,7 @@ export const chatMessages = pgTable("chat_messages", {
 
 // Schema for inserting a new user
 export const insertUserSchema = createInsertSchema(users)
-  .omit({ id: true, createdAt: true });
+  .omit({ id: true });
 
 // Schema for inserting a new writing entry
 export const insertWritingEntrySchema = createInsertSchema(writingEntries)
