@@ -1,11 +1,28 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { dbStorage } from "./dbStorage"; 
 import { generateGrammarCheck, generateParaphrase, generateHumanized, checkAIContent, generateWriting } from "./services/aiService";
+import { setupAuth } from "./auth";
+import { ensureTablesExist } from "./db";
+
+// Middleware to check if the user is authenticated
+const isAuthenticated = (req: Request, res: Response, next: Function) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  return res.status(401).json({ error: "You must be logged in to access this resource" });
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
   const httpServer = createServer(app);
+  
+  // Ensure database tables exist
+  await ensureTablesExist();
+  
+  // Set up authentication
+  setupAuth(app);
 
   // Grammar check endpoint
   app.post("/api/grammar-check", async (req, res) => {
@@ -302,6 +319,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get writing chats error:", error);
       res.status(500).json({ message: "Error retrieving writing chats" });
+    }
+  });
+
+  // New DB-based API endpoints protected by authentication
+  
+  // Writing entries API
+  app.get('/api/db/writing-entries', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      
+      const entries = await dbStorage.getWritingEntriesByUserId(userId);
+      res.json({ entries });
+    } catch (error) {
+      console.error('Error getting writing entries:', error);
+      res.status(500).json({ error: 'Failed to retrieve writing entries' });
+    }
+  });
+  
+  app.post('/api/db/writing-entries', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      
+      const { title, inputText, grammarResult, paraphraseResult, aiCheckResult, humanizerResult } = req.body;
+      
+      if (!inputText) {
+        return res.status(400).json({ error: 'Input text is required' });
+      }
+      
+      const entry = await dbStorage.createWritingEntry({
+        userId,
+        title: title || 'Untitled',
+        inputText,
+        grammarResult,
+        paraphraseResult,
+        aiCheckResult,
+        humanizerResult,
+        isFavorite: false
+      });
+      
+      res.status(201).json({ entry });
+    } catch (error) {
+      console.error('Error creating writing entry:', error);
+      res.status(500).json({ error: 'Failed to create writing entry' });
+    }
+  });
+  
+  app.get('/api/db/writing-entries/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid ID' });
+      }
+      
+      const entry = await dbStorage.getWritingEntry(id);
+      if (!entry) {
+        return res.status(404).json({ error: 'Entry not found' });
+      }
+      
+      // Check if the entry belongs to the user
+      if (entry.userId !== req.user?.id) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      res.json({ entry });
+    } catch (error) {
+      console.error('Error getting writing entry:', error);
+      res.status(500).json({ error: 'Failed to retrieve writing entry' });
+    }
+  });
+  
+  // Chat sessions API
+  app.get('/api/db/chat-sessions', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      
+      const sessions = await dbStorage.getChatSessionsByUserId(userId);
+      res.json({ sessions });
+    } catch (error) {
+      console.error('Error getting chat sessions:', error);
+      res.status(500).json({ error: 'Failed to retrieve chat sessions' });
+    }
+  });
+  
+  app.post('/api/db/chat-sessions', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      
+      const { name } = req.body;
+      
+      const session = await dbStorage.createChatSession({
+        userId,
+        name: name || 'New Chat'
+      });
+      
+      res.status(201).json({ session });
+    } catch (error) {
+      console.error('Error creating chat session:', error);
+      res.status(500).json({ error: 'Failed to create chat session' });
+    }
+  });
+  
+  // Chat messages API
+  app.get('/api/db/chat-sessions/:sessionId/messages', isAuthenticated, async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ error: 'Invalid session ID' });
+      }
+      
+      // First check if the session belongs to the user
+      const session = await dbStorage.getChatSession(sessionId);
+      if (!session || session.userId !== req.user?.id) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      const messages = await dbStorage.getChatMessages(sessionId);
+      res.json({ messages });
+    } catch (error) {
+      console.error('Error getting chat messages:', error);
+      res.status(500).json({ error: 'Failed to retrieve chat messages' });
+    }
+  });
+  
+  app.post('/api/db/chat-sessions/:sessionId/messages', isAuthenticated, async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ error: 'Invalid session ID' });
+      }
+      
+      // First check if the session belongs to the user
+      const session = await dbStorage.getChatSession(sessionId);
+      if (!session || session.userId !== req.user?.id) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      const { role, content } = req.body;
+      
+      if (!role || !content) {
+        return res.status(400).json({ error: 'Role and content are required' });
+      }
+      
+      const message = await dbStorage.createChatMessage({
+        sessionId,
+        role,
+        content
+      });
+      
+      res.status(201).json({ message });
+    } catch (error) {
+      console.error('Error creating chat message:', error);
+      res.status(500).json({ error: 'Failed to create chat message' });
     }
   });
 
