@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import GrammarChecker from "./tools/GrammarChecker";
 import Paraphraser from "./tools/Paraphraser";
@@ -6,12 +6,13 @@ import AIChecker from "./tools/AIChecker";
 import Humanizer from "./tools/Humanizer";
 import ChatGenerator from "./tools/ChatGenerator";
 import { useWriting, WritingTool } from "@/context/WritingContext";
-import { Mic, Plus } from "lucide-react";
+import { Mic, Plus, Send } from "lucide-react";
 
 export default function WritingTools() {
   const { activeTool, setActiveTool } = useWriting();
   const [promptText, setPromptText] = useState("");
   const [currentTool, setCurrentTool] = useState<WritingTool>(activeTool);
+  const chatComponentRef = useRef<{ handleSendMessage?: (message: string) => void }>({}); 
 
   // Update local state when context changes
   useEffect(() => {
@@ -82,40 +83,52 @@ export default function WritingTools() {
         </div>
       </div>
 
-      {/* Debug info */}
-      <div className="text-xs text-muted-foreground mb-2">
-        <pre>Context activeTool: {activeTool}</pre>
-        <pre>Local currentTool: {currentTool}</pre>
-      </div>
-
       {/* Feature Content Area */}
       <div className="mb-20">
         {renderTool()}
       </div>
-
-      {/* Chat Input Component */}
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-3xl px-4">
-        <motion.div 
-          className="relative bg-card rounded-full shadow-lg"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <button className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground">
-            <Plus className="h-5 w-5" />
-          </button>
-          <input 
-            type="text" 
-            placeholder="Ask anything..." 
-            className="w-full pl-12 pr-14 py-3 border-0 focus:ring-0 rounded-full bg-card"
-            value={promptText}
-            onChange={(e) => setPromptText(e.target.value)}
-          />
-          <button className="absolute right-4 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground">
-            <Mic className="h-5 w-5" />
-          </button>
-        </motion.div>
-      </div>
+      
+      {/* Chat Input Component - Only show in Chat tab */}
+      {currentTool === "chat" && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-3xl px-4">
+          <motion.div 
+            className="relative bg-card rounded-full shadow-lg"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <button className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <Plus className="h-5 w-5" />
+            </button>
+            <input 
+              type="text" 
+              placeholder="Type a message..." 
+              className="w-full pl-12 pr-14 py-3 border-0 focus:ring-0 rounded-full bg-card"
+              value={promptText}
+              onChange={(e) => setPromptText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && promptText.trim()) {
+                  // Handle sending message here
+                  console.log('Sending message:', promptText);
+                  setPromptText('');
+                }
+              }}
+            />
+            <button 
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-primary hover:text-primary/80"
+              onClick={() => {
+                if (promptText.trim()) {
+                  // Handle sending message here
+                  console.log('Sending message:', promptText);
+                  setPromptText('');
+                }
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

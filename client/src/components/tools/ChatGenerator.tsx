@@ -1,277 +1,201 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useWriting } from '@/context/WritingContext';
-import UploadArea from '../common/UploadArea';
 import { apiRequest } from '@/lib/queryClient';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
-import { WandSparkles } from 'lucide-react';
+import { Bot, Send, User } from 'lucide-react';
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+}
 
 export default function ChatGenerator() {
   const { chatText, setChatText } = useWriting();
-  const [generatedContent, setGeneratedContent] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      role: 'assistant',
+      content: 'Hello! I am your AI writing assistant. How can I help you with your writing needs today?',
+      timestamp: Date.now()
+    }
+  ]);
+  const [isLoading, setIsLoading] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const generateMutation = useMutation({
-    mutationFn: async (data: typeof chatText) => {
-      const response = await apiRequest('POST', '/api/generate-writing', data);
+    mutationFn: async (message: string) => {
+      const response = await apiRequest('POST', '/api/generate-writing', { 
+        originalSample: '',
+        referenceUrl: '',
+        topic: message,
+        length: '500 words',
+        style: 'Casual',
+        additionalInstructions: 'Respond as an AI assistant'
+      });
       return response.json();
     },
     onSuccess: (data) => {
-      setIsGenerating(false);
-      setGeneratedContent(data.generatedText);
-      toast({
-        title: "Writing generated",
-        description: "Your content has been generated based on your specifications.",
-      });
+      setIsLoading(false);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: data.generatedText,
+          timestamp: Date.now()
+        }
+      ]);
     },
     onError: () => {
-      setIsGenerating(false);
-      toast({
-        title: "Error generating content",
-        description: "There was a problem generating your writing. Please try again.",
-        variant: "destructive"
-      });
+      setIsLoading(false);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: "I'm sorry, I encountered an error processing your request. Please try again.",
+          timestamp: Date.now()
+        }
+      ]);
     }
   });
 
-  const handleSampleUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      setChatText({
-        ...chatText,
-        sample: text
-      });
-      toast({
-        title: "Sample uploaded",
-        description: "Your writing sample has been uploaded successfully.",
-      });
-    };
-    reader.readAsText(file);
-  };
-
-  const handleReferenceUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      setChatText({
-        ...chatText,
-        references: text
-      });
-      toast({
-        title: "Reference uploaded",
-        description: "Your reference material has been uploaded successfully.",
-      });
-    };
-    reader.readAsText(file);
-  };
-
-  const handleReferenceLink = (link: string) => {
-    setChatText({
-      ...chatText,
-      references: chatText.references 
-        ? `${chatText.references}\n\nLink: ${link}`
-        : `Link: ${link}`
-    });
-    toast({
-      title: "Reference link added",
-      description: "Your reference link has been added successfully.",
-    });
-  };
-
-  const handleInstructionsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setChatText({
-      ...chatText,
-      instructions: e.target.value
-    });
-  };
-
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>, field: 'length' | 'style' | 'format') => {
-    setChatText({
-      ...chatText,
-      [field]: e.target.value
-    });
-  };
-
-  const handleGenerateWriting = () => {
-    if (!chatText.instructions.trim()) {
-      toast({
-        title: "Instructions required",
-        description: "Please provide instructions for what you want to generate.",
-        variant: "destructive"
-      });
-      return;
-    }
+  // This function is called from WritingTools when the send button is clicked
+  // It will be connected later. For now we'll use the scrolling chat view
+  const handleSendMessage = (message: string) => {
+    if (!message.trim()) return;
     
-    setIsGenerating(true);
-    generateMutation.mutate(chatText);
+    // Add user message to chat
+    setMessages(prev => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        role: 'user',
+        content: message,
+        timestamp: Date.now()
+      }
+    ]);
+    
+    // Show typing indicator
+    setIsLoading(true);
+    
+    // Call API to get response
+    generateMutation.mutate(message);
+  };
+
+  // Format timestamp
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-220px)] bg-card rounded-lg shadow-sm overflow-hidden">
-      {generatedContent ? (
-        <div className="flex flex-col h-full">
-          <div className="p-4 border-b border-border flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-semibold">Generated Writing</h2>
-              <p className="text-sm text-muted-foreground">Based on your specifications</p>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-4 py-2 bg-muted text-foreground rounded-md"
-              onClick={() => setGeneratedContent("")}
+    <div className="flex flex-col h-[calc(100vh-290px)] bg-card rounded-lg shadow-sm overflow-hidden">
+      <div className="p-4 border-b border-border">
+        <h2 className="text-lg font-semibold">AI Writing Assistant</h2>
+        <p className="text-sm text-muted-foreground">Chat with the AI to get help with your writing</p>
+      </div>
+      
+      {/* Chat messages container */}
+      <div 
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+      >
+        {messages.map((message) => (
+          <motion.div
+            key={message.id}
+            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div 
+              className={`flex max-w-[80%] ${message.role === 'user' 
+                ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-none' 
+                : 'bg-muted text-foreground rounded-2xl rounded-tl-none'
+              } px-4 py-3`}
             >
-              Back to Editor
-            </motion.button>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-4">
-            {generatedContent.split('\n\n').map((paragraph, i) => (
-              <motion.p 
-                key={i} 
-                className="mb-4"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-              >
-                {paragraph}
-              </motion.p>
-            ))}
-          </div>
-          
-          <div className="p-4 border-t border-border">
-            <div className="flex space-x-2">
-              <button 
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                onClick={() => {
-                  navigator.clipboard.writeText(generatedContent);
-                  toast({
-                    title: "Copied to clipboard",
-                    description: "Generated text has been copied.",
-                  });
-                }}
-              >
-                Copy Text
-              </button>
-              <button 
-                className="px-4 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80"
-                onClick={() => setGeneratedContent("")}
-              >
-                Generate New Text
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="p-4 border-b border-border">
-            <h2 className="text-lg font-semibold">Writing Generator</h2>
-            <p className="text-sm text-muted-foreground">Upload samples and references to generate content in your style</p>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            <UploadArea
-              title="Upload Your Writing Sample"
-              description="Upload your original writing for the AI to analyze your style and tone"
-              icon="file"
-              onUpload={handleSampleUpload}
-            />
-            
-            <UploadArea
-              title="Upload Reference Materials"
-              description="Upload files or paste links to materials the AI should reference"
-              icon="link"
-              onUpload={handleReferenceUpload}
-              onLinkAdd={handleReferenceLink}
-              acceptLinkInput={true}
-            />
-            
-            <div className="bg-muted rounded-lg p-4">
-              <h3 className="text-md font-medium mb-2 flex items-center">
-                <span className="text-primary mr-2">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
-                    <path d="M15.4 16.8L13.8 18.4L11.3 16H6C4.9 16 4 15.1 4 14V6C4 4.9 4.9 4 6 4H18C19.1 4 20 4.9 20 6V12.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M14 11H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    <path d="M11 7H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    <path d="M19.2 20.8C18.8 21.6 17.7 21.9 16.9 21.5C16.1 21.1 15.8 20 16.2 19.2C16.5 18.5 17.8 16.5 17.8 16.5C17.8 16.5 19.5 20 19.2 20.8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </span>
-                Writing Instructions
-              </h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Provide details about what you want the AI to write
-              </p>
-              <textarea 
-                className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none h-24 bg-card" 
-                placeholder="Describe what you want (topic, length, style, etc.)"
-                value={chatText.instructions}
-                onChange={handleInstructionsChange}
-              />
-              
-              <div className="flex flex-wrap gap-2 mt-3">
-                <div className="flex items-center bg-card rounded-full px-3 py-1 text-sm">
-                  <span className="mr-2 text-muted-foreground">Length:</span>
-                  <select 
-                    className="bg-transparent border-0 focus:ring-0 text-sm p-0 pr-5"
-                    value={chatText.length}
-                    onChange={(e) => handleSelectChange(e, 'length')}
-                  >
-                    <option>500 words</option>
-                    <option>1000 words</option>
-                    <option>1500 words</option>
-                    <option>Custom</option>
-                  </select>
+              <div>
+                <div className="flex items-center mb-1">
+                  <span className="mr-2">
+                    {message.role === 'user' 
+                      ? <User className="h-4 w-4" /> 
+                      : <Bot className="h-4 w-4" />
+                    }
+                  </span>
+                  <span className="text-xs opacity-70">
+                    {message.role === 'user' ? 'You' : 'AI Assistant'} • {formatTime(message.timestamp)}
+                  </span>
                 </div>
-                
-                <div className="flex items-center bg-card rounded-full px-3 py-1 text-sm">
-                  <span className="mr-2 text-muted-foreground">Style:</span>
-                  <select 
-                    className="bg-transparent border-0 focus:ring-0 text-sm p-0 pr-5"
-                    value={chatText.style}
-                    onChange={(e) => handleSelectChange(e, 'style')}
-                  >
-                    <option>Academic</option>
-                    <option>Casual</option>
-                    <option>Professional</option>
-                    <option>Creative</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-center bg-card rounded-full px-3 py-1 text-sm">
-                  <span className="mr-2 text-muted-foreground">Format:</span>
-                  <select 
-                    className="bg-transparent border-0 focus:ring-0 text-sm p-0 pr-5"
-                    value={chatText.format}
-                    onChange={(e) => handleSelectChange(e, 'format')}
-                  >
-                    <option>Essay</option>
-                    <option>Blog post</option>
-                    <option>Report</option>
-                    <option>Email</option>
-                  </select>
+                <div className="whitespace-pre-wrap">
+                  {message.content.split('\n').map((paragraph, i) => (
+                    <p key={i} className={i > 0 ? 'mt-2' : ''}>
+                      {paragraph}
+                    </p>
+                  ))}
                 </div>
               </div>
             </div>
-          </div>
-          
-          <div className="p-4 border-t border-border">
-            <motion.button 
-              className={`w-full py-3 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors duration-200 flex items-center justify-center space-x-2 ${
-                isGenerating ? 'opacity-75 cursor-not-allowed animate-pulse' : ''
-              }`}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleGenerateWriting}
-              disabled={isGenerating}
-            >
-              <WandSparkles className="h-5 w-5" />
-              <span>{isGenerating ? 'Generating...' : 'Generate Writing'}</span>
-            </motion.button>
-          </div>
-        </>
-      )}
+          </motion.div>
+        ))}
+        
+        {/* Typing indicator */}
+        {isLoading && (
+          <motion.div 
+            className="flex justify-start"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="bg-muted text-foreground rounded-2xl rounded-tl-none px-4 py-3">
+              <div className="flex items-center">
+                <span className="text-xs flex items-center">
+                  <Bot className="h-4 w-4 mr-2" />
+                  <span className="typing-animation">
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                  </span>
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </div>
+      
+      {/* Input box is now handled by the WritingTools component */}
+      <style jsx>{`
+        .typing-animation {
+          display: inline-flex;
+          align-items: center;
+        }
+        .dot {
+          height: 6px;
+          width: 6px;
+          margin: 0 1px;
+          background-color: currentColor;
+          border-radius: 50%;
+          display: inline-block;
+          opacity: 0.7;
+          animation: typing 1.4s infinite ease-in-out;
+        }
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-4px); }
+        }
+      `}</style>
     </div>
   );
 }

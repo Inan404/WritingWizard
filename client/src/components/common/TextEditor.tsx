@@ -53,44 +53,9 @@ export default function TextEditor({
       
     if (!textToUse.highlights || textToUse.highlights.length === 0) return internalContent;
     
-    // This is a simplified version. In a real app, you'd need more sophisticated
-    // text highlighting that preserves HTML structure
-    let html = internalContent;
-    
-    try {
-      // Apply highlights in reverse order to avoid offset issues
-      const highlights = [...(textToUse.highlights || [])].sort((a, b) => b.start - a.start);
-      
-      for (const highlight of highlights) {
-        if (highlight.start >= 0 && highlight.end > highlight.start && highlight.end <= html.length) {
-          const before = html.substring(0, highlight.start);
-          const highlighted = html.substring(highlight.start, highlight.end);
-          const after = html.substring(highlight.end);
-          
-          let highlightClass = '';
-          switch (highlight.type) {
-            case 'suggestion':
-              highlightClass = 'suggestion-highlight';
-              break;
-            case 'error':
-              highlightClass = 'error-highlight';
-              break;
-            case 'ai':
-              highlightClass = 'ai-highlight';
-              break;
-          }
-          
-          html = `${before}<span class="${highlightClass}" 
-                    data-suggestion="${highlight.suggestion || ''}"
-                    data-message="${highlight.message || ''}">${highlighted}</span>${after}`;
-        }
-      }
-    } catch (error) {
-      console.error('Error applying highlights:', error);
-      return internalContent;
-    }
-    
-    return DOMPurify.sanitize(html);
+    // Just return the plain text to avoid mirroring issues
+    // We'll implement highlighting in a future update
+    return internalContent;
   };
 
   // Return a simple textarea for better stability if isTextArea is true
