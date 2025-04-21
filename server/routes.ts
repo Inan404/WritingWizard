@@ -182,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Writing entries endpoints
   app.post("/api/writing-entries", async (req, res) => {
     try {
-      const { inputText, grammarResult, paraphraseResult, aiCheckResult, humanizerResult } = req.body;
+      const { title, inputText, grammarResult, paraphraseResult, aiCheckResult, humanizerResult } = req.body;
       
       if (!inputText || typeof inputText !== "string") {
         return res.status(400).json({ message: "Input text is required" });
@@ -194,13 +194,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Not authenticated" });
       }
       
+      // Convert string id to number if needed
+      const userId = typeof user.id === 'string' ? parseInt(user.id) : user.id;
+      
       const entry = await storage.createWritingEntry({
-        userId: user.id,
+        userId,
+        title: title || "Untitled",
         inputText,
         grammarResult,
         paraphraseResult,
         aiCheckResult,
-        humanizerResult
+        humanizerResult,
+        isFavorite: false
       });
       
       res.json({ entry });
@@ -218,7 +223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Not authenticated" });
       }
       
-      const entries = await storage.getWritingEntriesByUserId(user.id);
+      const entries = await storage.getWritingEntriesByUserId(user.id.toString());
       res.json({ entries });
     } catch (error) {
       console.error("Get writing entries error:", error);
@@ -242,7 +247,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const entry = await storage.getWritingEntry(id);
       
-      if (!entry || entry.userId !== user.id) {
+      // Convert both IDs to strings for comparison to handle different types
+      if (!entry || entry.userId.toString() !== user.id.toString()) {
         return res.status(404).json({ message: "Entry not found" });
       }
       
@@ -253,14 +259,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Chat history endpoints
-  app.post("/api/chat-history", async (req, res) => {
+  // Chat sessions endpoints
+  app.post("/api/chat-sessions", async (req, res) => {
     try {
-      const { messages } = req.body;
-      
-      if (!messages || !Array.isArray(messages)) {
-        return res.status(400).json({ message: "Messages are required" });
-      }
+      const { name } = req.body;
       
       const user = await storage.getCurrentUser();
       
@@ -268,19 +270,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Not authenticated" });
       }
       
-      const chatHistory = await storage.createChatHistory({
-        userId: user.id,
-        messages
+      // Convert string id to number if needed
+      const userId = typeof user.id === 'string' ? parseInt(user.id) : user.id;
+      
+      const chatSession = await storage.createChatSession({
+        userId,
+        name: name || "New Chat"
       });
       
-      res.json({ chatHistory });
+      res.json({ chatSession });
     } catch (error) {
-      console.error("Save chat history error:", error);
-      res.status(500).json({ message: "Error saving chat history" });
+      console.error("Save chat session error:", error);
+      res.status(500).json({ message: "Error saving chat session" });
     }
   });
   
-  app.get("/api/chat-history", async (req, res) => {
+  app.get("/api/chat-sessions", async (req, res) => {
     try {
       const user = await storage.getCurrentUser();
       
@@ -288,11 +293,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Not authenticated" });
       }
       
-      const histories = await storage.getChatHistoriesByUserId(user.id);
-      res.json({ histories });
+      const sessions = await storage.getChatSessionsByUserId(user.id.toString());
+      res.json({ sessions });
     } catch (error) {
-      console.error("Get chat histories error:", error);
-      res.status(500).json({ message: "Error retrieving chat histories" });
+      console.error("Get chat sessions error:", error);
+      res.status(500).json({ message: "Error retrieving chat sessions" });
+    }
+  });
+  
+  // Chat messages endpoints
+  app.post("/api/chat-sessions/:id/messages", async (req, res) => {
+    try {
+      const { role, content } = req.body;
+      const sessionId = parseInt(req.params.id);
+      
+      if (!role || !content) {
+        return res.status(400).json({ message: "Role and content are required" });
+      }
+      
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+      
+      // Verify user owns this session
+      const session = await storage.getChatSession(sessionId);
+      const user = await storage.getCurrentUser();
+      
+      if (!session || !user || session.userId.toString() !== user.id.toString()) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const message = await storage.createChatMessage({
+        sessionId,
+        role,
+        content
+      });
+      
+      res.json({ message });
+    } catch (error) {
+      console.error("Save chat message error:", error);
+      res.status(500).json({ message: "Error saving chat message" });
+    }
+  });
+  
+  app.get("/api/chat-sessions/:id/messages", async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.id);
+      
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+      
+      // Verify user owns this session
+      const session = await storage.getChatSession(sessionId);
+      const user = await storage.getCurrentUser();
+      
+      if (!session || !user || session.userId.toString() !== user.id.toString()) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const messages = await storage.getChatMessages(sessionId);
+      res.json({ messages });
+    } catch (error) {
+      console.error("Get chat messages error:", error);
+      res.status(500).json({ message: "Error retrieving chat messages" });
     }
   });
   
@@ -332,7 +396,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Not authenticated' });
       }
       
-      const entries = await dbStorage.getWritingEntriesByUserId(userId);
+      // Handle potential string ID
+      const numericUserId = typeof userId === 'string' ? parseInt(userId) : userId;
+      
+      const entries = await dbStorage.getWritingEntriesByUserId(numericUserId);
       res.json({ entries });
     } catch (error) {
       console.error('Error getting writing entries:', error);
@@ -347,6 +414,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Not authenticated' });
       }
       
+      // Handle potential string ID
+      const numericUserId = typeof userId === 'string' ? parseInt(userId) : userId;
+      
       const { title, inputText, grammarResult, paraphraseResult, aiCheckResult, humanizerResult } = req.body;
       
       if (!inputText) {
@@ -354,7 +424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const entry = await dbStorage.createWritingEntry({
-        userId,
+        userId: numericUserId,
         title: title || 'Untitled',
         inputText,
         grammarResult,
@@ -383,8 +453,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Entry not found' });
       }
       
-      // Check if the entry belongs to the user
-      if (entry.userId !== req.user?.id) {
+      // Compare both as strings to handle type differences
+      const userId = req.user?.id;
+      if (entry.userId.toString() !== userId.toString()) {
         return res.status(403).json({ error: 'Access denied' });
       }
       
@@ -403,7 +474,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Not authenticated' });
       }
       
-      const sessions = await dbStorage.getChatSessionsByUserId(userId);
+      // Handle potential string ID
+      const numericUserId = typeof userId === 'string' ? parseInt(userId) : userId;
+      
+      const sessions = await dbStorage.getChatSessionsByUserId(numericUserId);
       res.json({ sessions });
     } catch (error) {
       console.error('Error getting chat sessions:', error);
@@ -418,10 +492,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Not authenticated' });
       }
       
+      // Handle potential string ID
+      const numericUserId = typeof userId === 'string' ? parseInt(userId) : userId;
+      
       const { name } = req.body;
       
       const session = await dbStorage.createChatSession({
-        userId,
+        userId: numericUserId,
         name: name || 'New Chat'
       });
       
@@ -442,7 +519,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // First check if the session belongs to the user
       const session = await dbStorage.getChatSession(sessionId);
-      if (!session || session.userId !== req.user?.id) {
+      const userId = req.user?.id;
+      
+      // Compare both as strings to handle type differences
+      if (!session || session.userId.toString() !== userId.toString()) {
         return res.status(403).json({ error: 'Access denied' });
       }
       
@@ -463,7 +543,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // First check if the session belongs to the user
       const session = await dbStorage.getChatSession(sessionId);
-      if (!session || session.userId !== req.user?.id) {
+      const userId = req.user?.id;
+      
+      // Compare both as strings to handle type differences
+      if (!session || session.userId.toString() !== userId.toString()) {
         return res.status(403).json({ error: 'Access denied' });
       }
       
