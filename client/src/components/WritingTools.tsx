@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import GrammarChecker from "./tools/GrammarChecker";
 import Paraphraser from "./tools/Paraphraser";
 import AIChecker from "./tools/AIChecker";
@@ -11,75 +11,86 @@ import { Mic, Plus } from "lucide-react";
 export default function WritingTools() {
   const { activeTool, setActiveTool } = useWriting();
   const [promptText, setPromptText] = useState("");
+  const [currentTool, setCurrentTool] = useState<WritingTool>(activeTool);
 
-  // Animation variants
-  const tabVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-    exit: { opacity: 0, y: -10, transition: { duration: 0.2 } }
-  };
+  // Update local state when context changes
+  useEffect(() => {
+    setCurrentTool(activeTool);
+    console.log("Active tool updated in useEffect:", activeTool);
+  }, [activeTool]);
 
   const handleTabChange = (tab: WritingTool) => {
     console.log("Tab changed to:", tab);
     setActiveTool(tab);
+    setCurrentTool(tab); // Set local state immediately
   };
 
-  // Create a direct object mapping instead of using conditional rendering
-  // This ensures proper rendering for the tab switching
-  const toolComponents = {
-    "grammar": <GrammarChecker key="grammar" />,
-    "paraphrase": <Paraphraser key="paraphrase" />,
-    "ai-check": <AIChecker key="ai-check" />,
-    "humanizer": <Humanizer key="humanizer" />,
-    "chat": <ChatGenerator key="chat" />
+  // Function to render the active tool component
+  const renderTool = () => {
+    console.log("Rendering tool:", currentTool);
+    switch (currentTool) {
+      case "grammar":
+        return <GrammarChecker />;
+      case "paraphrase":
+        return <Paraphraser />;
+      case "ai-check":
+        return <AIChecker />;
+      case "humanizer":
+        return <Humanizer />;
+      case "chat":
+        return <ChatGenerator />;
+      default:
+        return <GrammarChecker />;
+    }
   };
 
   return (
     <div className="flex-1 container mx-auto py-4 px-4 md:px-6">
       {/* Feature Navigation Tabs */}
-      <motion.div 
-        className="flex justify-center mb-6"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div className="flex justify-center mb-6">
         <div className="bg-muted rounded-full p-1 inline-flex">
           <button 
             onClick={() => handleTabChange("chat")} 
-            className={`tab-btn ${activeTool === "chat" ? "tab-active" : ""}`}
+            className={`tab-btn ${currentTool === "chat" ? "tab-active" : ""}`}
           >
             Chat
           </button>
           <button 
             onClick={() => handleTabChange("grammar")} 
-            className={`tab-btn ${activeTool === "grammar" ? "tab-active" : ""}`}
+            className={`tab-btn ${currentTool === "grammar" ? "tab-active" : ""}`}
           >
             Grammar check
           </button>
           <button 
             onClick={() => handleTabChange("paraphrase")} 
-            className={`tab-btn ${activeTool === "paraphrase" ? "tab-active" : ""}`}
+            className={`tab-btn ${currentTool === "paraphrase" ? "tab-active" : ""}`}
           >
             Paraphrase
           </button>
           <button 
             onClick={() => handleTabChange("ai-check")} 
-            className={`tab-btn ${activeTool === "ai-check" ? "tab-active" : ""}`}
+            className={`tab-btn ${currentTool === "ai-check" ? "tab-active" : ""}`}
           >
             AI check
           </button>
           <button 
             onClick={() => handleTabChange("humanizer")} 
-            className={`tab-btn ${activeTool === "humanizer" ? "tab-active" : ""}`}
+            className={`tab-btn ${currentTool === "humanizer" ? "tab-active" : ""}`}
           >
             Humanizer
           </button>
         </div>
-      </motion.div>
+      </div>
+
+      {/* Debug info */}
+      <div className="text-xs text-muted-foreground mb-2">
+        <pre>Context activeTool: {activeTool}</pre>
+        <pre>Local currentTool: {currentTool}</pre>
+      </div>
 
       {/* Feature Content Area */}
       <div className="mb-20">
-        {toolComponents[activeTool as keyof typeof toolComponents]}
+        {renderTool()}
       </div>
 
       {/* Chat Input Component */}
