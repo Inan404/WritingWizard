@@ -6,10 +6,8 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
 import AuthPage from "@/pages/auth-page";
-import { useTheme } from "./context/ThemeContext";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
-import { useEffect } from "react";
 
 function Router() {
   return (
@@ -23,18 +21,10 @@ function Router() {
 }
 
 function App() {
-  const { theme } = useTheme();
-  
-  // Apply theme to the HTML element directly
-  useEffect(() => {
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(theme);
-  }, [theme]);
-  
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <div className="min-h-screen bg-background text-foreground">
+        <div className="min-h-screen bg-background text-foreground antialiased">
           <Router />
           <Toaster />
         </div>

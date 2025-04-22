@@ -1,6 +1,6 @@
-import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/use-auth";
-import { Moon, Sun, FileText, Pen, LogOut } from "lucide-react";
+import { FileText, Pen, LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,7 +19,7 @@ interface MainHeaderProps {
 export default function MainHeader({ 
   userImage = "https://github.com/shadcn.png" 
 }: MainHeaderProps) {
-  const { toggleTheme, theme } = useTheme();
+  // No longer need theme context here as ThemeToggle handles it
   const { user, logoutMutation } = useAuth();
   
   const handleLogout = () => {
@@ -56,19 +56,7 @@ export default function MainHeader({
         </div>
         
         <div className="flex items-center space-x-4">
-          <motion.button 
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={toggleTheme}
-            className="p-2 rounded-full hover:bg-muted transition-colors duration-300"
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? (
-              <Sun className="h-5 w-5 text-yellow-400" />
-            ) : (
-              <Moon className="h-5 w-5 text-muted-foreground" />
-            )}
-          </motion.button>
+          <ThemeToggle />
           
           <Link href="/dashboard" className="hidden sm:block">
             <Button variant="outline" size="sm" className="rounded-full">

@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/components/ui/theme-provider";
 
 interface WritingChat {
   id: number;
