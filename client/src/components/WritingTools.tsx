@@ -12,16 +12,29 @@ export default function WritingTools() {
   const { activeTool, setActiveTool } = useWriting();
   const [promptText, setPromptText] = useState("");
   const [currentTool, setCurrentTool] = useState<WritingTool>(activeTool);
-  // We'll use the global function exposed by ChatGenerator
-
+  
+  // Simple useEffect to check for any tool change
+  useEffect(() => {
+    // If we're switching to a chat tool, check if we have a session ID to load
+    if (activeTool === 'chat') {
+      const sessionId = sessionStorage.getItem('currentChatSessionId');
+      const forceLoad = sessionStorage.getItem('forceLoadChat');
+      
+      if (sessionId && forceLoad === 'true') {
+        console.log(`Switching to chat with ID ${sessionId}`);
+      }
+    }
+  }, [activeTool]);
+  
   // Check if there's a forceNewChat flag to prioritize the chat tool
   useEffect(() => {
     const forceNewChat = sessionStorage.getItem('forceNewChat');
     if (forceNewChat === 'true') {
       console.log("Force new chat detected in WritingTools - setting active tool to chat");
       setCurrentTool('chat');
+      setActiveTool('chat');
     }
-  }, []);
+  }, [setActiveTool]);
   
   // Update local state when context changes
   useEffect(() => {

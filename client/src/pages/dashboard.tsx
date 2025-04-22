@@ -214,46 +214,46 @@ export default function Dashboard() {
 
   const handleCreateNewChat = async () => {
     try {
-      // First, clear any existing session IDs
+      console.log("handleCreateNewChat called - direct switch to chat tab");
+      
+      // First, clear all session storage flags to avoid conflicts
       sessionStorage.removeItem('currentChatSessionId');
       sessionStorage.removeItem('forceLoadChat');
+      sessionStorage.removeItem('forceNewChat');
+      sessionStorage.removeItem('lastCreatedChatId');
       
-      // This is critical - set active tool to chat BEFORE setting forceNewChat
+      // CRITICAL FIX: Direct navigation to chat tab
+      // This must be executed before anything else
       setActiveTool("chat");
       
-      // Small delay to ensure the tab change has happened
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      // Set the flag to force a new chat creation
-      sessionStorage.setItem('forceNewChat', 'true');
-      
-      console.log("Creating new chat session...");
-      
-      // Force a re-render of the chat tab
-      // This is important - it forces the UI to update
-      document.dispatchEvent(new Event('forceNewChatEvent'));
-      
-      // Close sidebar on mobile immediately
-      if (windowWidth < 768) {
-        setSidebarOpen(false);
-      }
-      
-      // Create a new chat session
+      // Create a new chat session first
       const response = await apiRequest('POST', '/api/db/chat-sessions', {
         name: 'New Chat ' + new Date().toLocaleString()
       });
       
       const data = await response.json();
-      console.log("Created new chat session with ID:", data.session.id);
+      const newChatId = data.session.id;
+      console.log("Created new chat session with ID:", newChatId);
       
-      // Force an immediate refetch
+      // Clear all previous session data
+      sessionStorage.removeItem('currentChatSessionId');
+      sessionStorage.removeItem('forceLoadChat');
+      
+      // Set the current chat ID and force load flag
+      sessionStorage.setItem('currentChatSessionId', newChatId.toString());
+      sessionStorage.setItem('forceLoadChat', 'true');
+      
+      // Set active tool to chat
+      setActiveTool("chat");
+      
+      // Force refetch to update the sidebar
       await refetch();
+      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
       
-      // Double-check by invalidating all queries related to chats
-      queryClient.invalidateQueries();
-      
-      // Store the current chat ID to sessionStorage as a fallback
-      sessionStorage.setItem('lastCreatedChatId', data.session.id.toString());
+      // Close sidebar on mobile
+      if (windowWidth < 768) {
+        setSidebarOpen(false);
+      }
       
       // Show success message
       toast({
