@@ -31,6 +31,15 @@ export default function WritingTools() {
 
   const handleTabChange = (tab: WritingTool) => {
     console.log("Tab changed to:", tab);
+    
+    // If switching to chat, check if there's a forceNewChat flag
+    if (tab === 'chat') {
+      const forceNewChat = sessionStorage.getItem('forceNewChat');
+      if (forceNewChat === 'true') {
+        console.log("Detected forceNewChat flag in tab change - will create a new chat");
+      }
+    }
+    
     setActiveTool(tab);
     setCurrentTool(tab); // Set local state immediately
   };

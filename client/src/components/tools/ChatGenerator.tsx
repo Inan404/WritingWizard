@@ -188,6 +188,13 @@ export default function ChatGenerator() {
         sessionStorage.removeItem('forceNewChat');
         sessionStorage.removeItem('forceLoadChat');
         sessionStorage.removeItem('currentChatSessionId');
+        
+        // Create a new session immediately
+        if (user) {
+          createSessionMutation.mutate();
+        }
+        
+        return; // Don't process any more flags this interval
       }
       
       // Check for force load chat
@@ -197,25 +204,28 @@ export default function ChatGenerator() {
         console.log("Force load chat detected - loading session", currentChatSessionId);
         // Load existing chat
         const loadSessionId = parseInt(currentChatSessionId);
-        setSessionId(loadSessionId);
         
-        // Load messages for this session
-        loadChatMessagesMutation.mutate(loadSessionId);
+        // Only update if different from current session
+        if (loadSessionId !== sessionId) {
+          setSessionId(loadSessionId);
+          
+          // Load messages for this session
+          loadChatMessagesMutation.mutate(loadSessionId);
+        }
         
-        // Remove the flags
+        // Remove the force load flag but keep the session ID
         sessionStorage.removeItem('forceLoadChat');
-        sessionStorage.removeItem('currentChatSessionId');
       }
     };
     
-    // Run once
+    // Run once immediately
     checkFlags();
     
-    // And set interval to check regularly
-    const interval = setInterval(checkFlags, 1000);
+    // And set interval to check more frequently (500ms for faster response)
+    const interval = setInterval(checkFlags, 500);
     
     return () => clearInterval(interval);
-  }, [loadChatMessagesMutation]);
+  }, [loadChatMessagesMutation, user, sessionId, createSessionMutation]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -223,6 +233,33 @@ export default function ChatGenerator() {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
+  
+  // Listen for the custom forceNewChatEvent
+  useEffect(() => {
+    const forceNewChatHandler = () => {
+      console.log("Received forceNewChatEvent - creating new chat");
+      // Force the creation of a new chat session
+      setSessionId(null);
+      setMessages([{
+        id: '1',
+        role: 'assistant' as const,
+        content: 'Hello! I am your AI writing assistant. How can I help you with your writing needs today?',
+        timestamp: Date.now()
+      }]);
+      
+      if (user) {
+        createSessionMutation.mutate();
+      }
+    };
+    
+    // Add event listener
+    document.addEventListener('forceNewChatEvent', forceNewChatHandler);
+    
+    // Remove event listener on cleanup
+    return () => {
+      document.removeEventListener('forceNewChatEvent', forceNewChatHandler);
+    };
+  }, [user, createSessionMutation]);
 
   const generateMutation = useMutation({
     mutationFn: async (message: string) => {

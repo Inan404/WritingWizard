@@ -74,6 +74,7 @@ export default function Dashboard() {
   } = useWriting();
   
   const handleToolSelect = (tool: "chat" | "grammar" | "paraphrase" | "ai-check" | "humanizer", chatId?: number) => {
+    // First, set the active tool so the correct tab is shown
     setActiveTool(tool);
     
     // If chatId is provided, load that specific entry
@@ -83,115 +84,121 @@ export default function Dashboard() {
       if (selectedChat) {
         console.log(`Loading chat ID: ${chatId}`);
         
-        // Load chat data based on the tool being selected
-        if (tool === "grammar" && selectedChat.inputText) {
-          try {
-            // Store the entry ID in session storage
-            sessionStorage.setItem('currentGrammarEntryId', chatId.toString());
-            
-            if (selectedChat.grammarResult) {
-              const parsedResult = JSON.parse(selectedChat.grammarResult);
+        // Set a small delay to ensure the UI updates with the correct tab first
+        setTimeout(() => {
+          // Load chat data based on the tool being selected
+          if (tool === "grammar" && selectedChat.inputText) {
+            try {
+              // Store the entry ID in session storage
+              sessionStorage.setItem('currentGrammarEntryId', chatId.toString());
               
-              // Update the grammar checker with this content
-              setGrammarText({
-                original: selectedChat.inputText,
-                modified: parsedResult.corrected || selectedChat.inputText,
-                highlights: parsedResult.highlights || []
-              });
-            } else {
-              // Just set the input text if no result exists yet
-              setGrammarText({
-                original: selectedChat.inputText,
-                modified: selectedChat.inputText,
-                highlights: []
-              });
+              if (selectedChat.grammarResult) {
+                const parsedResult = JSON.parse(selectedChat.grammarResult);
+                
+                // Update the grammar checker with this content
+                setGrammarText({
+                  original: selectedChat.inputText,
+                  modified: parsedResult.corrected || selectedChat.inputText,
+                  highlights: parsedResult.highlights || []
+                });
+              } else {
+                // Just set the input text if no result exists yet
+                setGrammarText({
+                  original: selectedChat.inputText,
+                  modified: selectedChat.inputText,
+                  highlights: []
+                });
+              }
+            } catch (err) {
+              console.error("Failed to parse grammar result:", err);
             }
-          } catch (err) {
-            console.error("Failed to parse grammar result:", err);
-          }
-        } 
-        else if (tool === "paraphrase" && selectedChat.inputText) {
-          try {
-            // Store the entry ID in session storage
-            sessionStorage.setItem('currentParaphraseEntryId', chatId.toString());
-            
-            if (selectedChat.paraphraseResult) {
-              const parsedResult = JSON.parse(selectedChat.paraphraseResult);
+          } 
+          else if (tool === "paraphrase" && selectedChat.inputText) {
+            try {
+              // Store the entry ID in session storage
+              sessionStorage.setItem('currentParaphraseEntryId', chatId.toString());
               
-              // Update the paraphraser with this content
-              setParaphraseText({
-                original: selectedChat.inputText,
-                paraphrased: parsedResult.paraphrased || ""
-              });
-            } else {
-              // Just set the input text if no result exists yet
-              setParaphraseText({
-                original: selectedChat.inputText,
-                paraphrased: ""
-              });
+              if (selectedChat.paraphraseResult) {
+                const parsedResult = JSON.parse(selectedChat.paraphraseResult);
+                
+                // Update the paraphraser with this content
+                setParaphraseText({
+                  original: selectedChat.inputText,
+                  paraphrased: parsedResult.paraphrased || ""
+                });
+              } else {
+                // Just set the input text if no result exists yet
+                setParaphraseText({
+                  original: selectedChat.inputText,
+                  paraphrased: ""
+                });
+              }
+            } catch (err) {
+              console.error("Failed to parse paraphrase result:", err);
             }
-          } catch (err) {
-            console.error("Failed to parse paraphrase result:", err);
           }
-        }
-        else if (tool === "ai-check" && selectedChat.inputText) {
-          try {
-            // Store the entry ID in session storage
-            sessionStorage.setItem('currentAICheckEntryId', chatId.toString());
-            
-            if (selectedChat.aiCheckResult) {
-              const parsedResult = JSON.parse(selectedChat.aiCheckResult);
+          else if (tool === "ai-check" && selectedChat.inputText) {
+            try {
+              // Store the entry ID in session storage
+              sessionStorage.setItem('currentAICheckEntryId', chatId.toString());
               
-              // Update the AI checker with this content
-              setAiCheckText({
-                original: selectedChat.inputText,
-                modified: selectedChat.inputText,
-                highlights: parsedResult.highlights || []
-              });
-            } else {
-              // Just set the input text if no result exists yet
-              setAiCheckText({
-                original: selectedChat.inputText,
-                modified: selectedChat.inputText,
-                highlights: []
-              });
+              if (selectedChat.aiCheckResult) {
+                const parsedResult = JSON.parse(selectedChat.aiCheckResult);
+                
+                // Update the AI checker with this content
+                setAiCheckText({
+                  original: selectedChat.inputText,
+                  modified: selectedChat.inputText,
+                  highlights: parsedResult.highlights || []
+                });
+              } else {
+                // Just set the input text if no result exists yet
+                setAiCheckText({
+                  original: selectedChat.inputText,
+                  modified: selectedChat.inputText,
+                  highlights: []
+                });
+              }
+            } catch (err) {
+              console.error("Failed to parse AI check result:", err);
             }
-          } catch (err) {
-            console.error("Failed to parse AI check result:", err);
           }
-        }
-        else if (tool === "humanizer" && selectedChat.inputText) {
-          try {
-            // Store the entry ID in session storage
-            sessionStorage.setItem('currentHumanizerEntryId', chatId.toString());
-            
-            if (selectedChat.humanizeResult) {
-              const parsedResult = JSON.parse(selectedChat.humanizeResult);
+          else if (tool === "humanizer" && selectedChat.inputText) {
+            try {
+              // Store the entry ID in session storage
+              sessionStorage.setItem('currentHumanizerEntryId', chatId.toString());
               
-              // Update the humanizer with this content
-              setHumanizerText({
-                original: selectedChat.inputText,
-                humanized: parsedResult.humanized || ""
-              });
-            } else {
-              // Just set the input text if no result exists yet
-              setHumanizerText({
-                original: selectedChat.inputText,
-                humanized: ""
-              });
+              if (selectedChat.humanizeResult) {
+                const parsedResult = JSON.parse(selectedChat.humanizeResult);
+                
+                // Update the humanizer with this content
+                setHumanizerText({
+                  original: selectedChat.inputText,
+                  humanized: parsedResult.humanized || ""
+                });
+              } else {
+                // Just set the input text if no result exists yet
+                setHumanizerText({
+                  original: selectedChat.inputText,
+                  humanized: ""
+                });
+              }
+            } catch (err) {
+              console.error("Failed to parse humanizer result:", err);
             }
-          } catch (err) {
-            console.error("Failed to parse humanizer result:", err);
           }
-        }
-        else if (tool === "chat") {
-          // For chat, we need to set sessionStorage to force the ChatGenerator to load this session
-          sessionStorage.setItem('currentChatSessionId', chatId.toString());
-          sessionStorage.setItem('forceLoadChat', 'true');
-        }
+          else if (tool === "chat") {
+            // For chat, we need to set sessionStorage to force the ChatGenerator to load this session
+            // The order is very important here!
+            sessionStorage.removeItem('forceNewChat'); // Make sure we're not triggering a new chat
+            sessionStorage.setItem('currentChatSessionId', chatId.toString());
+            sessionStorage.setItem('forceLoadChat', 'true');
+          }
+        }, 20); // Small delay to ensure the UI has time to switch tabs
       }
     }
     
+    // Close sidebar on mobile
     if (windowWidth < 768) {
       setSidebarOpen(false);
     }
@@ -211,14 +218,25 @@ export default function Dashboard() {
       sessionStorage.removeItem('currentChatSessionId');
       sessionStorage.removeItem('forceLoadChat');
       
+      // This is critical - set active tool to chat BEFORE setting forceNewChat
+      setActiveTool("chat");
+      
+      // Small delay to ensure the tab change has happened
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       // Set the flag to force a new chat creation
       sessionStorage.setItem('forceNewChat', 'true');
       
-      // Set active tool to chat - this will switch to the chat tab
-      // regardless of which tab we're currently on
-      setActiveTool("chat");
-      
       console.log("Creating new chat session...");
+      
+      // Force a re-render of the chat tab
+      // This is important - it forces the UI to update
+      document.dispatchEvent(new Event('forceNewChatEvent'));
+      
+      // Close sidebar on mobile immediately
+      if (windowWidth < 768) {
+        setSidebarOpen(false);
+      }
       
       // Create a new chat session
       const response = await apiRequest('POST', '/api/db/chat-sessions', {
@@ -234,21 +252,13 @@ export default function Dashboard() {
       // Double-check by invalidating all queries related to chats
       queryClient.invalidateQueries();
       
-      // Add a small delay to ensure the UI updates
-      setTimeout(() => {
-        // Force another refetch after a short delay
-        refetch();
-      }, 500);
-      
-      // Close sidebar on mobile
-      if (windowWidth < 768) {
-        setSidebarOpen(false);
-      }
+      // Store the current chat ID to sessionStorage as a fallback
+      sessionStorage.setItem('lastCreatedChatId', data.session.id.toString());
       
       // Show success message
       toast({
-        title: "Success",
-        description: "New chat created successfully!",
+        title: "New Chat Started",
+        description: "Your conversation has begun. Type a message to get started!",
         variant: "default"
       });
     } catch (error) {
