@@ -45,9 +45,10 @@ export default function Dashboard() {
   }, []);
 
   // Fetch writing chats from authenticated endpoint
-  const { data: writingChatsData, isLoading } = useQuery<{ chats: WritingChat[] }>({
+  const { data: writingChatsData, isLoading, refetch } = useQuery<{ chats: WritingChat[] }>({
     queryKey: ['/api/writing-chats'],
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 0, // Always refetch on mount
+    gcTime: 0, // Don't cache the data (gcTime is the new name for cacheTime in v5)
   });
   
   // Safely handle the chat data
@@ -196,8 +197,12 @@ export default function Dashboard() {
 
   const handleCreateNewChat = async () => {
     try {
-      // Set active tool to chat
+      // Set active tool to chat - this will switch to the chat tab
+      // regardless of which tab we're currently on
       setActiveTool("chat");
+      
+      // Immediately refetch to get latest data
+      await refetch();
       
       // Create a new chat session
       const response = await apiRequest('POST', '/api/db/chat-sessions', {
@@ -210,6 +215,9 @@ export default function Dashboard() {
       // Reset the session in the ChatGenerator component
       // This will force ChatGenerator to re-render with a new session
       sessionStorage.setItem('forceNewChat', 'true');
+      
+      // Force refetch to get latest chat sessions
+      await refetch();
       
       // Invalidate the chat sessions query to update the sidebar
       queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
