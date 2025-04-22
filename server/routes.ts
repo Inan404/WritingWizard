@@ -368,6 +368,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Delete chat session endpoint
+  app.delete("/api/chat-sessions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.id);
+      
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+      
+      // Verify user owns this session
+      const session = await dbStorage.getChatSession(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ message: "Chat session not found" });
+      }
+      
+      // Check if user owns this session
+      if (session.userId !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Delete the chat session and its messages
+      const result = await dbStorage.deleteChatSession(sessionId);
+      
+      if (result) {
+        res.json({ success: true, message: "Chat session deleted successfully" });
+      } else {
+        res.status(500).json({ success: false, message: "Failed to delete chat session" });
+      }
+    } catch (error) {
+      console.error("Delete chat session error:", error);
+      res.status(500).json({ success: false, message: "Error deleting chat session" });
+    }
+  });
+  
   // Get writing chats for authenticated user
   app.get("/api/writing-chats", isAuthenticated, async (req, res) => {
     try {
