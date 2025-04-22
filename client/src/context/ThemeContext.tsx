@@ -26,20 +26,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    // Apply theme class to document
-    document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(theme);
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem("theme", theme);
-    
-    // Also apply theme to <body> for additional components that may rely on it
-    document.body.classList.remove("light", "dark");
-    document.body.classList.add(theme);
-  }, [theme]);
-
   const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === "light" ? "dark" : "light");
+    setTheme(prevTheme => {
+      const newTheme = prevTheme === "light" ? "dark" : "light";
+      localStorage.setItem("theme", newTheme);
+      return newTheme;
+    });
   };
 
   return (

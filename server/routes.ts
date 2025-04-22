@@ -297,25 +297,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get writing chats - temporary non-authenticated route for testing
-  app.get("/api/writing-chats", async (req, res) => {
+  // Get writing chats for authenticated user
+  app.get("/api/writing-chats", isAuthenticated, async (req, res) => {
     try {
-      // For development purposes, return mock data until we have proper auth
+      // Get the authenticated user's ID
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
+      // Fetch the user's writing chats from the database
+      const userChats = await dbStorage.getWritingEntriesByUserId(userId);
+      
+      // If no chats exist, provide default examples
+      if (!userChats || userChats.length === 0) {
+        return res.json({
+          chats: [
+            {
+              id: 1,
+              name: "Sample Essay on Climate Change",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            },
+            {
+              id: 2,
+              name: "Research Paper on Artificial Intelligence",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          ]
+        });
+      }
+      
+      // Return the user's actual chats
       res.json({
-        chats: [
-          {
-            id: 1,
-            name: "Sample Essay on Climate Change",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: 2,
-            name: "Research Paper on Artificial Intelligence",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ]
+        chats: userChats
       });
     } catch (error) {
       console.error("Get writing chats error:", error);

@@ -12,11 +12,15 @@ import { useTheme } from "@/context/ThemeContext";
 interface WritingChat {
   id: number;
   name?: string;
-  rawText: string;
+  title?: string;
+  inputText?: string;
+  rawText?: string;
   grammarResult: string | null;
   paraphraseResult: string | null;
   aiCheckResult: string | null;
   humanizeResult: string | null;
+  isFavorite?: boolean;
+  userId?: number;
   createdAt: string;
   updatedAt: string;
 }
