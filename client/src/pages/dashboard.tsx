@@ -331,9 +331,9 @@ export default function Dashboard() {
                     
                     {isLoading ? (
                       <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
-                    ) : writingChatsData?.chats?.filter(chat => chat.humanizeResult)?.length > 0 ? (
+                    ) : chats.filter(chat => chat.humanizeResult)?.length > 0 ? (
                       <ul>
-                        {writingChatsData.chats
+                        {chats
                           .filter(chat => chat.humanizeResult)
                           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
                           .slice(0, 3)
