@@ -20,6 +20,7 @@ export default function GrammarChecker() {
   // Save writing entry to database
   const saveEntryMutation = useMutation({
     mutationFn: async (data: {
+      userId: number;
       title: string;
       inputText: string;
       grammarResult: string | null;
@@ -29,12 +30,19 @@ export default function GrammarChecker() {
     },
     onSuccess: (data) => {
       console.log('Saved writing entry:', data.entry);
-      setEntryId(data.entry.id);
+      if (data.entry && data.entry.id) {
+        setEntryId(data.entry.id);
+      }
       // Invalidate the writing chats query to update the sidebar
       queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
     },
     onError: (error) => {
       console.error('Failed to save writing entry:', error);
+      toast({
+        title: "Error saving",
+        description: "Could not save your work. Please try again later.",
+        variant: "destructive"
+      });
     }
   });
   
@@ -100,6 +108,7 @@ export default function GrammarChecker() {
         } else {
           // Create a new entry
           saveEntryMutation.mutate({
+            userId: user.id,
             title,
             inputText: grammarText.original,
             grammarResult: result
@@ -142,12 +151,13 @@ export default function GrammarChecker() {
       // Save initial text to database to create an entry
       const title = grammarText.original.slice(0, 30) + '...';
       saveEntryMutation.mutate({
+        userId: user.id,
         title,
         inputText: grammarText.original,
         grammarResult: null
       });
     }
-  }, [user]);
+  }, [user, entryId, grammarText.original]);
   
   // Save changes to database with debounce
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
