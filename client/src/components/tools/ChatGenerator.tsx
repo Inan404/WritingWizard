@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useWriting } from '@/context/WritingContext';
 import { apiRequest } from '@/lib/queryClient';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { Bot, User } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 interface Message {
   id: string;
@@ -15,6 +16,9 @@ interface Message {
 
 export default function ChatGenerator() {
   const { chatText } = useWriting();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [sessionId, setSessionId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -25,6 +29,64 @@ export default function ChatGenerator() {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Create a new chat session mutation
+  const createSessionMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/db/chat-sessions', {
+        name: 'New Chat ' + new Date().toLocaleDateString()
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setSessionId(data.session.id);
+      console.log('Created new chat session with ID:', data.session.id);
+      
+      // Save the welcome message
+      if (data.session.id) {
+        saveMessageMutation.mutate({
+          sessionId: data.session.id,
+          role: 'assistant',
+          content: messages[0].content
+        });
+      }
+      
+      // Invalidate the chat sessions query to update the sidebar
+      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
+    },
+    onError: (error) => {
+      console.error('Failed to create chat session:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create chat session. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  });
+  
+  // Save a chat message mutation
+  const saveMessageMutation = useMutation({
+    mutationFn: async ({ sessionId, role, content }: { sessionId: number, role: string, content: string }) => {
+      const response = await apiRequest('POST', `/api/db/chat-sessions/${sessionId}/messages`, {
+        role,
+        content
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      console.log('Saved chat message:', data.message);
+    },
+    onError: (error) => {
+      console.error('Failed to save chat message:', error);
+    }
+  });
+  
+  // Create a new session when component mounts if user is authenticated
+  useEffect(() => {
+    if (user && !sessionId) {
+      createSessionMutation.mutate();
+    }
+  }, [user]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -47,15 +109,26 @@ export default function ChatGenerator() {
     },
     onSuccess: (data) => {
       setIsLoading(false);
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now().toString(),
+      const assistantResponse = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: data.generatedText,
+        timestamp: Date.now()
+      };
+      
+      setMessages(prev => [...prev, assistantResponse]);
+      
+      // Save assistant message to database if we have a session
+      if (sessionId) {
+        saveMessageMutation.mutate({
+          sessionId,
           role: 'assistant',
-          content: data.generatedText,
-          timestamp: Date.now()
-        }
-      ]);
+          content: data.generatedText
+        });
+        
+        // Invalidate the sidebar data to show updated chat list
+        queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
+      }
     },
     onError: () => {
       setIsLoading(false);
@@ -77,16 +150,27 @@ export default function ChatGenerator() {
     window.handleChatMessage = (message: string) => {
       if (!message.trim()) return;
       
+      const userMessageId = Date.now().toString();
+      
       // Add user message to chat
       setMessages(prev => [
         ...prev,
         {
-          id: Date.now().toString(),
+          id: userMessageId,
           role: 'user',
           content: message,
           timestamp: Date.now()
         }
       ]);
+      
+      // Save message to database if we have a session
+      if (sessionId) {
+        saveMessageMutation.mutate({
+          sessionId,
+          role: 'user',
+          content: message
+        });
+      }
       
       // Show typing indicator
       setIsLoading(true);
@@ -99,7 +183,7 @@ export default function ChatGenerator() {
       // @ts-ignore
       delete window.handleChatMessage;
     };
-  }, [generateMutation]);
+  }, [generateMutation, sessionId, saveMessageMutation]);
 
   // Format timestamp
   const formatTime = (timestamp: number) => {

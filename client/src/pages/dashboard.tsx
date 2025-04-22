@@ -131,7 +131,7 @@ export default function Dashboard() {
                   className="mx-3 mb-4"
                 >
                   <PlusCircle className="h-4 w-4 mr-2" />
-                  New Document
+                  New Project
                 </Button>
                 
                 <div className="overflow-y-auto flex-1 px-3 pb-4">
