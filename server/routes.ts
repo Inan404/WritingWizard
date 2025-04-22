@@ -382,10 +382,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Fetch the user's writing chats from the database
         const userChats = await dbStorage.getWritingEntriesByUserId(userId);
         
-        // If no chats exist, provide default examples
+        // If no chats exist, return an empty array
         if (!userChats || userChats.length === 0) {
           return res.json({
-            chats: getDummyWritingChats()
+            chats: []
           });
         }
         
@@ -395,9 +395,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (dbError) {
         console.error("Database error when fetching chats:", dbError);
-        // Return dummy data if database query fails
+        // Return empty array if database query fails
         return res.json({
-          chats: getDummyWritingChats()
+          chats: []
         });
       }
     } catch (error) {

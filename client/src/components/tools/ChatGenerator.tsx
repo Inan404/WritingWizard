@@ -106,7 +106,24 @@ export default function ChatGenerator() {
     } else if (user && !sessionId) {
       createSessionMutation.mutate();
     }
-  }, [user]);
+  }, [user, sessionStorage.getItem('forceNewChat')]);
+  
+  // This effect will run every time the activeTool changes to "chat"
+  // to make sure we clear the current chat when selecting "New Chat"
+  useEffect(() => {
+    const forceNewChat = sessionStorage.getItem('forceNewChat');
+    if (forceNewChat === 'true') {
+      console.log("Force new chat detected - resetting chat state");
+      // Reset all state
+      setSessionId(null);
+      setMessages([{
+        id: '1',
+        role: 'assistant' as const,
+        content: 'Hello! I am your AI writing assistant. How can I help you with your writing needs today?',
+        timestamp: Date.now()
+      }]);
+    }
+  }, [window.location.href]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
