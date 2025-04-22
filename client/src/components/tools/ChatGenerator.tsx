@@ -131,7 +131,7 @@ export default function ChatGenerator() {
       setIsLoading(false);
       const assistantResponse = {
         id: Date.now().toString(),
-        role: 'assistant',
+        role: 'assistant' as const,
         content: data.generatedText,
         timestamp: Date.now()
       };
@@ -177,7 +177,7 @@ export default function ChatGenerator() {
         ...prev,
         {
           id: userMessageId,
-          role: 'user',
+          role: 'user' as const,
           content: message,
           timestamp: Date.now()
         }
