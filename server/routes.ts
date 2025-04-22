@@ -692,6 +692,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to create chat message' });
     }
   });
+  
+  // Toggle favorite status of a chat session
+  app.patch('/api/db/chat-sessions/:sessionId/favorite', isAuthenticated, async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ error: 'Invalid session ID' });
+      }
+      
+      // First check if the session belongs to the user
+      const session = await dbStorage.getChatSession(sessionId);
+      const userId = req.user?.id;
+      
+      // Compare both as strings to handle type differences
+      if (!session || !userId || session.userId.toString() !== userId.toString()) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      // Toggle the favorite status
+      const updatedSession = await dbStorage.updateChatSession(sessionId, {
+        isFavorite: !session.isFavorite
+      });
+      
+      if (updatedSession) {
+        res.json({ 
+          success: true,
+          session: updatedSession
+        });
+      } else {
+        res.status(500).json({ error: 'Failed to update favorite status' });
+      }
+    } catch (error) {
+      console.error('Error updating favorite status:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
 
   return httpServer;
 }
