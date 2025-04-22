@@ -287,6 +287,40 @@ export default function Dashboard() {
     }
   };
   
+  const handleToggleFavorite = async (chatId: number) => {
+    try {
+      // Call the API to toggle the favorite status
+      const response = await apiRequest('PATCH', `/api/db/chat-sessions/${chatId}/favorite`);
+      
+      if (response.ok) {
+        // Refetch to update the UI
+        await refetch();
+        queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
+        
+        // Show success message
+        toast({
+          title: "Favorite Updated",
+          description: "Chat favorite status has been updated.",
+          variant: "default"
+        });
+      } else {
+        // Show error
+        toast({
+          title: "Error",
+          description: "Failed to update favorite status. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error updating favorite status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update favorite status. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleDeleteChat = async () => {
     if (!chatToDelete) return;
     
@@ -460,18 +494,35 @@ export default function Dashboard() {
                                   <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
                                   <span className="truncate">{chat.title || `Chat ${chat.id}`}</span>
                                 </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setChatToDelete(chat.id);
-                                    setDeleteChatDialogOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                                </Button>
+                                <div className="flex items-center">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 mr-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleFavorite(chat.id);
+                                    }}
+                                  >
+                                    {chat.isFavorite ? (
+                                      <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
+                                    ) : (
+                                      <Star className="h-3.5 w-3.5 text-muted-foreground hover:text-yellow-400" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setChatToDelete(chat.id);
+                                      setDeleteChatDialogOpen(true);
+                                    }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                                  </Button>
+                                </div>
                               </div>
                               <div className="text-xs text-muted-foreground ml-6 mt-1">
                                 {formatDate(chat.updatedAt)}

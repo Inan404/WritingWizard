@@ -694,9 +694,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Toggle favorite status of a chat session
-  app.patch('/api/db/chat-sessions/:sessionId/favorite', isAuthenticated, async (req, res) => {
+  app.patch('/api/db/chat-sessions/:id/favorite', isAuthenticated, async (req, res) => {
     try {
-      const sessionId = parseInt(req.params.sessionId);
+      const sessionId = parseInt(req.params.id);
       if (isNaN(sessionId)) {
         return res.status(400).json({ error: 'Invalid session ID' });
       }
