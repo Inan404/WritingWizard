@@ -4,13 +4,12 @@ import WritingTools from "@/components/WritingTools";
 import { useWriting } from "@/context/WritingContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Menu, X, Star, PlusCircle, Clock } from "lucide-react";
+import { Menu, X, Star, PlusCircle, Clock, FileText, Pencil, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/components/ui/theme-provider";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
-import { Separator } from "@/components/ui/separator";
 
 interface WritingChat {
   id: number;
@@ -25,23 +24,6 @@ interface WritingChat {
   createdAt: string;
   updatedAt: string;
 }
-
-// Sample document titles
-const sampleTitles = [
-  "Essay on Climate Change",
-  "Research on Artificial Intelligence",
-  "Analysis of Economic Trends",
-  "Book Review: 1984",
-  "Comparative Study of Programming Languages",
-  "Understanding Blockchain Technology",
-  "The Impact of Social Media on Society",
-  "Principles of Machine Learning"
-];
-
-// Function to generate a random title
-const generateRandomTitle = () => {
-  return sampleTitles[Math.floor(Math.random() * sampleTitles.length)];
-};
 
 export default function Dashboard() {
   const { setActiveTool } = useWriting();
@@ -60,7 +42,7 @@ export default function Dashboard() {
   }, []);
 
   // Fetch writing chats from authenticated endpoint
-  const { data: writingChatsData, isLoading, refetch } = useQuery<{ chats: WritingChat[] }>({
+  const { data: writingChatsData, isLoading } = useQuery<{ chats: WritingChat[] }>({
     queryKey: ['/api/writing-chats'],
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -71,24 +53,6 @@ export default function Dashboard() {
       setSidebarOpen(false);
     }
   };
-
-  // Sample data for demonstration
-  const dummyChats = Array(5).fill(null).map((_, index) => ({
-    id: index + 1,
-    title: generateRandomTitle(),
-    createdAt: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toISOString(),
-    updatedAt: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24).toISOString(),
-    isFavorite: Math.random() > 0.7,
-    grammarResult: null,
-    paraphraseResult: null,
-    aiCheckResult: null,
-    humanizeResult: null
-  }));
-
-  // Use actual data if available, otherwise use dummy data
-  const chats = (writingChatsData?.chats && writingChatsData.chats.length > 0) 
-    ? writingChatsData.chats 
-    : dummyChats;
 
   const formatDate = (date: string) => {
     try {
@@ -147,8 +111,8 @@ export default function Dashboard() {
               exit={{ x: -280 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="flex flex-col h-full p-4">
-                <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between p-4">
                   <div className="text-lg font-bold text-primary">Dashboard</div>
                   {sidebarOpen && (
                     <Button 
@@ -162,111 +126,121 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                <div className="flex justify-between items-center my-4">
-                  <h3 className="font-semibold text-sm">MY DOCUMENTS</h3>
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={handleCreateNewDocument}
-                    className="h-6 w-6 rounded-full hover:bg-muted"
-                  >
-                    <PlusCircle className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleCreateNewDocument}
+                  className="mx-3 mb-4"
+                >
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  New Document
+                </Button>
                 
-                <div className="space-y-6 flex-1">
-                  {/* Favorites section */}
-                  <div>
+                <div className="overflow-y-auto flex-1 px-3 pb-4">
+                  {/* FAVORITES section */}
+                  <div className="mb-4">
                     <div className="flex items-center mb-2 text-xs font-semibold text-muted-foreground">
                       <Star className="h-4 w-4 mr-1 text-yellow-400" />
                       <span className="uppercase">FAVORITES</span>
                     </div>
                     
                     {isLoading ? (
-                      <div className="text-xs italic text-muted-foreground">Loading...</div>
-                    ) : chats.filter(chat => chat.isFavorite).length > 0 ? (
-                      <ul className="space-y-2">
-                        {chats
+                      <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
+                    ) : writingChatsData?.chats?.filter(chat => chat.isFavorite)?.length > 0 ? (
+                      <ul>
+                        {writingChatsData.chats
                           .filter(chat => chat.isFavorite)
                           .map(chat => (
                             <li 
                               key={`fav-${chat.id}`}
                               onClick={() => handleToolSelect("grammar")}
-                              className="cursor-pointer text-sm hover:bg-muted p-1 px-2 rounded transition-colors"
+                              className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors flex items-center"
                             >
-                              {chat.title || `Chat ${chat.id}`}
+                              <FileText className="h-4 w-4 mr-2 text-primary/70" />
+                              <span className="truncate">{chat.title || `Document ${chat.id}`}</span>
                             </li>
                           ))
                         }
                       </ul>
                     ) : (
-                      <div className="text-sm italic text-muted-foreground">No favorites yet</div>
+                      <div className="text-sm italic text-muted-foreground px-2">No favorites yet</div>
                     )}
                   </div>
                   
-                  {/* Recent section */}
-                  <div>
+                  {/* RECENT section */}
+                  <div className="mb-4">
                     <div className="flex items-center mb-2 text-xs font-semibold text-muted-foreground">
                       <Clock className="h-4 w-4 mr-1" />
                       <span className="uppercase">RECENT</span>
                     </div>
                     
                     {isLoading ? (
-                      <div className="text-xs italic text-muted-foreground">Loading...</div>
-                    ) : chats.length > 0 ? (
-                      <ul className="space-y-2">
-                        {chats
+                      <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
+                    ) : writingChatsData?.chats?.length > 0 ? (
+                      <ul>
+                        {writingChatsData.chats
                           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
                           .slice(0, 5)
                           .map(chat => (
                             <li 
                               key={`recent-${chat.id}`}
                               onClick={() => handleToolSelect("grammar")}
-                              className="cursor-pointer text-sm hover:bg-muted p-1 px-2 rounded transition-colors"
+                              className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors"
                             >
-                              {chat.title || `Chat ${chat.id}`}
+                              <div className="flex items-center">
+                                <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                                <span className="truncate">{chat.title || `Document ${chat.id}`}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground ml-6 mt-1">
+                                {formatDate(chat.updatedAt)}
+                              </div>
                             </li>
                           ))
                         }
                       </ul>
                     ) : (
-                      <div className="text-sm italic text-muted-foreground">No recent documents</div>
+                      <div className="text-sm italic text-muted-foreground px-2">No recent documents</div>
                     )}
                   </div>
                   
-                  {/* All Documents section */}
+                  {/* ALL DOCUMENTS section */}
                   <div>
                     <div className="flex items-center mb-2 text-xs font-semibold text-muted-foreground">
                       <span className="uppercase">ALL DOCUMENTS</span>
                     </div>
                     
                     {isLoading ? (
-                      <div className="text-xs italic text-muted-foreground">Loading...</div>
-                    ) : chats.length > 0 ? (
-                      <ul className="space-y-2">
-                        {chats.map(chat => (
+                      <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
+                    ) : writingChatsData?.chats?.length > 0 ? (
+                      <ul>
+                        {writingChatsData.chats.map(chat => (
                           <li 
                             key={`all-${chat.id}`}
                             onClick={() => handleToolSelect("grammar")}
-                            className="cursor-pointer text-sm hover:bg-muted p-1 px-2 rounded transition-colors flex items-center justify-between"
+                            className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors group flex items-center justify-between"
                           >
-                            <span className="truncate">{chat.title || `Chat ${chat.id}`}</span>
+                            <div className="flex items-center flex-1 truncate">
+                              <FileText className="h-4 w-4 mr-2 flex-shrink-0 text-muted-foreground" />
+                              <span className="truncate">{chat.title || `Document ${chat.id}`}</span>
+                            </div>
                             {chat.isFavorite && <Star className="h-3 w-3 text-yellow-400 ml-1 flex-shrink-0" />}
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <div className="text-sm italic text-muted-foreground">No documents found</div>
+                      <div className="text-sm italic text-muted-foreground px-2">No documents found</div>
                     )}
                   </div>
                 </div>
                 
-                <Separator className="my-4" />
-                
-                <div className="flex justify-between text-xs text-muted-foreground py-2">
-                  <Link href="/privacy" className="hover:text-primary">Privacy</Link>
-                  <Link href="/terms" className="hover:text-primary">Terms</Link>
-                  <Link href="/help" className="hover:text-primary">Help</Link>
+                <div className="mt-auto border-t border-border p-3">
+                  <div className="flex justify-between text-xs text-muted-foreground mb-4">
+                    <Link href="/privacy" className="hover:text-primary">Privacy</Link>
+                    <Link href="/terms" className="hover:text-primary">Terms</Link>
+                    <Link href="/help" className="hover:text-primary">Help</Link>
+                  </div>
+                  <Button variant="outline" size="sm" className="w-full flex items-center">
+                    <Settings className="h-3 w-3 mr-2" />
+                    Settings
+                  </Button>
                 </div>
               </div>
             </motion.aside>

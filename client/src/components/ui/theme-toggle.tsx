@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import { Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -6,6 +8,10 @@ import { motion } from "framer-motion"
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
+  
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark")
+  }
 
   return (
     <motion.div 
@@ -15,8 +21,8 @@ export function ThemeToggle() {
       <Button
         variant="ghost"
         size="icon"
-        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-        className="rounded-full"
+        onClick={toggleTheme}
+        className="relative h-9 w-9 rounded-md"
       >
         <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
         <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
