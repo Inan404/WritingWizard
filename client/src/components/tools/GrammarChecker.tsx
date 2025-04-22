@@ -88,33 +88,7 @@ export default function GrammarChecker() {
         setSuggestions(data.suggestions);
       }
       
-      // Save to database if user is authenticated
-      if (user) {
-        const title = grammarText.original.slice(0, 30) + '...';
-        const result = JSON.stringify({
-          corrected: correctedText,
-          highlights: data.highlights || [],
-          suggestions: data.suggestions || []
-        });
-        
-        // If we already have an entry ID, update it
-        if (entryId) {
-          updateEntryMutation.mutate({
-            id: entryId,
-            data: {
-              grammarResult: result
-            }
-          });
-        } else {
-          // Create a new entry
-          saveEntryMutation.mutate({
-            userId: user.id,
-            title,
-            inputText: grammarText.original,
-            grammarResult: result
-          });
-        }
-      }
+      // No database storage for grammar checks per user requirements
       
       toast({
         title: "Grammar check complete",
@@ -145,98 +119,15 @@ export default function GrammarChecker() {
     }
   };
 
-  // Create a new writing entry when the component loads, but only if it's new content
-  // We'll use a ref to track whether the content came from dashboard
-  const isFromDashboard = useState(false);
+  // Simplified version - no database storage for grammar checks
   
-  // Fetch entry mutation to load saved data
-  const fetchEntryMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const response = await apiRequest('GET', `/api/db/writing-entries/${id}`);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      console.log('Loaded writing entry:', data.entry);
-      
-      if (data.entry) {
-        // Set the entry ID
-        setEntryId(data.entry.id);
-        
-        // Update text content from the loaded entry
-        if (data.entry.inputText) {
-          let modified = data.entry.inputText;
-          let highlights = [];
-          
-          // If it has grammar results, parse and use them
-          if (data.entry.grammarResult) {
-            try {
-              const results = JSON.parse(data.entry.grammarResult);
-              modified = results.corrected || data.entry.inputText;
-              highlights = results.highlights || [];
-              if (results.suggestions) {
-                setSuggestions(results.suggestions);
-              }
-            } catch (err) {
-              console.error('Error parsing grammar results', err);
-            }
-          }
-          
-          // Update the grammar text in the context
-          setGrammarText({
-            original: data.entry.inputText,
-            modified: modified,
-            highlights: highlights
-          });
-        }
-      }
-    },
-    onError: (error) => {
-      console.error('Failed to load writing entry:', error);
-      toast({
-        title: "Error loading",
-        description: "Could not load the selected entry. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-  
-  // Check if the content has a specific entry ID from dashboard
+  // Just use a temporary ID if needed for the UI state
   useEffect(() => {
-    // Look for an entry ID in the URL or session storage (if it was passed from dashboard)
-    const params = new URLSearchParams(window.location.search);
-    const urlEntryId = params.get('id');
-    const storedEntryId = sessionStorage.getItem('currentGrammarEntryId');
-    
-    if (urlEntryId) {
-      const id = parseInt(urlEntryId);
-      setEntryId(id);
-      isFromDashboard[1](true);
-      // Fetch the entry data
-      fetchEntryMutation.mutate(id);
-    } else if (storedEntryId) {
-      const id = parseInt(storedEntryId);
-      setEntryId(id);
-      isFromDashboard[1](true);
-      // Fetch the entry data
-      fetchEntryMutation.mutate(id);
-      // Clear it after use
-      sessionStorage.removeItem('currentGrammarEntryId');
+    // Just set a fake ID for UI state purposes if needed
+    if (!entryId) {
+      setEntryId(-1); // Use a negative ID to indicate it's not a real database ID
     }
-  }, []);
-  
-  // Only create a new entry if it's not from dashboard and doesn't have an ID yet
-  useEffect(() => {
-    if (user && !entryId && grammarText.original.trim().length > 0 && !isFromDashboard[0]) {
-      // Save initial text to database to create an entry
-      const title = grammarText.original.slice(0, 30) + '...';
-      saveEntryMutation.mutate({
-        userId: user.id,
-        title,
-        inputText: grammarText.original,
-        grammarResult: null
-      });
-    }
-  }, [user, entryId, grammarText.original, isFromDashboard[0]]);
+  }, [entryId]);
   
   // Save changes to database with debounce
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -247,26 +138,7 @@ export default function GrammarChecker() {
       original: text
     });
     
-    // Save to database with debounce
-    if (user && entryId) {
-      // Clear previous timeout
-      if (saveTimeout) {
-        clearTimeout(saveTimeout);
-      }
-      
-      // Set new timeout
-      const timeout = setTimeout(() => {
-        updateEntryMutation.mutate({
-          id: entryId,
-          data: {
-            title: text.slice(0, 30) + '...',
-            inputText: text
-          }
-        });
-      }, 2000); // 2 second debounce
-      
-      setSaveTimeout(timeout);
-    }
+    // No database saving needed
   };
 
   const handleAcceptSuggestion = (id: string) => {
