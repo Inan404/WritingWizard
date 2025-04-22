@@ -46,9 +46,19 @@ export default function Dashboard() {
     queryKey: ['/api/writing-chats'],
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
+  
+  // Safely handle the chat data
+  const chats = writingChatsData?.chats || [];
 
-  const handleToolSelect = (tool: "chat" | "grammar" | "paraphrase" | "ai-check" | "humanizer") => {
+  const handleToolSelect = (tool: "chat" | "grammar" | "paraphrase" | "ai-check" | "humanizer", chatId?: number) => {
     setActiveTool(tool);
+    
+    // If chatId is provided, navigate to that specific chat
+    if (chatId && tool === "chat") {
+      // TODO: Load the specific chat data and populate the chat interface
+      console.log(`Loading chat ID: ${chatId}`);
+    }
+    
     if (windowWidth < 768) {
       setSidebarOpen(false);
     }
@@ -144,14 +154,14 @@ export default function Dashboard() {
                     
                     {isLoading ? (
                       <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
-                    ) : writingChatsData?.chats?.filter(chat => chat.isFavorite)?.length > 0 ? (
+                    ) : chats.filter(chat => chat.isFavorite)?.length > 0 ? (
                       <ul>
-                        {writingChatsData.chats
+                        {chats
                           .filter(chat => chat.isFavorite)
                           .map(chat => (
                             <li 
                               key={`fav-${chat.id}`}
-                              onClick={() => handleToolSelect("grammar")}
+                              onClick={() => handleToolSelect("chat", chat.id)}
                               className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors flex items-center"
                             >
                               <FileText className="h-4 w-4 mr-2 text-primary/70" />
@@ -165,29 +175,29 @@ export default function Dashboard() {
                     )}
                   </div>
                   
-                  {/* RECENT section */}
+                  {/* CHAT section */}
                   <div className="mb-4">
                     <div className="flex items-center mb-2 text-xs font-semibold text-muted-foreground">
-                      <Clock className="h-4 w-4 mr-1" />
-                      <span className="uppercase">RECENT</span>
+                      <FileText className="h-4 w-4 mr-1" />
+                      <span className="uppercase">CHAT</span>
                     </div>
                     
                     {isLoading ? (
                       <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
-                    ) : writingChatsData?.chats?.length > 0 ? (
+                    ) : chats.filter(chat => chat.grammarResult || chat.paraphraseResult || chat.aiCheckResult || chat.humanizeResult)?.length > 0 ? (
                       <ul>
-                        {writingChatsData.chats
+                        {chats
+                          .filter(chat => chat.grammarResult || chat.paraphraseResult || chat.aiCheckResult || chat.humanizeResult)
                           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-                          .slice(0, 5)
                           .map(chat => (
                             <li 
-                              key={`recent-${chat.id}`}
-                              onClick={() => handleToolSelect("grammar")}
+                              key={`chat-${chat.id}`}
+                              onClick={() => handleToolSelect("chat", chat.id)}
                               className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors"
                             >
                               <div className="flex items-center">
                                 <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
-                                <span className="truncate">{chat.title || `Document ${chat.id}`}</span>
+                                <span className="truncate">{chat.title || `Chat ${chat.id}`}</span>
                               </div>
                               <div className="text-xs text-muted-foreground ml-6 mt-1">
                                 {formatDate(chat.updatedAt)}
@@ -197,36 +207,155 @@ export default function Dashboard() {
                         }
                       </ul>
                     ) : (
-                      <div className="text-sm italic text-muted-foreground px-2">No recent documents</div>
+                      <div className="text-sm italic text-muted-foreground px-2">No chats yet</div>
                     )}
                   </div>
                   
-                  {/* ALL DOCUMENTS section */}
-                  <div>
+                  {/* GRAMMAR section */}
+                  <div className="mb-4">
                     <div className="flex items-center mb-2 text-xs font-semibold text-muted-foreground">
-                      <span className="uppercase">ALL DOCUMENTS</span>
+                      <Pencil className="h-4 w-4 mr-1" />
+                      <span className="uppercase">GRAMMAR</span>
                     </div>
                     
                     {isLoading ? (
                       <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
-                    ) : writingChatsData?.chats?.length > 0 ? (
+                    ) : chats.filter(chat => chat.grammarResult)?.length > 0 ? (
                       <ul>
-                        {writingChatsData.chats.map(chat => (
-                          <li 
-                            key={`all-${chat.id}`}
-                            onClick={() => handleToolSelect("grammar")}
-                            className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors group flex items-center justify-between"
-                          >
-                            <div className="flex items-center flex-1 truncate">
-                              <FileText className="h-4 w-4 mr-2 flex-shrink-0 text-muted-foreground" />
-                              <span className="truncate">{chat.title || `Document ${chat.id}`}</span>
-                            </div>
-                            {chat.isFavorite && <Star className="h-3 w-3 text-yellow-400 ml-1 flex-shrink-0" />}
-                          </li>
-                        ))}
+                        {chats
+                          .filter(chat => chat.grammarResult)
+                          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                          .slice(0, 3)
+                          .map(chat => (
+                            <li 
+                              key={`grammar-${chat.id}`}
+                              onClick={() => handleToolSelect("grammar", chat.id)}
+                              className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors"
+                            >
+                              <div className="flex items-center">
+                                <Pencil className="h-4 w-4 mr-2 text-muted-foreground" />
+                                <span className="truncate">{chat.title || `Grammar ${chat.id}`}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground ml-6 mt-1">
+                                {formatDate(chat.updatedAt)}
+                              </div>
+                            </li>
+                          ))
+                        }
                       </ul>
                     ) : (
-                      <div className="text-sm italic text-muted-foreground px-2">No documents found</div>
+                      <div className="text-sm italic text-muted-foreground px-2">No grammar checks yet</div>
+                    )}
+                  </div>
+                  
+                  {/* AI Check section */}
+                  <div className="mb-4">
+                    <div className="flex items-center mb-2 text-xs font-semibold text-muted-foreground">
+                      <FileText className="h-4 w-4 mr-1" />
+                      <span className="uppercase">AI CHECK</span>
+                    </div>
+                    
+                    {isLoading ? (
+                      <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
+                    ) : chats.filter(chat => chat.aiCheckResult)?.length > 0 ? (
+                      <ul>
+                        {chats
+                          .filter(chat => chat.aiCheckResult)
+                          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                          .slice(0, 3)
+                          .map(chat => (
+                            <li 
+                              key={`ai-${chat.id}`}
+                              onClick={() => handleToolSelect("ai-check", chat.id)}
+                              className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors"
+                            >
+                              <div className="flex items-center">
+                                <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                                <span className="truncate">{chat.title || `AI Check ${chat.id}`}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground ml-6 mt-1">
+                                {formatDate(chat.updatedAt)}
+                              </div>
+                            </li>
+                          ))
+                        }
+                      </ul>
+                    ) : (
+                      <div className="text-sm italic text-muted-foreground px-2">No AI checks yet</div>
+                    )}
+                  </div>
+                  
+                  {/* PARAPHRASE section */}
+                  <div className="mb-4">
+                    <div className="flex items-center mb-2 text-xs font-semibold text-muted-foreground">
+                      <FileText className="h-4 w-4 mr-1" />
+                      <span className="uppercase">PARAPHRASE</span>
+                    </div>
+                    
+                    {isLoading ? (
+                      <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
+                    ) : chats.filter(chat => chat.paraphraseResult)?.length > 0 ? (
+                      <ul>
+                        {chats
+                          .filter(chat => chat.paraphraseResult)
+                          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                          .slice(0, 3)
+                          .map(chat => (
+                            <li 
+                              key={`paraphrase-${chat.id}`}
+                              onClick={() => handleToolSelect("paraphrase", chat.id)}
+                              className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors"
+                            >
+                              <div className="flex items-center">
+                                <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                                <span className="truncate">{chat.title || `Paraphrase ${chat.id}`}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground ml-6 mt-1">
+                                {formatDate(chat.updatedAt)}
+                              </div>
+                            </li>
+                          ))
+                        }
+                      </ul>
+                    ) : (
+                      <div className="text-sm italic text-muted-foreground px-2">No paraphrases yet</div>
+                    )}
+                  </div>
+                  
+                  {/* HUMANIZE section */}
+                  <div>
+                    <div className="flex items-center mb-2 text-xs font-semibold text-muted-foreground">
+                      <FileText className="h-4 w-4 mr-1" />
+                      <span className="uppercase">HUMANIZE</span>
+                    </div>
+                    
+                    {isLoading ? (
+                      <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
+                    ) : writingChatsData?.chats?.filter(chat => chat.humanizeResult)?.length > 0 ? (
+                      <ul>
+                        {writingChatsData.chats
+                          .filter(chat => chat.humanizeResult)
+                          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                          .slice(0, 3)
+                          .map(chat => (
+                            <li 
+                              key={`humanize-${chat.id}`}
+                              onClick={() => handleToolSelect("humanizer", chat.id)}
+                              className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors"
+                            >
+                              <div className="flex items-center">
+                                <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                                <span className="truncate">{chat.title || `Humanize ${chat.id}`}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground ml-6 mt-1">
+                                {formatDate(chat.updatedAt)}
+                              </div>
+                            </li>
+                          ))
+                        }
+                      </ul>
+                    ) : (
+                      <div className="text-sm italic text-muted-foreground px-2">No humanized texts yet</div>
                     )}
                   </div>
                 </div>

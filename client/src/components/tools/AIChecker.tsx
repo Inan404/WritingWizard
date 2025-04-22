@@ -182,9 +182,7 @@ export default function AIChecker() {
       
       <div className="mt-4 flex justify-end">
         <button
-          className={`px-6 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors duration-200 ${
-            isProcessing ? 'opacity-75 cursor-not-allowed animate-pulse' : ''
-          }`}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           onClick={handleAICheck}
           disabled={isProcessing}
         >
