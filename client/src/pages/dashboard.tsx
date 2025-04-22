@@ -72,6 +72,9 @@ export default function Dashboard() {
         // Load chat data based on the tool being selected
         if (tool === "grammar" && selectedChat.inputText) {
           try {
+            // Store the entry ID in session storage
+            sessionStorage.setItem('currentGrammarEntryId', chatId.toString());
+            
             if (selectedChat.grammarResult) {
               const parsedResult = JSON.parse(selectedChat.grammarResult);
               
@@ -95,6 +98,9 @@ export default function Dashboard() {
         } 
         else if (tool === "paraphrase" && selectedChat.inputText) {
           try {
+            // Store the entry ID in session storage
+            sessionStorage.setItem('currentParaphraseEntryId', chatId.toString());
+            
             if (selectedChat.paraphraseResult) {
               const parsedResult = JSON.parse(selectedChat.paraphraseResult);
               
@@ -116,6 +122,9 @@ export default function Dashboard() {
         }
         else if (tool === "ai-check" && selectedChat.inputText) {
           try {
+            // Store the entry ID in session storage
+            sessionStorage.setItem('currentAICheckEntryId', chatId.toString());
+            
             if (selectedChat.aiCheckResult) {
               const parsedResult = JSON.parse(selectedChat.aiCheckResult);
               
@@ -139,6 +148,9 @@ export default function Dashboard() {
         }
         else if (tool === "humanizer" && selectedChat.inputText) {
           try {
+            // Store the entry ID in session storage
+            sessionStorage.setItem('currentHumanizerEntryId', chatId.toString());
+            
             if (selectedChat.humanizeResult) {
               const parsedResult = JSON.parse(selectedChat.humanizeResult);
               

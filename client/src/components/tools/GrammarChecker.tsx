@@ -145,9 +145,31 @@ export default function GrammarChecker() {
     }
   };
 
-  // Create a new writing entry when the component loads
+  // Create a new writing entry when the component loads, but only if it's new content
+  // We'll use a ref to track whether the content came from dashboard
+  const isFromDashboard = useState(false);
+  
+  // Check if the content has a specific entry ID from dashboard
   useEffect(() => {
-    if (user && !entryId && grammarText.original.trim().length > 0) {
+    // Look for an entry ID in the URL or session storage (if it was passed from dashboard)
+    const params = new URLSearchParams(window.location.search);
+    const urlEntryId = params.get('id');
+    const storedEntryId = sessionStorage.getItem('currentGrammarEntryId');
+    
+    if (urlEntryId) {
+      setEntryId(parseInt(urlEntryId));
+      isFromDashboard[1](true);
+    } else if (storedEntryId) {
+      setEntryId(parseInt(storedEntryId));
+      isFromDashboard[1](true);
+      // Clear it after use
+      sessionStorage.removeItem('currentGrammarEntryId');
+    }
+  }, []);
+  
+  // Only create a new entry if it's not from dashboard and doesn't have an ID yet
+  useEffect(() => {
+    if (user && !entryId && grammarText.original.trim().length > 0 && !isFromDashboard[0]) {
       // Save initial text to database to create an entry
       const title = grammarText.original.slice(0, 30) + '...';
       saveEntryMutation.mutate({
@@ -157,7 +179,7 @@ export default function GrammarChecker() {
         grammarResult: null
       });
     }
-  }, [user, entryId, grammarText.original]);
+  }, [user, entryId, grammarText.original, isFromDashboard[0]]);
   
   // Save changes to database with debounce
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
