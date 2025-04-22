@@ -49,7 +49,7 @@ export const chatMessages = pgTable("chat_messages", {
   sessionId: integer("sessionid").notNull().references(() => chatSessions.id), // lowercase in db
   role: text("role").notNull(), // 'user' or 'assistant'
   content: text("content").notNull(),
-  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  timestamp: timestamp("createdat").defaultNow().notNull(), // renamed from timestamp to createdat to match DB convention
 });
 
 // Schema for inserting a new user
