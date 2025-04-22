@@ -379,8 +379,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       try {
-        // Fetch both the chat sessions and any entries from the database
-        const userChatSessions = await dbStorage.getChatSessionsByUserId(userId);
+        // Set cache control headers to prevent browser caching
+        res.setHeader('Cache-Control', 'no-store, max-age=0');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        // Fetch chat sessions from the database
+        // Convert userId to number if it's a string
+        const numericUserId = typeof userId === 'string' ? parseInt(userId) : userId;
+        const userChatSessions = await dbStorage.getChatSessionsByUserId(numericUserId);
+        
+        console.log(`Found ${userChatSessions.length} chat sessions for user ${numericUserId}`);
         
         // Convert chat sessions to the expected format for the sidebar
         // We need to adapt the chat sessions to the expected WritingChat format for the UI
@@ -388,6 +397,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get the first message of the session to use as title if available
           const chatMessages = await dbStorage.getChatMessages(session.id);
           const firstMessage = chatMessages.length > 0 ? chatMessages[0] : null;
+          
+          // For debugging
+          if (chatMessages.length > 0) {
+            console.log(`Session ${session.id} has ${chatMessages.length} messages`);
+          }
           
           // Create a writing entry from the chat session
           return {
