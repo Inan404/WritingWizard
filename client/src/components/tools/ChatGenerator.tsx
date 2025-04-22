@@ -39,15 +39,26 @@ export default function ChatGenerator() {
       return response.json();
     },
     onSuccess: (data) => {
-      setSessionId(data.session.id);
       console.log('Created new chat session with ID:', data.session.id);
+      
+      // Reset messages with just the welcome message
+      const welcomeMessage = {
+        id: '1',
+        role: 'assistant' as const,
+        content: 'Hello! I am your AI writing assistant. How can I help you with your writing needs today?',
+        timestamp: Date.now()
+      };
+      
+      // Clear messages and set new session ID
+      setMessages([welcomeMessage]);
+      setSessionId(data.session.id);
       
       // Save the welcome message
       if (data.session.id) {
         saveMessageMutation.mutate({
           sessionId: data.session.id,
           role: 'assistant',
-          content: messages[0].content
+          content: welcomeMessage.content
         });
       }
       
@@ -106,24 +117,36 @@ export default function ChatGenerator() {
     } else if (user && !sessionId) {
       createSessionMutation.mutate();
     }
-  }, [user, sessionStorage.getItem('forceNewChat')]);
+  }, [user]);
   
-  // This effect will run every time the activeTool changes to "chat"
-  // to make sure we clear the current chat when selecting "New Chat"
+  // Force a new check every second to detect the forceNewChat flag
   useEffect(() => {
-    const forceNewChat = sessionStorage.getItem('forceNewChat');
-    if (forceNewChat === 'true') {
-      console.log("Force new chat detected - resetting chat state");
-      // Reset all state
-      setSessionId(null);
-      setMessages([{
-        id: '1',
-        role: 'assistant' as const,
-        content: 'Hello! I am your AI writing assistant. How can I help you with your writing needs today?',
-        timestamp: Date.now()
-      }]);
-    }
-  }, [window.location.href]);
+    const checkForceNewChat = () => {
+      const forceNewChat = sessionStorage.getItem('forceNewChat');
+      if (forceNewChat === 'true') {
+        console.log("Force new chat detected - resetting chat state");
+        // Reset all state
+        setSessionId(null);
+        setMessages([{
+          id: '1',
+          role: 'assistant' as const,
+          content: 'Hello! I am your AI writing assistant. How can I help you with your writing needs today?',
+          timestamp: Date.now()
+        }]);
+        
+        // Remove the flag
+        sessionStorage.removeItem('forceNewChat');
+      }
+    };
+    
+    // Run once
+    checkForceNewChat();
+    
+    // And set interval to check regularly
+    const interval = setInterval(checkForceNewChat, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Scroll to bottom when messages change
   useEffect(() => {
