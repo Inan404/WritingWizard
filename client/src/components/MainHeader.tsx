@@ -19,7 +19,6 @@ interface MainHeaderProps {
 export default function MainHeader({ 
   userImage = "https://github.com/shadcn.png" 
 }: MainHeaderProps) {
-  // No longer need theme context here as ThemeToggle handles it
   const { user, logoutMutation } = useAuth();
   
   const handleLogout = () => {
