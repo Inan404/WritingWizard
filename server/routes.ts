@@ -380,16 +380,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         // Set cache control headers to prevent browser caching
-        res.setHeader('Cache-Control', 'no-store, max-age=0');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
+        res.setHeader('Surrogate-Control', 'no-store');
+        
+        // Add a timestamp query parameter to the URL to prevent browser caching
+        const timestamp = new Date().getTime();
         
         // Fetch chat sessions from the database
         // Convert userId to number if it's a string
         const numericUserId = typeof userId === 'string' ? parseInt(userId) : userId;
         const userChatSessions = await dbStorage.getChatSessionsByUserId(numericUserId);
         
-        console.log(`Found ${userChatSessions.length} chat sessions for user ${numericUserId}`);
+        console.log(`[${timestamp}] Found ${userChatSessions.length} chat sessions for user ${numericUserId}`);
         
         // Convert chat sessions to the expected format for the sidebar
         // We need to adapt the chat sessions to the expected WritingChat format for the UI
@@ -406,7 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Create a writing entry from the chat session
           return {
             id: session.id,
-            title: session.name || 'New Chat',
+            title: session.name || `Chat ${session.id}`,
             inputText: firstMessage?.content || '',
             grammarResult: null,
             paraphraseResult: null,
@@ -419,20 +423,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         }));
         
-        // Return the chat sessions as writing chats
+        // Return the chat sessions as writing chats - IMPORTANT! Add timestamp here to prevent caching
         res.json({
-          chats: chatSessionsAsWritingChats
+          chats: chatSessionsAsWritingChats,
+          timestamp: timestamp // Add timestamp to force client to recognize this as a new response
         });
       } catch (dbError) {
         console.error("Database error when fetching chats:", dbError);
         // Return empty array if database query fails
         return res.json({
-          chats: []
+          chats: [],
+          timestamp: new Date().getTime() // Add timestamp even for error responses
         });
       }
     } catch (error) {
       console.error("Get writing chats error:", error);
-      res.status(500).json({ message: "Error retrieving writing chats" });
+      res.status(500).json({ 
+        message: "Error retrieving writing chats",
+        timestamp: new Date().getTime() // Add timestamp even for error responses 
+      });
     }
   });
 

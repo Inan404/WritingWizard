@@ -44,15 +44,25 @@ export default function Dashboard() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch writing chats from authenticated endpoint
+  // Fetch writing chats from authenticated endpoint with refetch on focus
   const { data: writingChatsData, isLoading, refetch } = useQuery<{ chats: WritingChat[] }>({
     queryKey: ['/api/writing-chats'],
     staleTime: 0, // Always refetch on mount
     gcTime: 0, // Don't cache the data (gcTime is the new name for cacheTime in v5)
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000, // Refetch every 5 seconds
   });
   
   // Safely handle the chat data
   const chats = writingChatsData?.chats || [];
+  
+  // Add debugging to check what's coming back from the API
+  useEffect(() => {
+    if (writingChatsData) {
+      console.log("Writing chats data received:", writingChatsData);
+    }
+  }, [writingChatsData]);
 
   // Import context hooks
   const { 
@@ -197,35 +207,50 @@ export default function Dashboard() {
 
   const handleCreateNewChat = async () => {
     try {
+      // First, clear any existing session IDs
+      sessionStorage.removeItem('currentChatSessionId');
+      sessionStorage.removeItem('forceLoadChat');
+      
+      // Set the flag to force a new chat creation
+      sessionStorage.setItem('forceNewChat', 'true');
+      
       // Set active tool to chat - this will switch to the chat tab
       // regardless of which tab we're currently on
       setActiveTool("chat");
       
-      // Immediately refetch to get latest data
-      await refetch();
+      console.log("Creating new chat session...");
       
       // Create a new chat session
       const response = await apiRequest('POST', '/api/db/chat-sessions', {
-        name: 'New Chat ' + new Date().toLocaleDateString()
+        name: 'New Chat ' + new Date().toLocaleString()
       });
       
       const data = await response.json();
       console.log("Created new chat session with ID:", data.session.id);
       
-      // Reset the session in the ChatGenerator component
-      // This will force ChatGenerator to re-render with a new session
-      sessionStorage.setItem('forceNewChat', 'true');
-      
-      // Force refetch to get latest chat sessions
+      // Force an immediate refetch
       await refetch();
       
-      // Invalidate the chat sessions query to update the sidebar
-      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
+      // Double-check by invalidating all queries related to chats
+      queryClient.invalidateQueries();
+      
+      // Add a small delay to ensure the UI updates
+      setTimeout(() => {
+        // Force another refetch after a short delay
+        refetch();
+      }, 500);
       
       // Close sidebar on mobile
       if (windowWidth < 768) {
         setSidebarOpen(false);
       }
+      
+      // Show success message
+      toast({
+        title: "Success",
+        description: "New chat created successfully!",
+        variant: "default"
+      });
     } catch (error) {
       console.error("Error creating new chat:", error);
       toast({
