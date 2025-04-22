@@ -1,19 +1,54 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ResizablePanels from '../common/ResizablePanels';
 import TextEditor from '../common/TextEditor';
 import StyleOptions from '../common/StyleOptions';
 import ProgressBars from '../common/ProgressBars';
 import { useWriting, WritingStyle } from '@/context/WritingContext';
 import { apiRequest } from '@/lib/queryClient';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { Copy, Volume, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function Humanizer() {
   const { humanizerText, setHumanizerText, selectedStyle } = useWriting();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [entryId, setEntryId] = useState<number | null>(null);
+  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
 
+  // Save writing entry to database
+  const saveEntryMutation = useMutation({
+    mutationFn: async (data: { 
+      id?: number;
+      userId: number; 
+      title: string; 
+      inputText: string;
+      humanizerResult: string | null;
+    }) => {
+      const endpoint = data.id ? `/api/db/writing-entries/${data.id}` : '/api/db/writing-entries';
+      const method = data.id ? 'PATCH' : 'POST';
+      const response = await apiRequest(method, endpoint, data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setEntryId(data.id);
+      // Update the writing entries list in dashboard
+      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
+    },
+    onError: (error) => {
+      console.error('Error saving writing entry:', error);
+      toast({
+        title: "Error saving",
+        description: "Could not save your work. Please try again later.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Humanize text mutation
   const humanizeMutation = useMutation({
     mutationFn: async (data: { text: string; style: WritingStyle }) => {
       const response = await apiRequest('POST', '/api/humanize', data);
@@ -25,6 +60,18 @@ export default function Humanizer() {
         original: humanizerText.original,
         humanized: data.humanized
       });
+      
+      // Save to database after successful humanizing
+      if (user) {
+        saveEntryMutation.mutate({
+          id: entryId || undefined,
+          userId: user.id,
+          title: 'Humanized Text', 
+          inputText: humanizerText.original,
+          humanizerResult: data.humanized
+        });
+      }
+      
       toast({
         title: "Humanizing complete",
         description: "Your AI text has been humanized successfully.",
@@ -39,6 +86,37 @@ export default function Humanizer() {
       });
     }
   });
+  
+  // Save the text to database when user types (debounced)
+  useEffect(() => {
+    if (!user || !humanizerText.original.trim()) return;
+    
+    // Clear existing timeout
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    
+    // Set new timeout for 2 seconds after typing stops
+    const timeout = setTimeout(() => {
+      if (humanizerText.original.trim().length >= 10) {
+        saveEntryMutation.mutate({
+          id: entryId || undefined,
+          userId: user.id,
+          title: 'Humanized Text', 
+          inputText: humanizerText.original,
+          humanizerResult: humanizerText.humanized 
+        });
+      }
+    }, 2000);
+    
+    setSaveTimeout(timeout);
+    
+    return () => {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+    };
+  }, [humanizerText.original, user]);
 
   const handleTextChange = (text: string) => {
     setHumanizerText({
@@ -73,52 +151,43 @@ export default function Humanizer() {
   };
 
   const LeftPanel = (
-    <TextEditor
-      content={humanizerText.original}
-      onChange={handleTextChange}
-      isTextArea={true}
-      placeholder="Enter or paste AI-generated text here to humanize..."
-    />
+    <div className="h-full flex flex-col">
+      <div className="flex-1">
+        <TextEditor
+          content={humanizerText.original}
+          onChange={handleTextChange}
+          isTextArea={true}
+          className="text-foreground"
+          placeholder="Enter or paste AI-generated text here to humanize..."
+        />
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button 
+          onClick={handleHumanize}
+          disabled={isProcessing}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        >
+          {isProcessing ? 'Humanizing...' : 'Humanize Text'}
+        </button>
+      </div>
+    </div>
   );
 
   const RightPanel = (
     <div className="h-full flex flex-col">
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className={`px-6 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors duration-200 ${
-              isProcessing ? 'opacity-75 cursor-not-allowed animate-pulse' : ''
-            }`}
-            onClick={handleHumanize}
-            disabled={isProcessing}
-          >
-            {isProcessing ? 'Processing...' : 'Humanize'}
-          </motion.button>
-          
-          <div className="flex">
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              className="p-2 text-muted-foreground hover:text-foreground"
-              onClick={handleCopy}
-              disabled={!humanizerText.humanized}
-            >
-              <Copy className="h-5 w-5" />
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              className="p-2 text-muted-foreground hover:text-foreground"
-            >
-              <Volume className="h-5 w-5" />
-            </motion.button>
-          </div>
-        </div>
-        
-        <StyleOptions />
-        <ProgressBars />
+      <StyleOptions />
+      <ProgressBars />
+      
+      <div className="flex justify-end mt-2 mb-4">
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          className="p-2 text-muted-foreground hover:text-foreground"
+          onClick={handleCopy}
+          disabled={!humanizerText.humanized}
+        >
+          <Copy className="h-5 w-5" />
+        </motion.button>
       </div>
       
       <div className="flex-1 overflow-y-auto">
