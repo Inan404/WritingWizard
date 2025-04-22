@@ -7,11 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PenLine, Sun, Moon } from "lucide-react";
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/components/ui/theme-provider";
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [registerForm, setRegisterForm] = useState({
     username: "",
