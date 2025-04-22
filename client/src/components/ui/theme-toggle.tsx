@@ -1,17 +1,29 @@
-"use client"
-
-import * as React from "react"
-import { Moon, Sun } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useTheme } from "@/components/ui/theme-provider"
-import { motion } from "framer-motion"
+import { useState, useEffect } from "react";
+import { Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
-  
+  const [theme, setTheme] = useState(() => {
+    // Check for theme preference in localStorage or default to 'light'
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') || 'light';
+    }
+    return 'light';
+  });
+
+  // Apply theme class to document element when theme changes
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
-  }
+    console.log('Current theme:', theme);
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
 
   return (
     <motion.div 
@@ -19,15 +31,17 @@ export function ThemeToggle() {
       whileTap={{ scale: 0.95 }}
     >
       <Button
-        variant="ghost"
+        variant="outline"
         size="icon"
         onClick={toggleTheme}
-        className="relative h-9 w-9 rounded-md"
+        className="h-9 w-9 rounded-full"
       >
-        <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-        <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-        <span className="sr-only">Toggle theme</span>
+        {theme === "dark" ? (
+          <Sun className="h-5 w-5 text-yellow-400" />
+        ) : (
+          <Moon className="h-5 w-5" />
+        )}
       </Button>
     </motion.div>
-  )
+  );
 }

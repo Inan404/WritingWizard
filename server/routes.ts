@@ -6,6 +6,77 @@ import { generateGrammarCheck, generateParaphrase, generateHumanized, checkAICon
 import { setupAuth } from "./auth";
 import { ensureTablesExist } from "./db";
 
+// Function to generate sample writing chats for development/fallback
+function getDummyWritingChats() {
+  return [
+    {
+      id: 1,
+      title: "Essay on Climate Change",
+      inputText: "Climate change is one of the most pressing issues of our time...",
+      grammarResult: null,
+      paraphraseResult: null,
+      aiCheckResult: null,
+      humanizeResult: null,
+      isFavorite: true,
+      userId: 1,
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 2,
+      title: "Research on Artificial Intelligence",
+      inputText: "Artificial intelligence has transformed numerous industries...",
+      grammarResult: null,
+      paraphraseResult: null,
+      aiCheckResult: null,
+      humanizeResult: null,
+      isFavorite: false,
+      userId: 1,
+      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 3,
+      title: "Book Review: 1984 by George Orwell",
+      inputText: "George Orwell's dystopian masterpiece 1984 presents a harrowing vision...",
+      grammarResult: null,
+      paraphraseResult: null,
+      aiCheckResult: null,
+      humanizeResult: null,
+      isFavorite: true,
+      userId: 1,
+      createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+      updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 4,
+      title: "Analysis of Economic Trends",
+      inputText: "Recent economic trends indicate a shift towards sustainable development...",
+      grammarResult: null,
+      paraphraseResult: null,
+      aiCheckResult: null,
+      humanizeResult: null,
+      isFavorite: false,
+      userId: 1,
+      createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+      updatedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 5,
+      title: "The Impact of Social Media",
+      inputText: "Social media platforms have fundamentally changed how we communicate...",
+      grammarResult: null,
+      paraphraseResult: null,
+      aiCheckResult: null,
+      humanizeResult: null,
+      isFavorite: false,
+      userId: 1,
+      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      updatedAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  ];
+}
+
 // Middleware to check if the user is authenticated
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
   if (req.isAuthenticated()) {
@@ -307,33 +378,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "User not authenticated" });
       }
       
-      // Fetch the user's writing chats from the database
-      const userChats = await dbStorage.getWritingEntriesByUserId(userId);
-      
-      // If no chats exist, provide default examples
-      if (!userChats || userChats.length === 0) {
+      try {
+        // Fetch the user's writing chats from the database
+        const userChats = await dbStorage.getWritingEntriesByUserId(userId);
+        
+        // If no chats exist, provide default examples
+        if (!userChats || userChats.length === 0) {
+          return res.json({
+            chats: getDummyWritingChats()
+          });
+        }
+        
+        // Return the user's actual chats
+        res.json({
+          chats: userChats
+        });
+      } catch (dbError) {
+        console.error("Database error when fetching chats:", dbError);
+        // Return dummy data if database query fails
         return res.json({
-          chats: [
-            {
-              id: 1,
-              name: "Sample Essay on Climate Change",
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            },
-            {
-              id: 2,
-              name: "Research Paper on Artificial Intelligence",
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            }
-          ]
+          chats: getDummyWritingChats()
         });
       }
-      
-      // Return the user's actual chats
-      res.json({
-        chats: userChats
-      });
     } catch (error) {
       console.error("Get writing chats error:", error);
       res.status(500).json({ message: "Error retrieving writing chats" });

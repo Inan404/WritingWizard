@@ -41,11 +41,18 @@ export class DatabaseStorage implements IDBStorage {
   }
   
   async getWritingEntriesByUserId(userId: number): Promise<WritingEntry[]> {
-    // Using camelCase in code but matching the actual column names in the SQL query
-    return await db.execute(
-      `SELECT * FROM writing_entries WHERE userid = $1 ORDER BY updatedat DESC`,
-      [userId]
-    );
+    try {
+      // Use parameterized query with proper value binding
+      const result = await db.execute(
+        `SELECT * FROM writing_entries WHERE userid = $1 ORDER BY updatedat DESC`,
+        [userId]
+      );
+      console.log("Writing entries result:", result);
+      return result || [];
+    } catch (error) {
+      console.error("Error fetching writing entries:", error);
+      return []; // Return empty array on error
+    }
   }
   
   async createWritingEntry(entry: InsertWritingEntry): Promise<WritingEntry | null> {

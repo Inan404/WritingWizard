@@ -1,6 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { FileText, Pen, LogOut } from "lucide-react";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { FileText, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,6 +10,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface MainHeaderProps {
   userImage?: string;
