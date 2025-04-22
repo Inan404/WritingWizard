@@ -82,8 +82,28 @@ export default function ChatGenerator() {
   });
   
   // Create a new session when component mounts if user is authenticated
+  // or when forceNewChat is set to true
   useEffect(() => {
-    if (user && !sessionId) {
+    const forceNewChat = sessionStorage.getItem('forceNewChat');
+    
+    if (forceNewChat === 'true') {
+      // Clear the session ID and messages to start fresh
+      setSessionId(null);
+      setMessages([{
+        id: '1',
+        role: 'assistant' as const,
+        content: 'Hello! I am your AI writing assistant. How can I help you with your writing needs today?',
+        timestamp: Date.now()
+      }]);
+      
+      // Remove the flag from session storage
+      sessionStorage.removeItem('forceNewChat');
+      
+      // Create a new session
+      if (user) {
+        createSessionMutation.mutate();
+      }
+    } else if (user && !sessionId) {
       createSessionMutation.mutate();
     }
   }, [user]);
@@ -116,7 +136,7 @@ export default function ChatGenerator() {
         timestamp: Date.now()
       };
       
-      setMessages(prev => [...prev, assistantResponse]);
+      setMessages(prev => [...prev, assistantResponse as Message]);
       
       // Save assistant message to database if we have a session
       if (sessionId) {
@@ -136,7 +156,7 @@ export default function ChatGenerator() {
         ...prev,
         {
           id: Date.now().toString(),
-          role: 'assistant',
+          role: 'assistant' as const,
           content: "I'm sorry, I encountered an error processing your request. Please try again.",
           timestamp: Date.now()
         }

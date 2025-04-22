@@ -3,13 +3,15 @@ import MainHeader from "@/components/MainHeader";
 import WritingTools from "@/components/WritingTools";
 import { useWriting } from "@/context/WritingContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Menu, X, Star, PlusCircle, Clock, FileText, Pencil, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/components/ui/theme-provider";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface WritingChat {
   id: number;
@@ -29,6 +31,7 @@ export default function Dashboard() {
   const { setActiveTool } = useWriting();
   const { user } = useAuth();
   const { theme } = useTheme();
+  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
 
@@ -190,9 +193,38 @@ export default function Dashboard() {
     }
   };
 
-  const handleCreateNewDocument = () => {
-    // TODO: Implement creating a new document
-    console.log("Create new document");
+  const handleCreateNewChat = async () => {
+    try {
+      // Set active tool to chat
+      setActiveTool("chat");
+      
+      // Create a new chat session
+      const response = await apiRequest('POST', '/api/db/chat-sessions', {
+        name: 'New Chat ' + new Date().toLocaleDateString()
+      });
+      
+      const data = await response.json();
+      console.log("Created new chat session with ID:", data.session.id);
+      
+      // Reset the session in the ChatGenerator component
+      // This will force ChatGenerator to re-render with a new session
+      sessionStorage.setItem('forceNewChat', 'true');
+      
+      // Invalidate the chat sessions query to update the sidebar
+      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
+      
+      // Close sidebar on mobile
+      if (windowWidth < 768) {
+        setSidebarOpen(false);
+      }
+    } catch (error) {
+      console.error("Error creating new chat:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create new chat. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -255,11 +287,11 @@ export default function Dashboard() {
                 </div>
 
                 <Button
-                  onClick={handleCreateNewDocument}
+                  onClick={handleCreateNewChat}
                   className="mx-3 mb-4"
                 >
                   <PlusCircle className="h-4 w-4 mr-2" />
-                  New Project
+                  New Chat
                 </Button>
                 
                 <div className="overflow-y-auto flex-1 px-3 pb-4">
