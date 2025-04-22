@@ -34,6 +34,19 @@ export default function WritingTools() {
       setCurrentTool('chat');
       setActiveTool('chat');
     }
+    
+    // Listen for custom event to force tab change to chat
+    const handleForceChatTabChange = (e: CustomEvent) => {
+      console.log("Force chat tab change event detected with ID:", e.detail);
+      setCurrentTool('chat');
+      setActiveTool('chat');
+    };
+    
+    window.addEventListener('forceChatTabChange', handleForceChatTabChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('forceChatTabChange', handleForceChatTabChange as EventListener);
+    };
   }, [setActiveTool]);
   
   // Update local state when context changes

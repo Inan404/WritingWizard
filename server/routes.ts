@@ -385,7 +385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user owns this session
-      if (session.userId !== req.user.id) {
+      if (!req.user || session.userId !== req.user.id) {
         return res.status(403).json({ message: "Access denied" });
       }
       

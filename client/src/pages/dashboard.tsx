@@ -4,7 +4,7 @@ import WritingTools from "@/components/WritingTools";
 import { useWriting } from "@/context/WritingContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Menu, X, Star, PlusCircle, Clock, FileText, Pencil, Settings } from "lucide-react";
+import { Menu, X, Star, PlusCircle, Clock, FileText, Pencil, Settings, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/components/ui/theme-provider";
@@ -12,6 +12,16 @@ import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface WritingChat {
   id: number;
@@ -34,6 +44,8 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
+  const [deleteChatDialogOpen, setDeleteChatDialogOpen] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<number | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -243,8 +255,12 @@ export default function Dashboard() {
       sessionStorage.setItem('currentChatSessionId', newChatId.toString());
       sessionStorage.setItem('forceLoadChat', 'true');
       
-      // Set active tool to chat
+      // Set active tool to chat again to ensure we're in chat mode
       setActiveTool("chat");
+      
+      // Add an event to force tab change
+      const chatTabChangeEvent = new CustomEvent('forceChatTabChange', { detail: newChatId });
+      window.dispatchEvent(chatTabChangeEvent);
       
       // Force refetch to update the sidebar
       await refetch();
@@ -268,6 +284,58 @@ export default function Dashboard() {
         description: "Failed to create new chat. Please try again.",
         variant: "destructive"
       });
+    }
+  };
+  
+  const handleDeleteChat = async () => {
+    if (!chatToDelete) return;
+    
+    try {
+      // Call the API to delete the chat
+      const response = await apiRequest('DELETE', `/api/chat-sessions/${chatToDelete}`);
+      
+      if (response.ok) {
+        // If current chat is being deleted, clear the session storage
+        const currentChatId = sessionStorage.getItem('currentChatSessionId');
+        if (currentChatId === chatToDelete.toString()) {
+          sessionStorage.removeItem('currentChatSessionId');
+          sessionStorage.removeItem('forceLoadChat');
+          
+          // If we're in the chat tab, create a new chat
+          if (window.location.pathname.includes('/chat')) {
+            await handleCreateNewChat();
+          }
+        }
+        
+        // Remove the chat from the client-side cache and refetch
+        await refetch();
+        queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
+        
+        // Show success message
+        toast({
+          title: "Chat Deleted",
+          description: "The chat has been successfully deleted.",
+          variant: "default"
+        });
+      } else {
+        // Show error
+        toast({
+          title: "Error",
+          description: "Failed to delete chat. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete chat. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      // Reset state
+      setChatToDelete(null);
+      setDeleteChatDialogOpen(false);
     }
   };
 
@@ -385,12 +453,25 @@ export default function Dashboard() {
                           .map(chat => (
                             <li 
                               key={`chat-${chat.id}`}
-                              onClick={() => handleToolSelect("chat", chat.id)}
-                              className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors"
+                              className="text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors group"
                             >
-                              <div className="flex items-center">
-                                <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
-                                <span className="truncate">{chat.title || `Chat ${chat.id}`}</span>
+                              <div className="flex items-center justify-between" onClick={() => handleToolSelect("chat", chat.id)}>
+                                <div className="flex items-center flex-1 cursor-pointer">
+                                  <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                                  <span className="truncate">{chat.title || `Chat ${chat.id}`}</span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setChatToDelete(chat.id);
+                                    setDeleteChatDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                                </Button>
                               </div>
                               <div className="text-xs text-muted-foreground ml-6 mt-1">
                                 {formatDate(chat.updatedAt)}
@@ -434,6 +515,24 @@ export default function Dashboard() {
           <WritingTools />
         </div>
       </div>
+      
+      {/* Delete Chat Confirmation Dialog */}
+      <AlertDialog open={deleteChatDialogOpen} onOpenChange={setDeleteChatDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Chat</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this chat? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setChatToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
