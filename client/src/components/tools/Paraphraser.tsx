@@ -1,52 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import ResizablePanels from '../common/ResizablePanels';
 import TextEditor from '../common/TextEditor';
 import StyleOptions from '../common/StyleOptions';
 import ProgressBars from '../common/ProgressBars';
 import { useWriting, WritingStyle } from '@/context/WritingContext';
 import { apiRequest } from '@/lib/queryClient';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { Copy, Volume, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
 
 export default function Paraphraser() {
   const { paraphraseText, setParaphraseText, selectedStyle } = useWriting();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [entryId, setEntryId] = useState<number | null>(null);
-  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Save writing entry to database
-  const saveEntryMutation = useMutation({
-    mutationFn: async (data: { 
-      id?: number;
-      userId: number; 
-      title: string; 
-      inputText: string;
-      paraphraseResult: string | null;
-    }) => {
-      const endpoint = data.id ? `/api/db/writing-entries/${data.id}` : '/api/db/writing-entries';
-      const method = data.id ? 'PATCH' : 'POST';
-      const response = await apiRequest(method, endpoint, data);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      setEntryId(data.id);
-      // Update the writing entries list in dashboard
-      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
-    },
-    onError: (error) => {
-      console.error('Error saving writing entry:', error);
-      toast({
-        title: "Error saving",
-        description: "Could not save your work. Please try again later.",
-        variant: "destructive"
-      });
-    }
-  });
+  // No database storage needed for paraphraser per user request
 
   // Paraphrase text mutation
   const paraphraseMutation = useMutation({
@@ -61,16 +29,7 @@ export default function Paraphraser() {
         paraphrased: data.paraphrased
       });
       
-      // Save to database after successful paraphrasing
-      if (user) {
-        saveEntryMutation.mutate({
-          id: entryId || undefined,
-          userId: user.id,
-          title: 'Paraphrased Text', 
-          inputText: paraphraseText.original,
-          paraphraseResult: data.paraphrased
-        });
-      }
+      // No database storage needed for paraphraser per user request
       
       toast({
         title: "Paraphrasing complete",
@@ -87,36 +46,7 @@ export default function Paraphraser() {
     }
   });
   
-  // Save the text to database when user types (debounced)
-  useEffect(() => {
-    if (!user || !paraphraseText.original.trim()) return;
-    
-    // Clear existing timeout
-    if (saveTimeout) {
-      clearTimeout(saveTimeout);
-    }
-    
-    // Set new timeout for 2 seconds after typing stops
-    const timeout = setTimeout(() => {
-      if (paraphraseText.original.trim().length >= 10) {
-        saveEntryMutation.mutate({
-          id: entryId || undefined,
-          userId: user.id,
-          title: 'Paraphrased Text', 
-          inputText: paraphraseText.original,
-          paraphraseResult: paraphraseText.paraphrased 
-        });
-      }
-    }, 2000);
-    
-    setSaveTimeout(timeout);
-    
-    return () => {
-      if (saveTimeout) {
-        clearTimeout(saveTimeout);
-      }
-    };
-  }, [paraphraseText.original, user]);
+  // No database storage effects needed per user request
 
   const handleTextChange = (text: string) => {
     setParaphraseText({
