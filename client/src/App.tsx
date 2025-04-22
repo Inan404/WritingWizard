@@ -9,6 +9,7 @@ import AuthPage from "@/pages/auth-page";
 import LandingPage from "@/pages/landing-page";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { ThemeProvider } from "@/components/ui/theme-provider";
 
 function Router() {
   return (
@@ -25,12 +26,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <div className="min-h-screen bg-background text-foreground antialiased">
-          <Router />
-          <Toaster />
-        </div>
-      </AuthProvider>
+      <ThemeProvider defaultTheme="light" storageKey="app-theme">
+        <AuthProvider>
+          <div className="min-h-screen bg-background text-foreground antialiased">
+            <Router />
+            <Toaster />
+          </div>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

@@ -39,6 +39,7 @@ export const chatSessions = pgTable("chat_sessions", {
   id: serial("id").primaryKey(),
   userId: integer("userid").notNull().references(() => users.id), // lowercase in db
   name: text("name").default("New Chat").notNull(),
+  isFavorite: boolean("isfavorite").default(false), // lowercase in db
   createdAt: timestamp("createdat").defaultNow().notNull(), // lowercase in db
   updatedAt: timestamp("updatedat").defaultNow().notNull(), // lowercase in db
 });
