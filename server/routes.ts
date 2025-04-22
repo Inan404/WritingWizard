@@ -379,19 +379,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       try {
-        // Fetch the user's writing chats from the database
-        const userChats = await dbStorage.getWritingEntriesByUserId(userId);
+        // Fetch both the chat sessions and any entries from the database
+        const userChatSessions = await dbStorage.getChatSessionsByUserId(userId);
         
-        // If no chats exist, return an empty array
-        if (!userChats || userChats.length === 0) {
-          return res.json({
-            chats: []
-          });
-        }
+        // Convert chat sessions to the expected format for the sidebar
+        // We need to adapt the chat sessions to the expected WritingChat format for the UI
+        const chatSessionsAsWritingChats = await Promise.all(userChatSessions.map(async (session) => {
+          // Get the first message of the session to use as title if available
+          const chatMessages = await dbStorage.getChatMessages(session.id);
+          const firstMessage = chatMessages.length > 0 ? chatMessages[0] : null;
+          
+          // Create a writing entry from the chat session
+          return {
+            id: session.id,
+            title: session.name || 'New Chat',
+            inputText: firstMessage?.content || '',
+            grammarResult: null,
+            paraphraseResult: null,
+            aiCheckResult: null,
+            humanizeResult: null,
+            isFavorite: false,
+            userId: session.userId,
+            createdAt: session.createdAt.toISOString(),
+            updatedAt: session.updatedAt.toISOString()
+          };
+        }));
         
-        // Return the user's actual chats
+        // Return the chat sessions as writing chats
         res.json({
-          chats: userChats
+          chats: chatSessionsAsWritingChats
         });
       } catch (dbError) {
         console.error("Database error when fetching chats:", dbError);

@@ -174,8 +174,9 @@ export default function Dashboard() {
           }
         }
         else if (tool === "chat") {
-          // For chat, we don't have a specific format yet, but we'll set it up later
-          // This would normally load a chat conversation from the chat sessions
+          // For chat, we need to set sessionStorage to force the ChatGenerator to load this session
+          sessionStorage.setItem('currentChatSessionId', chatId.toString());
+          sessionStorage.setItem('forceLoadChat', 'true');
         }
       }
     }
@@ -315,7 +316,7 @@ export default function Dashboard() {
                               className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors flex items-center"
                             >
                               <FileText className="h-4 w-4 mr-2 text-primary/70" />
-                              <span className="truncate">{chat.title || `Document ${chat.id}`}</span>
+                              <span className="truncate">{chat.title || `Chat ${chat.id}`}</span>
                             </li>
                           ))
                         }
@@ -334,10 +335,9 @@ export default function Dashboard() {
                     
                     {isLoading ? (
                       <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
-                    ) : chats.filter(chat => !chat.grammarResult && !chat.paraphraseResult && !chat.aiCheckResult && !chat.humanizeResult)?.length > 0 ? (
+                    ) : chats.length > 0 ? (
                       <ul>
                         {chats
-                          .filter(chat => !chat.grammarResult && !chat.paraphraseResult && !chat.aiCheckResult && !chat.humanizeResult)
                           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
                           .map(chat => (
                             <li 

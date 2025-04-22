@@ -92,10 +92,44 @@ export default function ChatGenerator() {
     }
   });
   
+  // Load existing chat messages for a session
+  const loadChatMessagesMutation = useMutation({
+    mutationFn: async (sessionId: number) => {
+      const response = await apiRequest('GET', `/api/db/chat-sessions/${sessionId}/messages`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      console.log("Loaded messages for session:", data.messages.length);
+      
+      // Convert the messages to the format expected by the component
+      const loadedMessages = data.messages.map((message: any) => ({
+        id: message.id.toString(),
+        role: message.role as 'user' | 'assistant',
+        content: message.content,
+        timestamp: new Date(message.timestamp).getTime()
+      }));
+      
+      // Only reset messages if we actually loaded something
+      if (loadedMessages.length > 0) {
+        setMessages(loadedMessages);
+      }
+    },
+    onError: (error) => {
+      console.error("Failed to load chat messages:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load chat history. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
   // Create a new session when component mounts if user is authenticated
   // or when forceNewChat is set to true
   useEffect(() => {
     const forceNewChat = sessionStorage.getItem('forceNewChat');
+    const forceLoadChat = sessionStorage.getItem('forceLoadChat');
+    const currentChatSessionId = sessionStorage.getItem('currentChatSessionId');
     
     if (forceNewChat === 'true') {
       // Clear the session ID and messages to start fresh
@@ -107,21 +141,37 @@ export default function ChatGenerator() {
         timestamp: Date.now()
       }]);
       
-      // Remove the flag from session storage
+      // Remove the flags from session storage
       sessionStorage.removeItem('forceNewChat');
+      sessionStorage.removeItem('forceLoadChat');
+      sessionStorage.removeItem('currentChatSessionId');
       
       // Create a new session
       if (user) {
         createSessionMutation.mutate();
       }
-    } else if (user && !sessionId) {
+    } 
+    else if (forceLoadChat === 'true' && currentChatSessionId) {
+      // Load existing chat
+      const loadSessionId = parseInt(currentChatSessionId);
+      setSessionId(loadSessionId);
+      
+      // Load messages for this session
+      loadChatMessagesMutation.mutate(loadSessionId);
+      
+      // Remove the flags
+      sessionStorage.removeItem('forceLoadChat');
+      sessionStorage.removeItem('currentChatSessionId');
+    } 
+    else if (user && !sessionId) {
       createSessionMutation.mutate();
     }
   }, [user]);
   
-  // Force a new check every second to detect the forceNewChat flag
+  // Force a new check every second to detect session storage flags
   useEffect(() => {
-    const checkForceNewChat = () => {
+    const checkFlags = () => {
+      // Check for force new chat
       const forceNewChat = sessionStorage.getItem('forceNewChat');
       if (forceNewChat === 'true') {
         console.log("Force new chat detected - resetting chat state");
@@ -136,17 +186,36 @@ export default function ChatGenerator() {
         
         // Remove the flag
         sessionStorage.removeItem('forceNewChat');
+        sessionStorage.removeItem('forceLoadChat');
+        sessionStorage.removeItem('currentChatSessionId');
+      }
+      
+      // Check for force load chat
+      const forceLoadChat = sessionStorage.getItem('forceLoadChat');
+      const currentChatSessionId = sessionStorage.getItem('currentChatSessionId');
+      if (forceLoadChat === 'true' && currentChatSessionId) {
+        console.log("Force load chat detected - loading session", currentChatSessionId);
+        // Load existing chat
+        const loadSessionId = parseInt(currentChatSessionId);
+        setSessionId(loadSessionId);
+        
+        // Load messages for this session
+        loadChatMessagesMutation.mutate(loadSessionId);
+        
+        // Remove the flags
+        sessionStorage.removeItem('forceLoadChat');
+        sessionStorage.removeItem('currentChatSessionId');
       }
     };
     
     // Run once
-    checkForceNewChat();
+    checkFlags();
     
     // And set interval to check regularly
-    const interval = setInterval(checkForceNewChat, 1000);
+    const interval = setInterval(checkFlags, 1000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [loadChatMessagesMutation]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
