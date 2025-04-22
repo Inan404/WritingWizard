@@ -4,21 +4,18 @@ import WritingTools from "@/components/WritingTools";
 import { useWriting } from "@/context/WritingContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Menu, X, Star, StarOff, Clock, FileText } from "lucide-react";
+import { Menu, X, Star, PlusCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/components/ui/theme-provider";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
 interface WritingChat {
   id: number;
-  name?: string;
   title?: string;
   inputText?: string;
-  rawText?: string;
   grammarResult: string | null;
   paraphraseResult: string | null;
   aiCheckResult: string | null;
@@ -28,6 +25,23 @@ interface WritingChat {
   createdAt: string;
   updatedAt: string;
 }
+
+// Sample document titles
+const sampleTitles = [
+  "Essay on Climate Change",
+  "Research on Artificial Intelligence",
+  "Analysis of Economic Trends",
+  "Book Review: 1984",
+  "Comparative Study of Programming Languages",
+  "Understanding Blockchain Technology",
+  "The Impact of Social Media on Society",
+  "Principles of Machine Learning"
+];
+
+// Function to generate a random title
+const generateRandomTitle = () => {
+  return sampleTitles[Math.floor(Math.random() * sampleTitles.length)];
+};
 
 export default function Dashboard() {
   const { setActiveTool } = useWriting();
@@ -46,7 +60,7 @@ export default function Dashboard() {
   }, []);
 
   // Fetch writing chats from authenticated endpoint
-  const { data: writingChatsData, isLoading } = useQuery<{ chats: WritingChat[] }>({
+  const { data: writingChatsData, isLoading, refetch } = useQuery<{ chats: WritingChat[] }>({
     queryKey: ['/api/writing-chats'],
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -58,21 +72,23 @@ export default function Dashboard() {
     }
   };
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
+  // Sample data for demonstration
+  const dummyChats = Array(5).fill(null).map((_, index) => ({
+    id: index + 1,
+    title: generateRandomTitle(),
+    createdAt: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toISOString(),
+    updatedAt: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24).toISOString(),
+    isFavorite: Math.random() > 0.7,
+    grammarResult: null,
+    paraphraseResult: null,
+    aiCheckResult: null,
+    humanizeResult: null
+  }));
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
+  // Use actual data if available, otherwise use dummy data
+  const chats = (writingChatsData?.chats && writingChatsData.chats.length > 0) 
+    ? writingChatsData.chats 
+    : dummyChats;
 
   const formatDate = (date: string) => {
     try {
@@ -80,6 +96,11 @@ export default function Dashboard() {
     } catch (e) {
       return "Recently";
     }
+  };
+
+  const handleCreateNewDocument = () => {
+    // TODO: Implement creating a new document
+    console.log("Create new document");
   };
 
   return (
@@ -126,163 +147,128 @@ export default function Dashboard() {
               exit={{ x: -280 }}
               transition={{ duration: 0.3 }}
             >
-              <ScrollArea className="h-full">
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-lg font-bold text-primary">Dashboard</div>
-                    {sidebarOpen && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => setSidebarOpen(false)} 
-                        className="md:hidden"
-                      >
-                        <X className="h-5 w-5" />
-                      </Button>
+              <div className="flex flex-col h-full p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-lg font-bold text-primary">Dashboard</div>
+                  {sidebarOpen && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => setSidebarOpen(false)} 
+                      className="md:hidden"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center my-4">
+                  <h3 className="font-semibold text-sm">MY DOCUMENTS</h3>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={handleCreateNewDocument}
+                    className="h-6 w-6 rounded-full hover:bg-muted"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="space-y-6 flex-1">
+                  {/* Favorites section */}
+                  <div>
+                    <div className="flex items-center mb-2 text-xs font-semibold text-muted-foreground">
+                      <Star className="h-4 w-4 mr-1 text-yellow-400" />
+                      <span className="uppercase">FAVORITES</span>
+                    </div>
+                    
+                    {isLoading ? (
+                      <div className="text-xs italic text-muted-foreground">Loading...</div>
+                    ) : chats.filter(chat => chat.isFavorite).length > 0 ? (
+                      <ul className="space-y-2">
+                        {chats
+                          .filter(chat => chat.isFavorite)
+                          .map(chat => (
+                            <li 
+                              key={`fav-${chat.id}`}
+                              onClick={() => handleToolSelect("grammar")}
+                              className="cursor-pointer text-sm hover:bg-muted p-1 px-2 rounded transition-colors"
+                            >
+                              {chat.title || `Chat ${chat.id}`}
+                            </li>
+                          ))
+                        }
+                      </ul>
+                    ) : (
+                      <div className="text-sm italic text-muted-foreground">No favorites yet</div>
                     )}
                   </div>
-
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-medium text-sm">MY DOCUMENTS</h3>
-                    <Button variant="ghost" size="sm" className="h-8 px-2">
-                      <span className="sr-only">New Document</span>
-                      <span className="text-xs">+</span>
-                    </Button>
-                  </div>
                   
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center mb-2">
-                        <Star className="h-4 w-4 mr-1 text-warning" />
-                        <h4 className="text-xs font-medium uppercase">Favorites</h4>
-                      </div>
-                      <div className="pl-1">
-                        <motion.ul 
-                          className="space-y-2"
-                          variants={containerVariants}
-                          initial="hidden"
-                          animate="visible"
-                        >
-                          {writingChatsData?.chats?.filter(chat => chat.isFavorite)?.map((chat) => (
-                            <motion.li 
-                              key={`fav-${chat.id}`} 
-                              onClick={() => handleToolSelect("grammar")} 
-                              className="group cursor-pointer text-sm hover:text-primary flex items-center"
-                              variants={itemVariants}
-                            >
-                              <FileText className="h-3 w-3 mr-1 flex-shrink-0" />
-                              <span className="truncate">{chat.title || chat.name || `Document ${chat.id}`}</span>
-                            </motion.li>
-                          ))}
-                          {(!writingChatsData?.chats || !writingChatsData.chats.some(chat => chat.isFavorite)) && (
-                            <motion.li 
-                              variants={itemVariants}
-                              className="text-xs text-muted-foreground italic"
-                            >
-                              No favorites yet
-                            </motion.li>
-                          )}
-                        </motion.ul>
-                      </div>
+                  {/* Recent section */}
+                  <div>
+                    <div className="flex items-center mb-2 text-xs font-semibold text-muted-foreground">
+                      <Clock className="h-4 w-4 mr-1" />
+                      <span className="uppercase">RECENT</span>
                     </div>
                     
-                    <div>
-                      <div className="flex items-center mb-2">
-                        <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
-                        <h4 className="text-xs font-medium uppercase">Recent</h4>
-                      </div>
-                      <div className="pl-1">
-                        <motion.ul 
-                          className="space-y-2"
-                          variants={containerVariants}
-                          initial="hidden"
-                          animate="visible"
-                        >
-                          {isLoading ? (
-                            <motion.li variants={itemVariants} className="text-xs text-muted-foreground">
-                              Loading documents...
-                            </motion.li>
-                          ) : writingChatsData?.chats && writingChatsData.chats.length > 0 ? (
-                            writingChatsData.chats.slice(0, 5).map((chat) => (
-                              <motion.li 
-                                key={`rec-${chat.id}`} 
-                                onClick={() => handleToolSelect("grammar")} 
-                                className="group cursor-pointer text-sm hover:text-primary"
-                                variants={itemVariants}
-                              >
-                                <div className="flex items-center">
-                                  <FileText className="h-3 w-3 mr-1 flex-shrink-0" />
-                                  <span className="truncate">{chat.title || chat.name || `Document ${chat.id}`}</span>
-                                </div>
-                                <div className="text-xs text-muted-foreground ml-4">
-                                  {formatDate(chat.updatedAt)}
-                                </div>
-                              </motion.li>
-                            ))
-                          ) : (
-                            <motion.li variants={itemVariants} className="text-xs text-muted-foreground italic">
-                              No recent documents
-                            </motion.li>
-                          )}
-                        </motion.ul>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div className="flex items-center mb-2">
-                        <h4 className="text-xs font-medium uppercase">All Documents</h4>
-                      </div>
-                      <div className="pl-1">
-                        <motion.ul 
-                          className="space-y-2"
-                          variants={containerVariants}
-                          initial="hidden"
-                          animate="visible"
-                        >
-                          {isLoading ? (
-                            <motion.li variants={itemVariants} className="text-xs text-muted-foreground">
-                              Loading documents...
-                            </motion.li>
-                          ) : writingChatsData?.chats && writingChatsData.chats.length > 0 ? (
-                            writingChatsData.chats.map((chat) => (
-                              <motion.li 
-                                key={`all-${chat.id}`} 
-                                onClick={() => handleToolSelect("grammar")} 
-                                className="group cursor-pointer text-sm hover:text-primary flex items-center justify-between"
-                                variants={itemVariants}
-                              >
-                                <div className="flex items-center">
-                                  <FileText className="h-3 w-3 mr-1 flex-shrink-0" />
-                                  <span className="truncate">{chat.title || chat.name || `Document ${chat.id}`}</span>
-                                </div>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  {chat.isFavorite ? <StarOff className="h-3 w-3" /> : <Star className="h-3 w-3" />}
-                                </Button>
-                              </motion.li>
-                            ))
-                          ) : (
-                            <motion.li variants={itemVariants} className="text-xs text-muted-foreground italic">
-                              No documents found
-                            </motion.li>
-                          )}
-                        </motion.ul>
-                      </div>
-                    </div>
+                    {isLoading ? (
+                      <div className="text-xs italic text-muted-foreground">Loading...</div>
+                    ) : chats.length > 0 ? (
+                      <ul className="space-y-2">
+                        {chats
+                          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                          .slice(0, 5)
+                          .map(chat => (
+                            <li 
+                              key={`recent-${chat.id}`}
+                              onClick={() => handleToolSelect("grammar")}
+                              className="cursor-pointer text-sm hover:bg-muted p-1 px-2 rounded transition-colors"
+                            >
+                              {chat.title || `Chat ${chat.id}`}
+                            </li>
+                          ))
+                        }
+                      </ul>
+                    ) : (
+                      <div className="text-sm italic text-muted-foreground">No recent documents</div>
+                    )}
                   </div>
                   
-                  <Separator className="my-4" />
-                  
-                  <div className="flex justify-between text-xs text-muted-foreground mb-4">
-                    <Link href="/privacy" className="hover:text-primary">Privacy</Link>
-                    <Link href="/terms" className="hover:text-primary">Terms</Link>
-                    <Link href="/help" className="hover:text-primary">Help</Link>
+                  {/* All Documents section */}
+                  <div>
+                    <div className="flex items-center mb-2 text-xs font-semibold text-muted-foreground">
+                      <span className="uppercase">ALL DOCUMENTS</span>
+                    </div>
+                    
+                    {isLoading ? (
+                      <div className="text-xs italic text-muted-foreground">Loading...</div>
+                    ) : chats.length > 0 ? (
+                      <ul className="space-y-2">
+                        {chats.map(chat => (
+                          <li 
+                            key={`all-${chat.id}`}
+                            onClick={() => handleToolSelect("grammar")}
+                            className="cursor-pointer text-sm hover:bg-muted p-1 px-2 rounded transition-colors flex items-center justify-between"
+                          >
+                            <span className="truncate">{chat.title || `Chat ${chat.id}`}</span>
+                            {chat.isFavorite && <Star className="h-3 w-3 text-yellow-400 ml-1 flex-shrink-0" />}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="text-sm italic text-muted-foreground">No documents found</div>
+                    )}
                   </div>
                 </div>
-              </ScrollArea>
+                
+                <Separator className="my-4" />
+                
+                <div className="flex justify-between text-xs text-muted-foreground py-2">
+                  <Link href="/privacy" className="hover:text-primary">Privacy</Link>
+                  <Link href="/terms" className="hover:text-primary">Terms</Link>
+                  <Link href="/help" className="hover:text-primary">Help</Link>
+                </div>
+              </div>
             </motion.aside>
           )}
         </AnimatePresence>

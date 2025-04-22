@@ -1,14 +1,17 @@
-import { db } from './db';
+import { eq, desc } from "drizzle-orm";
+import { db } from "./db";
 import { 
-  users, writingEntries, chatSessions, chatMessages,
-  type User, type InsertUser,
-  type WritingEntry, type InsertWritingEntry,
-  type ChatSession, type InsertChatSession,
-  type ChatMessage, type InsertChatMessage
-} from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+  writingEntries, 
+  chatSessions, 
+  chatMessages, 
+  type WritingEntry, 
+  type InsertWritingEntry, 
+  type ChatSession, 
+  type InsertChatSession, 
+  type ChatMessage, 
+  type InsertChatMessage
+} from "@shared/schema";
 
-// Interface for database operations
 export interface IDBStorage {
   // Writing data operations
   getWritingEntry(id: number): Promise<WritingEntry | null>;
@@ -30,7 +33,6 @@ export interface IDBStorage {
   deleteChatMessages(sessionId: number): Promise<boolean>;
 }
 
-// Database storage implementation
 export class DatabaseStorage implements IDBStorage {
   // Writing entry operations
   async getWritingEntry(id: number): Promise<WritingEntry | null> {
@@ -39,100 +41,189 @@ export class DatabaseStorage implements IDBStorage {
   }
   
   async getWritingEntriesByUserId(userId: number): Promise<WritingEntry[]> {
-    return await db.select().from(writingEntries)
-      .where(eq(writingEntries.userId, userId))
-      .orderBy(desc(writingEntries.updatedAt));
+    // Using camelCase in code but matching the actual column names in the SQL query
+    return await db.execute(
+      `SELECT * FROM writing_entries WHERE userid = $1 ORDER BY updatedat DESC`,
+      [userId]
+    );
   }
   
   async createWritingEntry(entry: InsertWritingEntry): Promise<WritingEntry | null> {
-    const [newEntry] = await db.insert(writingEntries).values(entry).returning();
-    return newEntry || null;
+    // Using camelCase in code but matching the actual column names in the SQL query
+    const [newEntry] = await db.execute(
+      `INSERT INTO writing_entries 
+       (userid, title, inputtext, grammarresult, paraphraseresult, aicheckresult, humanizeresult, isfavorite) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       RETURNING *`,
+      [
+        entry.userId, 
+        entry.title || 'Untitled', 
+        entry.inputText || '', 
+        entry.grammarResult || null, 
+        entry.paraphraseResult || null, 
+        entry.aiCheckResult || null, 
+        entry.humanizerResult || null, 
+        entry.isFavorite || false
+      ]
+    );
+    
+    return newEntry;
   }
   
   async updateWritingEntry(id: number, entry: Partial<InsertWritingEntry>): Promise<WritingEntry | null> {
-    const [updatedEntry] = await db.update(writingEntries)
-      .set({
-        ...entry,
-        updatedAt: new Date()
-      })
-      .where(eq(writingEntries.id, id))
-      .returning();
+    // Build SET clause dynamically based on provided fields
+    const updateFields = [];
+    const values = [id];
+    let paramIndex = 2; // starting with $2 since $1 is the id
+    
+    if (entry.title !== undefined) {
+      updateFields.push(`title = $${paramIndex++}`);
+      values.push(entry.title);
+    }
+    
+    if (entry.inputText !== undefined) {
+      updateFields.push(`inputtext = $${paramIndex++}`);
+      values.push(entry.inputText);
+    }
+    
+    if (entry.grammarResult !== undefined) {
+      updateFields.push(`grammarresult = $${paramIndex++}`);
+      values.push(entry.grammarResult);
+    }
+    
+    if (entry.paraphraseResult !== undefined) {
+      updateFields.push(`paraphraseresult = $${paramIndex++}`);
+      values.push(entry.paraphraseResult);
+    }
+    
+    if (entry.aiCheckResult !== undefined) {
+      updateFields.push(`aicheckresult = $${paramIndex++}`);
+      values.push(entry.aiCheckResult);
+    }
+    
+    if (entry.humanizerResult !== undefined) {
+      updateFields.push(`humanizeresult = $${paramIndex++}`);
+      values.push(entry.humanizerResult);
+    }
+    
+    if (entry.isFavorite !== undefined) {
+      updateFields.push(`isfavorite = $${paramIndex++}`);
+      values.push(entry.isFavorite);
+    }
+    
+    // Add updated timestamp
+    updateFields.push(`updatedat = NOW()`);
+    
+    if (updateFields.length === 0) {
+      return await this.getWritingEntry(id); // Nothing to update, return current entry
+    }
+    
+    const [updatedEntry] = await db.execute(
+      `UPDATE writing_entries SET ${updateFields.join(', ')} WHERE id = $1 RETURNING *`,
+      values
+    );
+    
     return updatedEntry || null;
   }
   
   async deleteWritingEntry(id: number): Promise<boolean> {
-    const [deleted] = await db.delete(writingEntries)
-      .where(eq(writingEntries.id, id))
-      .returning();
-    return !!deleted;
+    const result = await db.execute(
+      `DELETE FROM writing_entries WHERE id = $1`,
+      [id]
+    );
+    
+    return result.rowCount > 0;
   }
   
   // Chat session operations
   async getChatSession(id: number): Promise<ChatSession | null> {
-    const [session] = await db.select().from(chatSessions).where(eq(chatSessions.id, id));
+    const [session] = await db.execute(
+      `SELECT * FROM chat_sessions WHERE id = $1`,
+      [id]
+    );
+    
     return session || null;
   }
   
   async getChatSessionsByUserId(userId: number): Promise<ChatSession[]> {
-    return await db.select().from(chatSessions)
-      .where(eq(chatSessions.userId, userId))
-      .orderBy(desc(chatSessions.updatedAt));
+    return await db.execute(
+      `SELECT * FROM chat_sessions WHERE userid = $1 ORDER BY updatedat DESC`,
+      [userId]
+    );
   }
   
   async createChatSession(session: InsertChatSession): Promise<ChatSession | null> {
-    const [newSession] = await db.insert(chatSessions).values(session).returning();
-    return newSession || null;
+    const [newSession] = await db.execute(
+      `INSERT INTO chat_sessions (userid, name) VALUES ($1, $2) RETURNING *`,
+      [session.userId, session.name || 'New Chat']
+    );
+    
+    return newSession;
   }
   
   async updateChatSession(id: number, session: Partial<InsertChatSession>): Promise<ChatSession | null> {
-    const [updatedSession] = await db.update(chatSessions)
-      .set({
-        ...session,
-        updatedAt: new Date()
-      })
-      .where(eq(chatSessions.id, id))
-      .returning();
+    // Build SET clause dynamically based on provided fields
+    const updateFields = [];
+    const values = [id];
+    let paramIndex = 2; // starting with $2 since $1 is the id
+    
+    if (session.name !== undefined) {
+      updateFields.push(`name = $${paramIndex++}`);
+      values.push(session.name);
+    }
+    
+    // Add updated timestamp
+    updateFields.push(`updatedat = NOW()`);
+    
+    if (updateFields.length === 0) {
+      return await this.getChatSession(id); // Nothing to update, return current session
+    }
+    
+    const [updatedSession] = await db.execute(
+      `UPDATE chat_sessions SET ${updateFields.join(', ')} WHERE id = $1 RETURNING *`,
+      values
+    );
+    
     return updatedSession || null;
   }
   
   async deleteChatSession(id: number): Promise<boolean> {
-    // First delete all messages
-    await db.delete(chatMessages).where(eq(chatMessages.sessionId, id));
+    // First delete any associated messages
+    await this.deleteChatMessages(id);
     
-    // Then delete the session
-    const [deleted] = await db.delete(chatSessions)
-      .where(eq(chatSessions.id, id))
-      .returning();
-    return !!deleted;
+    const result = await db.execute(
+      `DELETE FROM chat_sessions WHERE id = $1`,
+      [id]
+    );
+    
+    return result.rowCount > 0;
   }
   
   // Chat message operations
   async getChatMessages(sessionId: number): Promise<ChatMessage[]> {
-    return await db.select().from(chatMessages)
-      .where(eq(chatMessages.sessionId, sessionId))
-      .orderBy(chatMessages.timestamp);
+    return await db.execute(
+      `SELECT * FROM chat_messages WHERE sessionid = $1 ORDER BY timestamp ASC`,
+      [sessionId]
+    );
   }
   
   async createChatMessage(message: InsertChatMessage): Promise<ChatMessage | null> {
-    const [newMessage] = await db.insert(chatMessages).values(message).returning();
+    const [newMessage] = await db.execute(
+      `INSERT INTO chat_messages (sessionid, role, content) VALUES ($1, $2, $3) RETURNING *`,
+      [message.sessionId, message.role, message.content]
+    );
     
-    // Update session's updated_at time
-    if (newMessage) {
-      await db.update(chatSessions)
-        .set({ updatedAt: new Date() })
-        .where(eq(chatSessions.id, message.sessionId));
-    }
-    
-    return newMessage || null;
+    return newMessage;
   }
   
   async deleteChatMessages(sessionId: number): Promise<boolean> {
-    const [deleted] = await db.delete(chatMessages)
-      .where(eq(chatMessages.sessionId, sessionId))
-      .returning();
-    return !!deleted;
+    const result = await db.execute(
+      `DELETE FROM chat_messages WHERE sessionid = $1`,
+      [sessionId]
+    );
+    
+    return true; // Always return true, even if no messages were deleted
   }
 }
 
-// Export a singleton instance for use throughout the app
 export const dbStorage = new DatabaseStorage();
