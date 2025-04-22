@@ -485,6 +485,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to retrieve writing entry' });
     }
   });
+
+  // Update a writing entry (PATCH)
+  app.patch('/api/db/writing-entries/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid ID' });
+      }
+      
+      // First check if the user owns this entry
+      const entry = await dbStorage.getWritingEntry(id);
+      if (!entry) {
+        return res.status(404).json({ error: 'Entry not found' });
+      }
+      
+      // Compare both as strings to handle type differences
+      const userId = req.user?.id;
+      if (!userId || entry.userId.toString() !== userId.toString()) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      // Update the entry
+      const updatedEntry = await dbStorage.updateWritingEntry(id, req.body);
+      
+      res.json({ entry: updatedEntry });
+    } catch (error) {
+      console.error('Error updating writing entry:', error);
+      res.status(500).json({ error: 'Failed to update writing entry' });
+    }
+  });
   
   // Chat sessions API
   app.get('/api/db/chat-sessions', isAuthenticated, async (req, res) => {
