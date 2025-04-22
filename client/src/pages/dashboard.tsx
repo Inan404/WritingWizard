@@ -50,13 +50,119 @@ export default function Dashboard() {
   // Safely handle the chat data
   const chats = writingChatsData?.chats || [];
 
+  // Import context hooks
+  const { 
+    setGrammarText, 
+    setParaphraseText, 
+    setAiCheckText, 
+    setHumanizerText,
+    setChatText
+  } = useWriting();
+  
   const handleToolSelect = (tool: "chat" | "grammar" | "paraphrase" | "ai-check" | "humanizer", chatId?: number) => {
     setActiveTool(tool);
     
-    // If chatId is provided, navigate to that specific chat
-    if (chatId && tool === "chat") {
-      // TODO: Load the specific chat data and populate the chat interface
-      console.log(`Loading chat ID: ${chatId}`);
+    // If chatId is provided, load that specific entry
+    if (chatId) {
+      // Find the chat in the data
+      const selectedChat = chats.find(chat => chat.id === chatId);
+      if (selectedChat) {
+        console.log(`Loading chat ID: ${chatId}`);
+        
+        // Load chat data based on the tool being selected
+        if (tool === "grammar" && selectedChat.inputText) {
+          try {
+            if (selectedChat.grammarResult) {
+              const parsedResult = JSON.parse(selectedChat.grammarResult);
+              
+              // Update the grammar checker with this content
+              setGrammarText({
+                original: selectedChat.inputText,
+                modified: parsedResult.corrected || selectedChat.inputText,
+                highlights: parsedResult.highlights || []
+              });
+            } else {
+              // Just set the input text if no result exists yet
+              setGrammarText({
+                original: selectedChat.inputText,
+                modified: selectedChat.inputText,
+                highlights: []
+              });
+            }
+          } catch (err) {
+            console.error("Failed to parse grammar result:", err);
+          }
+        } 
+        else if (tool === "paraphrase" && selectedChat.inputText) {
+          try {
+            if (selectedChat.paraphraseResult) {
+              const parsedResult = JSON.parse(selectedChat.paraphraseResult);
+              
+              // Update the paraphraser with this content
+              setParaphraseText({
+                original: selectedChat.inputText,
+                paraphrased: parsedResult.paraphrased || ""
+              });
+            } else {
+              // Just set the input text if no result exists yet
+              setParaphraseText({
+                original: selectedChat.inputText,
+                paraphrased: ""
+              });
+            }
+          } catch (err) {
+            console.error("Failed to parse paraphrase result:", err);
+          }
+        }
+        else if (tool === "ai-check" && selectedChat.inputText) {
+          try {
+            if (selectedChat.aiCheckResult) {
+              const parsedResult = JSON.parse(selectedChat.aiCheckResult);
+              
+              // Update the AI checker with this content
+              setAiCheckText({
+                original: selectedChat.inputText,
+                modified: selectedChat.inputText,
+                highlights: parsedResult.highlights || []
+              });
+            } else {
+              // Just set the input text if no result exists yet
+              setAiCheckText({
+                original: selectedChat.inputText,
+                modified: selectedChat.inputText,
+                highlights: []
+              });
+            }
+          } catch (err) {
+            console.error("Failed to parse AI check result:", err);
+          }
+        }
+        else if (tool === "humanizer" && selectedChat.inputText) {
+          try {
+            if (selectedChat.humanizeResult) {
+              const parsedResult = JSON.parse(selectedChat.humanizeResult);
+              
+              // Update the humanizer with this content
+              setHumanizerText({
+                original: selectedChat.inputText,
+                humanized: parsedResult.humanized || ""
+              });
+            } else {
+              // Just set the input text if no result exists yet
+              setHumanizerText({
+                original: selectedChat.inputText,
+                humanized: ""
+              });
+            }
+          } catch (err) {
+            console.error("Failed to parse humanizer result:", err);
+          }
+        }
+        else if (tool === "chat") {
+          // For chat, we don't have a specific format yet, but we'll set it up later
+          // This would normally load a chat conversation from the chat sessions
+        }
+      }
     }
     
     if (windowWidth < 768) {
@@ -184,10 +290,10 @@ export default function Dashboard() {
                     
                     {isLoading ? (
                       <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
-                    ) : chats.filter(chat => chat.grammarResult || chat.paraphraseResult || chat.aiCheckResult || chat.humanizeResult)?.length > 0 ? (
+                    ) : chats.filter(chat => !chat.grammarResult && !chat.paraphraseResult && !chat.aiCheckResult && !chat.humanizeResult)?.length > 0 ? (
                       <ul>
                         {chats
-                          .filter(chat => chat.grammarResult || chat.paraphraseResult || chat.aiCheckResult || chat.humanizeResult)
+                          .filter(chat => !chat.grammarResult && !chat.paraphraseResult && !chat.aiCheckResult && !chat.humanizeResult)
                           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
                           .map(chat => (
                             <li 
