@@ -1,11 +1,11 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/components/ui/theme-provider";
 import { Sun, Moon, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -22,7 +22,7 @@ export default function Home() {
           
           <div className="flex items-center space-x-4">
             <button 
-              onClick={toggleTheme} 
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
               className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors"
             >
               {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
