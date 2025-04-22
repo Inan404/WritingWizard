@@ -22,7 +22,7 @@ export default function AuthPage() {
 
   // Redirect if user is already logged in
   if (user) {
-    return <Redirect to="/" />;
+    return <Redirect to="/dashboard" />;
   }
 
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -90,7 +90,7 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           <div className="flex justify-end mb-2">
             <button 
-              onClick={toggleTheme} 
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
               className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors"
               aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
