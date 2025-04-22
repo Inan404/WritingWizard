@@ -329,42 +329,7 @@ export default function Dashboard() {
                     )}
                   </div>
                   
-                  {/* GRAMMAR section */}
-                  <div className="mb-4">
-                    <div className="flex items-center mb-2 text-xs font-semibold text-muted-foreground">
-                      <Pencil className="h-4 w-4 mr-1" />
-                      <span className="uppercase">GRAMMAR</span>
-                    </div>
-                    
-                    {isLoading ? (
-                      <div className="text-xs italic text-muted-foreground px-2">Loading...</div>
-                    ) : chats.filter(chat => chat.grammarResult)?.length > 0 ? (
-                      <ul>
-                        {chats
-                          .filter(chat => chat.grammarResult)
-                          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-                          .slice(0, 3)
-                          .map(chat => (
-                            <li 
-                              key={`grammar-${chat.id}`}
-                              onClick={() => handleToolSelect("grammar", chat.id)}
-                              className="cursor-pointer text-sm hover:bg-muted p-2 rounded-md mb-1 transition-colors"
-                            >
-                              <div className="flex items-center">
-                                <Pencil className="h-4 w-4 mr-2 text-muted-foreground" />
-                                <span className="truncate">{chat.title || `Grammar ${chat.id}`}</span>
-                              </div>
-                              <div className="text-xs text-muted-foreground ml-6 mt-1">
-                                {formatDate(chat.updatedAt)}
-                              </div>
-                            </li>
-                          ))
-                        }
-                      </ul>
-                    ) : (
-                      <div className="text-sm italic text-muted-foreground px-2">No grammar checks yet</div>
-                    )}
-                  </div>
+                  {/* No Grammar section needed - per user request: only keep records for the chat tab */}
                   
                   {/* AI Check section */}
                   <div className="mb-4">
