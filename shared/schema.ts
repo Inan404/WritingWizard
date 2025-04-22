@@ -22,31 +22,31 @@ export const users = pgTable("users", {
 // Writing entries table for storing writing data
 export const writingEntries = pgTable("writing_entries", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),  // Reference to our users table
+  userId: integer("userid").notNull().references(() => users.id),  // Reference to our users table (lowercase in db)
   title: text("title").default("Untitled"),
-  inputText: text("input_text").notNull(),
-  grammarResult: text("grammar_result"),
-  paraphraseResult: text("paraphrase_result"),
-  aiCheckResult: text("ai_check_result"),
-  humanizerResult: text("humanizer_result"),
-  isFavorite: boolean("is_favorite").default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  inputText: text("inputtext").notNull(), // lowercase in db
+  grammarResult: text("grammarresult"), // lowercase in db
+  paraphraseResult: text("paraphraseresult"), // lowercase in db
+  aiCheckResult: text("aicheckresult"), // lowercase in db
+  humanizerResult: text("humanizeresult"), // lowercase in db
+  isFavorite: boolean("isfavorite").default(false), // lowercase in db
+  createdAt: timestamp("createdat").defaultNow().notNull(), // lowercase in db
+  updatedAt: timestamp("updatedat").defaultNow().notNull(), // lowercase in db
 });
 
 // Chat sessions for organizing conversations
 export const chatSessions = pgTable("chat_sessions", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("userid").notNull().references(() => users.id), // lowercase in db
   name: text("name").default("New Chat").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("createdat").defaultNow().notNull(), // lowercase in db
+  updatedAt: timestamp("updatedat").defaultNow().notNull(), // lowercase in db
 });
 
 // Individual chat messages
 export const chatMessages = pgTable("chat_messages", {
   id: serial("id").primaryKey(),
-  sessionId: integer("session_id").notNull().references(() => chatSessions.id),
+  sessionId: integer("sessionid").notNull().references(() => chatSessions.id), // lowercase in db
   role: text("role").notNull(), // 'user' or 'assistant'
   content: text("content").notNull(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),

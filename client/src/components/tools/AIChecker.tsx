@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ResizablePanels from '../common/ResizablePanels';
 import TextEditor from '../common/TextEditor';
 import Suggestions from '../common/Suggestions';
@@ -6,13 +6,48 @@ import StyleOptions from '../common/StyleOptions';
 import ProgressBars from '../common/ProgressBars';
 import { useWriting } from '@/context/WritingContext';
 import { apiRequest } from '@/lib/queryClient';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function AIChecker() {
   const { aiCheckText, setAiCheckText, suggestions, setSuggestions } = useWriting();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [entryId, setEntryId] = useState<number | null>(null);
+  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
 
+  // Save writing entry to database
+  const saveEntryMutation = useMutation({
+    mutationFn: async (data: { 
+      id?: number;
+      userId: number; 
+      title: string; 
+      inputText: string;
+      aiCheckResult: string | null;
+    }) => {
+      const endpoint = data.id ? `/api/db/writing-entries/${data.id}` : '/api/db/writing-entries';
+      const method = data.id ? 'PATCH' : 'POST';
+      const response = await apiRequest(method, endpoint, data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setEntryId(data.id);
+      // Update the writing entries list in dashboard
+      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
+    },
+    onError: (error) => {
+      console.error('Error saving writing entry:', error);
+      toast({
+        title: "Error saving",
+        description: "Could not save your work. Please try again later.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // AI check mutation 
   const aiCheckMutation = useMutation({
     mutationFn: async (text: string) => {
       const response = await apiRequest('POST', '/api/ai-check', { text });
@@ -25,9 +60,26 @@ export default function AIChecker() {
         modified: data.aiAnalyzed || aiCheckText.original,
         highlights: data.highlights || []
       });
+      
       if (data.suggestions) {
         setSuggestions(data.suggestions);
       }
+      
+      // Save to database after successful AI check
+      if (user) {
+        saveEntryMutation.mutate({
+          id: entryId || undefined,
+          userId: user.id,
+          title: 'AI Check Result', 
+          inputText: aiCheckText.original,
+          aiCheckResult: JSON.stringify({
+            highlights: data.highlights || [],
+            suggestions: data.suggestions || [],
+            aiPercentage: data.aiPercentage || 0
+          })
+        });
+      }
+      
       toast({
         title: "AI check complete",
         description: "We've analyzed your text for AI-generated content.",
@@ -42,6 +94,41 @@ export default function AIChecker() {
       });
     }
   });
+  
+  // Save the text to database when user types (debounced)
+  useEffect(() => {
+    if (!user || !aiCheckText.original.trim()) return;
+    
+    // Clear existing timeout
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    
+    // Set new timeout for 2 seconds after typing stops
+    const timeout = setTimeout(() => {
+      if (aiCheckText.original.trim().length >= 10) {
+        saveEntryMutation.mutate({
+          id: entryId || undefined,
+          userId: user.id,
+          title: 'AI Check Text', 
+          inputText: aiCheckText.original,
+          aiCheckResult: aiCheckText.highlights.length > 0 ? JSON.stringify({
+            highlights: aiCheckText.highlights,
+            suggestions: suggestions,
+            aiPercentage: 0 // We don't have this yet
+          }) : null
+        });
+      }
+    }, 2000);
+    
+    setSaveTimeout(timeout);
+    
+    return () => {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+    };
+  }, [aiCheckText.original, user]);
 
   const handleTextChange = (text: string) => {
     setAiCheckText({
