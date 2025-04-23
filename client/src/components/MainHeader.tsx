@@ -27,17 +27,8 @@ export default function MainHeader({
 
   return (
     <header className="bg-card shadow-sm py-2 px-4 sticky top-0 z-10">
-      <div className="container mx-auto flex justify-between items-center">
-        <div className="flex items-center space-x-2 overflow-hidden">
-          <button className="p-2 text-muted-foreground hover:text-primary transition-colors">
-            <FileText className="h-5 w-5" />
-          </button>
-          
-          <div className="flex space-x-1 overflow-x-auto py-2 no-scrollbar md:flex-nowrap">
-            {/* Document tabs would appear here (removed the hardcoded "Introduction to..." items) */}
-          </div>
-        </div>
-        
+      <div className="container mx-auto flex justify-end items-center">
+        {/* Simplified header with right-aligned elements */}
         <div className="flex items-center space-x-4">
           <ThemeToggle />
           
