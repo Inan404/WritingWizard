@@ -47,8 +47,8 @@ export async function generateLlamaResponse(
         return await generatePerplexityResponse(prompt, maxTokens);
       }
       
-      // If no alternatives available, use a default response
-      return "I'm having trouble connecting to my AI service. Please check that your CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN environment variables are set correctly.";
+      // If no alternatives available, provide a friendly response
+      return "I apologize, but I'm having trouble connecting to my AI services right now. Please try again in a moment.";
     }
     
     // Call the Cloudflare AI API directly with fetch
@@ -111,8 +111,8 @@ export async function generateLlamaResponse(
       }
     }
     
-    // Return a clear error message if all attempts fail
-    return `Failed to generate AI response: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    // Return a user-friendly error message if all attempts fail
+    return "I apologize, but I'm having trouble connecting to my AI services right now. Please try again in a moment.";
   }
 }
 

@@ -392,9 +392,9 @@ export default function ChatGenerator() {
                 : 'bg-muted text-foreground rounded-2xl rounded-tl-none'
               } px-4 py-3`}
             >
-              <div>
+              <div className="w-full">
                 <div className="flex items-center mb-1">
-                  <span className="mr-2">
+                  <span className="mr-2 flex-shrink-0">
                     {message.role === 'user' 
                       ? <User className="h-4 w-4" /> 
                       : <Bot className="h-4 w-4" />
@@ -404,7 +404,7 @@ export default function ChatGenerator() {
                     {message.role === 'user' ? 'You' : 'AI Assistant'} • {formatTime(message.timestamp)}
                   </span>
                 </div>
-                <div className="whitespace-pre-wrap">
+                <div className="whitespace-pre-wrap break-words overflow-hidden w-full">
                   {message.content.split('\n').map((paragraph, i) => (
                     <p key={i} className={i > 0 ? 'mt-2' : ''}>
                       {paragraph}

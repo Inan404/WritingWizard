@@ -328,7 +328,7 @@ export async function generateChatResponse(messages: { role: string, content: st
       return await generateLlamaResponse(prompt, 2048);
     } catch (fallbackError) {
       console.error('Fallback chat approach also failed:', fallbackError);
-      return "I'm sorry, I'm having trouble generating a response right now. Please try again later.";
+      return "I apologize, but I'm having trouble connecting to my AI services right now. Please try again in a moment.";
     }
   }
 }
