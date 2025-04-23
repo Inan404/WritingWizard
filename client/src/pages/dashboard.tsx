@@ -86,7 +86,13 @@ export default function Dashboard() {
   } = useWriting();
   
   const handleToolSelect = (tool: "chat" | "grammar" | "paraphrase" | "ai-check" | "humanizer", chatId?: number) => {
-    // First, set the active tool so the correct tab is shown
+    // If chatId is provided, always switch to the chat tab regardless of which tool was requested
+    if (chatId) {
+      // Override the tool parameter to "chat" when a chat entry is selected
+      tool = "chat";
+    }
+    
+    // Set the active tool so the correct tab is shown
     setActiveTool(tool);
     
     // If chatId is provided, load that specific entry
@@ -98,8 +104,15 @@ export default function Dashboard() {
         
         // Set a small delay to ensure the UI updates with the correct tab first
         setTimeout(() => {
-          // Load chat data based on the tool being selected
-          if (tool === "grammar" && selectedChat.inputText) {
+          // Since we're always in chat tab now, we need to handle the chat data
+          // For chat, we need to set sessionStorage to force the ChatGenerator to load this session
+          // The order is very important here!
+          sessionStorage.removeItem('forceNewChat'); // Make sure we're not triggering a new chat
+          sessionStorage.setItem('currentChatSessionId', chatId.toString());
+          sessionStorage.setItem('forceLoadChat', 'true');
+          
+          // Keep the original code for loading other tools' data as a fallback
+          if (false && selectedChat.inputText) { // Disabled this branch since we always use chat tab now
             try {
               // Store the entry ID in session storage
               sessionStorage.setItem('currentGrammarEntryId', chatId.toString());
@@ -125,7 +138,7 @@ export default function Dashboard() {
               console.error("Failed to parse grammar result:", err);
             }
           } 
-          else if (tool === "paraphrase" && selectedChat.inputText) {
+          else if (false && tool === "paraphrase" && selectedChat.inputText) { // Disabled this branch since we always use chat tab now
             try {
               // Store the entry ID in session storage
               sessionStorage.setItem('currentParaphraseEntryId', chatId.toString());
@@ -149,7 +162,7 @@ export default function Dashboard() {
               console.error("Failed to parse paraphrase result:", err);
             }
           }
-          else if (tool === "ai-check" && selectedChat.inputText) {
+          else if (false && tool === "ai-check" && selectedChat.inputText) { // Disabled this branch since we always use chat tab now
             try {
               // Store the entry ID in session storage
               sessionStorage.setItem('currentAICheckEntryId', chatId.toString());
@@ -175,7 +188,7 @@ export default function Dashboard() {
               console.error("Failed to parse AI check result:", err);
             }
           }
-          else if (tool === "humanizer" && selectedChat.inputText) {
+          else if (false && tool === "humanizer" && selectedChat.inputText) { // Disabled this branch since we always use chat tab now
             try {
               // Store the entry ID in session storage
               sessionStorage.setItem('currentHumanizerEntryId', chatId.toString());
@@ -199,13 +212,8 @@ export default function Dashboard() {
               console.error("Failed to parse humanizer result:", err);
             }
           }
-          else if (tool === "chat") {
-            // For chat, we need to set sessionStorage to force the ChatGenerator to load this session
-            // The order is very important here!
-            sessionStorage.removeItem('forceNewChat'); // Make sure we're not triggering a new chat
-            sessionStorage.setItem('currentChatSessionId', chatId.toString());
-            sessionStorage.setItem('forceLoadChat', 'true');
-          }
+          // We already set up the chat session storage at the beginning of the function 
+          // so there's no need for an "else if (tool === 'chat')" condition here
         }, 20); // Small delay to ensure the UI has time to switch tabs
       }
     }
