@@ -289,25 +289,47 @@ export default function Dashboard() {
   
   const handleToggleFavorite = async (chatId: number) => {
     try {
+      console.log(`Toggling favorite for chat ${chatId}`);
+      
+      // Find the current chat and its favorite status
+      const chat = chats.find(c => c.id === chatId);
+      if (!chat) {
+        throw new Error("Chat not found");
+      }
+      
       // Call the API to toggle the favorite status
       const response = await apiRequest('PATCH', `/api/db/chat-sessions/${chatId}/favorite`);
       
       if (response.ok) {
-        // Refetch to update the UI
+        // Immediately update the local state for instant feedback
+        const updatedChats = chats.map(c => 
+          c.id === chatId ? { ...c, isFavorite: !c.isFavorite } : c
+        );
+        
+        // Update the query cache for immediate UI update
+        queryClient.setQueryData(['/api/writing-chats'], { 
+          chats: updatedChats,
+          timestamp: Date.now()
+        });
+        
+        // Then refetch to ensure consistency with server
         await refetch();
         queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
         
         // Show success message
         toast({
           title: "Favorite Updated",
-          description: "Chat favorite status has been updated.",
+          description: `Chat ${!chat.isFavorite ? "added to" : "removed from"} favorites.`,
           variant: "default"
         });
       } else {
         // Show error
+        const errorData = await response.json().catch(() => ({}));
+        console.error("API error response:", errorData);
+        
         toast({
           title: "Error",
-          description: "Failed to update favorite status. Please try again.",
+          description: errorData.error || "Failed to update favorite status. Please try again.",
           variant: "destructive"
         });
       }
@@ -326,7 +348,7 @@ export default function Dashboard() {
     
     try {
       // Call the API to delete the chat
-      const response = await apiRequest('DELETE', `/api/chat-sessions/${chatToDelete}`);
+      const response = await apiRequest('DELETE', `/api/db/chat-sessions/${chatToDelete}`);
       
       if (response.ok) {
         // If current chat is being deleted, clear the session storage
@@ -417,7 +439,7 @@ export default function Dashboard() {
               exit={{ x: -280 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="flex flex-col h-full">
+              <div className="flex flex-col h-full overflow-hidden">
                 <div className="flex items-center justify-between p-4">
                   <div className="text-lg font-bold text-primary">Dashboard</div>
                   {sidebarOpen && (
@@ -498,7 +520,7 @@ export default function Dashboard() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-6 w-6 mr-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="h-6 w-6 mr-1"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleToggleFavorite(chat.id);
