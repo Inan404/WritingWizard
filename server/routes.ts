@@ -2,7 +2,14 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { dbStorage } from "./dbStorage"; 
-import { generateGrammarCheck, generateParaphrase, generateHumanized, checkAIContent, generateWriting } from "./services/aiService";
+import { 
+  generateGrammarCheck, 
+  generateParaphrase, 
+  generateHumanized, 
+  checkAIContent, 
+  generateWriting,
+  generateChatResponse 
+} from "./services/aiService";
 import { setupAuth } from "./auth";
 import { ensureTablesExist } from "./db";
 
@@ -341,6 +348,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Save chat message error:", error);
       res.status(500).json({ message: "Error saving chat message" });
+    }
+  });
+  
+  // AI Chat response endpoint
+  app.post("/api/chat-generate", isAuthenticated, async (req, res) => {
+    try {
+      const { sessionId, messages } = req.body;
+      
+      if (!sessionId || !messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: 'Invalid request parameters' });
+      }
+      
+      // Verify the session belongs to the user
+      const session = await dbStorage.getChatSession(sessionId);
+      if (!session || session.userId !== req.user?.id) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      // Format messages for the AI model
+      const aiMessages = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+      
+      // Generate AI response using the Llama model
+      const aiResponse = await generateChatResponse(aiMessages);
+      
+      // Save the AI response to the database
+      const savedMessage = await dbStorage.createChatMessage({
+        sessionId: sessionId,
+        role: 'assistant',
+        content: aiResponse
+      });
+      
+      // Return the AI response and the saved message
+      res.json({
+        message: savedMessage,
+        aiResponse
+      });
+    } catch (error) {
+      console.error('Error generating AI chat response:', error);
+      res.status(500).json({ error: 'Failed to generate AI response' });
     }
   });
   

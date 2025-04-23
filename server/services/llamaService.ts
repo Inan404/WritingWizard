@@ -41,7 +41,7 @@ export async function generateGrammarCheck(text: string): Promise<GrammarResult>
     Return ONLY a valid JSON object. Start with '{' and end with '}'.
     `;
 
-    const jsonResponse = await generateLlamaResponse(prompt, { maxTokens: 2048, temperature: 0.2 });
+    const jsonResponse = await generateLlamaResponse(prompt, 2048);
     
     try {
       // Extract just the JSON part from the response
@@ -125,7 +125,7 @@ export async function generateParaphrase(text: string, style: string = 'standard
     Return ONLY the paraphrased text, no explanations or other text.
     `;
 
-    const paraphrased = await generateLlamaResponse(prompt, { maxTokens: 2048, temperature: 0.7 });
+    const paraphrased = await generateLlamaResponse(prompt, 2048);
     return { paraphrased };
   } catch (error) {
     console.error('Error in paraphrase service:', error);
@@ -157,7 +157,7 @@ export async function generateHumanized(text: string, style: string = 'standard'
     Return ONLY the humanized text, no explanations or other text.
     `;
 
-    const humanized = await generateLlamaResponse(prompt, { maxTokens: 2048, temperature: 0.8 });
+    const humanized = await generateLlamaResponse(prompt, 2048);
     return { humanized };
   } catch (error) {
     console.error('Error in humanize service:', error);
