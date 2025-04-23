@@ -88,8 +88,13 @@ export default function Dashboard() {
   const handleToolSelect = (tool: "chat" | "grammar" | "paraphrase" | "ai-check" | "humanizer", chatId?: number) => {
     // If chatId is provided, always switch to the chat tab regardless of which tool was requested
     if (chatId) {
+      console.log("Chat entry clicked, forcing switch to chat tab");
       // Override the tool parameter to "chat" when a chat entry is selected
       tool = "chat";
+      
+      // Create and dispatch a custom event to force the tab change
+      const chatTabChangeEvent = new CustomEvent('forceChatTabChange', { detail: chatId });
+      window.dispatchEvent(chatTabChangeEvent);
     }
     
     // Set the active tool so the correct tab is shown

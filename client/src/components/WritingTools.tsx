@@ -38,8 +38,20 @@ export default function WritingTools() {
     // Listen for custom event to force tab change to chat
     const handleForceChatTabChange = (e: CustomEvent) => {
       console.log("Force chat tab change event detected with ID:", e.detail);
-      setCurrentTool('chat');
-      setActiveTool('chat');
+      
+      // Set tool to chat with high priority
+      setTimeout(() => {
+        // Do this with a higher priority than other state updates
+        console.log("FORCE switching to chat tab!");
+        setCurrentTool('chat');
+        setActiveTool('chat');
+        
+        // Set a flag to indicate we've explicitly switched tabs via chat selection
+        sessionStorage.setItem('forcedChatTabSwitch', 'true');
+        
+        // Force a re-render by updating a session storage item
+        sessionStorage.setItem('lastChatTabForceTime', Date.now().toString());
+      }, 0);
     };
     
     window.addEventListener('forceChatTabChange', handleForceChatTabChange as EventListener);
@@ -51,8 +63,18 @@ export default function WritingTools() {
   
   // Update local state when context changes
   useEffect(() => {
-    setCurrentTool(activeTool);
-    console.log("Active tool updated in useEffect:", activeTool);
+    // Check if we've forced a chat tab switch - this takes priority over activeTool
+    const forcedChatTabSwitch = sessionStorage.getItem('forcedChatTabSwitch');
+    if (forcedChatTabSwitch === 'true') {
+      console.log("Forced chat tab switch detected - prioritizing chat tab over context change");
+      setCurrentTool('chat'); // Always set to chat if forced
+      // Clear the flag to prevent continuous override
+      sessionStorage.removeItem('forcedChatTabSwitch');
+    } else {
+      // Normal update from context
+      setCurrentTool(activeTool);
+      console.log("Active tool updated in useEffect:", activeTool);
+    }
   }, [activeTool]);
 
   const handleTabChange = (tab: WritingTool) => {
@@ -72,6 +94,17 @@ export default function WritingTools() {
 
   // Function to render the active tool component
   const renderTool = () => {
+    // Check if we need to force the chat tab due to a chat selection
+    const currentChatId = sessionStorage.getItem('currentChatSessionId');
+    const forceLoadChat = sessionStorage.getItem('forceLoadChat');
+    
+    // If we have a chat ID and it's set to force load, always render the chat component
+    if (currentChatId && forceLoadChat === 'true') {
+      console.log("Force rendering chat component due to chat ID selection:", currentChatId);
+      return <ChatGenerator />;
+    }
+    
+    // Normal rendering based on currentTool state
     console.log("Rendering tool:", currentTool);
     switch (currentTool) {
       case "grammar":
@@ -132,8 +165,8 @@ export default function WritingTools() {
         {renderTool()}
       </div>
       
-      {/* Chat Input Component - Only show in Chat tab */}
-      {currentTool === "chat" && (
+      {/* Chat Input Component - Show for Chat tab or when a chat is forced loaded */}
+      {(currentTool === "chat" || (sessionStorage.getItem('currentChatSessionId') && sessionStorage.getItem('forceLoadChat') === 'true')) && (
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-3xl px-4">
           <motion.div 
             className="relative bg-card rounded-full shadow-lg"
