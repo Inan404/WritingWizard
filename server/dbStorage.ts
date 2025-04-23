@@ -181,8 +181,8 @@ export class DatabaseStorage implements IDBStorage {
         return await this.getChatSession(id);
       }
       
-      // Always update updatedAt timestamp when changing the session
-      updateData.updatedAt = new Date();
+      // We'll handle updatedAt at the database level
+      // Drizzle schema will auto-update the updatedAt field
       
       console.log(`Updating chat session ${id} with data:`, updateData);
       
