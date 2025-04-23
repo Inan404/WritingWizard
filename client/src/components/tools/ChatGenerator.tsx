@@ -163,7 +163,10 @@ export default function ChatGenerator() {
       sessionStorage.removeItem('forceLoadChat');
       sessionStorage.removeItem('currentChatSessionId');
     } 
-    else if (user && !sessionId) {
+    else if (user && !sessionId && !sessionStorage.getItem('disableAutoCreate')) {
+      // Check if this is the first load and we're not specifically trying to load an existing chat
+      // Only auto-create new chat if we really want a new chat
+      console.log("Auto-creating new chat session on component mount");
       createSessionMutation.mutate();
     }
   }, [user]);

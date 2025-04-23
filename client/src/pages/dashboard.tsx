@@ -113,6 +113,8 @@ export default function Dashboard() {
           // For chat, we need to set sessionStorage to force the ChatGenerator to load this session
           // The order is very important here!
           sessionStorage.removeItem('forceNewChat'); // Make sure we're not triggering a new chat
+          // Set a flag to disable auto-creation of new chats when we just want to load an existing one
+          sessionStorage.setItem('disableAutoCreate', 'true');
           sessionStorage.setItem('currentChatSessionId', chatId.toString());
           sessionStorage.setItem('forceLoadChat', 'true');
           
@@ -246,6 +248,7 @@ export default function Dashboard() {
       sessionStorage.removeItem('forceLoadChat');
       sessionStorage.removeItem('forceNewChat');
       sessionStorage.removeItem('lastCreatedChatId');
+      sessionStorage.removeItem('disableAutoCreate');
       
       // CRITICAL FIX: Direct navigation to chat tab
       // This must be executed before anything else
