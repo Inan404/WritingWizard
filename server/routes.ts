@@ -451,7 +451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             paraphraseResult: null,
             aiCheckResult: null,
             humanizeResult: null,
-            isFavorite: false,
+            isFavorite: session.isFavorite || false, // Use the actual isFavorite value from the database
             userId: session.userId,
             createdAt: session.createdAt.toISOString(),
             updatedAt: session.updatedAt.toISOString()

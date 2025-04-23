@@ -174,11 +174,17 @@ export class DatabaseStorage implements IDBStorage {
       const updateData: Partial<InsertChatSession> = {};
       
       if (session.name !== undefined) updateData.name = session.name;
+      if (session.isFavorite !== undefined) updateData.isFavorite = session.isFavorite;
       
       // If no fields to update, return current session
       if (Object.keys(updateData).length === 0) {
         return await this.getChatSession(id);
       }
+      
+      // Always update updatedAt timestamp when changing the session
+      updateData.updatedAt = new Date();
+      
+      console.log(`Updating chat session ${id} with data:`, updateData);
       
       const [updatedSession] = await db
         .update(chatSessions)
