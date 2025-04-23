@@ -266,14 +266,28 @@ export default function ChatGenerator() {
 
   const generateMutation = useMutation({
     mutationFn: async (message: string) => {
-      const response = await apiRequest('POST', '/api/generate-writing', { 
-        originalSample: '',
-        referenceUrl: '',
-        topic: message,
-        length: '500 words',
-        style: 'Casual',
-        additionalInstructions: 'Respond as an AI assistant'
+      if (!sessionId) {
+        throw new Error('No active chat session');
+      }
+      
+      // Get all previous messages to maintain conversation context
+      const previousMessages = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+      
+      // Add the new user message
+      const chatMessages = [
+        ...previousMessages,
+        { role: 'user' as const, content: message }
+      ];
+      
+      // Use the dedicated AI chat endpoint
+      const response = await apiRequest('POST', '/api/chat-generate', {
+        sessionId: sessionId,
+        messages: chatMessages
       });
+      
       return response.json();
     },
     onSuccess: (data) => {
@@ -281,23 +295,16 @@ export default function ChatGenerator() {
       const assistantResponse = {
         id: Date.now().toString(),
         role: 'assistant' as const,
-        content: data.generatedText,
+        content: data.aiResponse || data.message?.content, // Accept either format
         timestamp: Date.now()
       };
       
       setMessages(prev => [...prev, assistantResponse as Message]);
       
-      // Save assistant message to database if we have a session
-      if (sessionId) {
-        saveMessageMutation.mutate({
-          sessionId,
-          role: 'assistant',
-          content: data.generatedText
-        });
-        
-        // Invalidate the sidebar data to show updated chat list
-        queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
-      }
+      // No need to save the assistant message as the API already does that
+      
+      // Invalidate the sidebar data to show updated chat list
+      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
     },
     onError: () => {
       setIsLoading(false);
