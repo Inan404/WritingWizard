@@ -1,6 +1,6 @@
 /**
  * AI Service that integrates with language models
- * Currently using a mock implementation until we integrate with a free LLM solution
+ * Uses Llama model via Cloudflare Workers AI
  */
 import {
   GrammarResult,
@@ -11,8 +11,7 @@ import {
   GenerateWritingParams
 } from './aiServiceTypes';
 
-// Use the perplexity service which is currently just a wrapper around the mock service
-// In the future, this will be updated to use a real LLM integration
+// Use the perplexity service which now uses Llama via Cloudflare Workers AI
 import * as llmService from './perplexityService';
 
 // Export the implementations - this layer of indirection allows us to
@@ -22,3 +21,4 @@ export const generateParaphrase = llmService.generateParaphrase;
 export const generateHumanized = llmService.generateHumanized;
 export const checkAIContent = llmService.checkAIContent;
 export const generateWriting = llmService.generateWriting;
+export const generateChatResponse = llmService.generateChatResponse;
