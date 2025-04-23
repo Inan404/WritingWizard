@@ -197,7 +197,7 @@ export async function checkAIContent(text: string): Promise<AICheckResult> {
     Return ONLY a valid JSON object. Start with '{' and end with '}'.
     `;
 
-    const jsonResponse = await generateLlamaResponse(prompt, { maxTokens: 2048, temperature: 0.3 });
+    const jsonResponse = await generateLlamaResponse(prompt, 2048);
     
     try {
       // Extract JSON from the response
@@ -288,7 +288,7 @@ export async function generateWriting({
     Return ONLY the generated text, no explanations or other text.
     `;
 
-    const generatedText = await generateLlamaResponse(prompt, { maxTokens: 4096, temperature: 0.7 });
+    const generatedText = await generateLlamaResponse(prompt, 4096);
     return { generatedText };
   } catch (error) {
     console.error('Error in writing generation service:', error);
@@ -303,7 +303,7 @@ export async function generateWriting({
  */
 export async function generateChatResponse(messages: { role: string, content: string }[]): Promise<string> {
   try {
-    return await generateLlamaChatResponse(messages, { maxTokens: 2048, temperature: 0.7 });
+    return await generateLlamaChatResponse(messages, 2048);
   } catch (error) {
     console.error('Error in chat response generation:', error);
     
@@ -325,7 +325,7 @@ export async function generateChatResponse(messages: { role: string, content: st
       Respond directly without prefacing with "Assistant:" or similar indicators.
       `;
 
-      return await generateLlamaResponse(prompt, { maxTokens: 2048, temperature: 0.7 });
+      return await generateLlamaResponse(prompt, 2048);
     } catch (fallbackError) {
       console.error('Fallback chat approach also failed:', fallbackError);
       return "I'm sorry, I'm having trouble generating a response right now. Please try again later.";
