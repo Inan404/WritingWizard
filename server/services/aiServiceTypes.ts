@@ -22,6 +22,12 @@ export interface GrammarResult {
 
 export interface ParaphraseResult {
   paraphrased: string;
+  metrics?: {
+    correctness: number;
+    clarity: number;
+    engagement: number;
+    delivery: number;
+  };
 }
 
 export interface HumanizedResult {

@@ -11,7 +11,7 @@ import { motion } from 'framer-motion';
 import { Copy, Volume, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react';
 
 export default function Paraphraser() {
-  const { paraphraseText, setParaphraseText, selectedStyle } = useWriting();
+  const { paraphraseText, setParaphraseText, selectedStyle, setScoreMetrics } = useWriting();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // No database storage needed for paraphraser per user request
@@ -26,8 +26,25 @@ export default function Paraphraser() {
       setIsProcessing(false);
       setParaphraseText({
         original: paraphraseText.original,
-        paraphrased: data.paraphrased
+        paraphrased: data.paraphrased || data.paraphrasedText
       });
+      
+      // Update metrics if available
+      if (data.metrics) {
+        const { correctness, clarity, engagement, delivery } = data.metrics;
+        // Update progress bars with metrics from API response
+        if (correctness !== undefined && clarity !== undefined && 
+            engagement !== undefined && delivery !== undefined) {
+          console.log("Updating metrics:", data.metrics);
+          // Update the metrics in WritingContext
+          setScoreMetrics({
+            correctness, 
+            clarity, 
+            engagement, 
+            delivery
+          });
+        }
+      }
       
       // No database storage needed for paraphraser per user request
       

@@ -12,7 +12,7 @@ import { Copy, Volume, ThumbsUp, ThumbsDown, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
 export default function Humanizer() {
-  const { humanizerText, setHumanizerText, selectedStyle } = useWriting();
+  const { humanizerText, setHumanizerText, selectedStyle, scoreMetrics, setScoreMetrics } = useWriting();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
