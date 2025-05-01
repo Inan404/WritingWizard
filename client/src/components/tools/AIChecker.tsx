@@ -11,7 +11,14 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 
 export default function AIChecker() {
-  const { aiCheckText, setAiCheckText, suggestions, setSuggestions } = useWriting();
+  const { 
+    aiCheckText, 
+    setAiCheckText, 
+    suggestions, 
+    setSuggestions,
+    scoreMetrics,
+    setScoreMetrics
+  } = useWriting();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -50,18 +57,35 @@ export default function AIChecker() {
   // AI check mutation 
   const aiCheckMutation = useMutation({
     mutationFn: async (text: string) => {
+      console.log("Sending AI check request");
       const response = await apiRequest('POST', '/api/ai-check', { text });
-      return response.json();
+      const jsonData = await response.json();
+      console.log("Received AI check response:", jsonData);
+      return jsonData;
     },
     onSuccess: (data) => {
       setIsProcessing(false);
+      console.log("AI check data received:", data);
+      
+      // Set the text content with appropriate fallbacks
       setAiCheckText({
         original: aiCheckText.original,
         modified: data.aiAnalyzed || aiCheckText.original,
         highlights: data.highlights || []
       });
       
+      // Update metrics with AI percentage
+      if (data.aiPercentage !== undefined) {
+        console.log("Updating AI percentage:", data.aiPercentage);
+        setScoreMetrics({
+          ...scoreMetrics, 
+          aiPercentage: data.aiPercentage
+        });
+      }
+      
+      // Set suggestions if available
       if (data.suggestions) {
+        console.log("Setting suggestions:", data.suggestions.length);
         setSuggestions(data.suggestions);
       }
       

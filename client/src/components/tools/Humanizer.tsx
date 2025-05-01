@@ -51,17 +51,28 @@ export default function Humanizer() {
   // Humanize text mutation
   const humanizeMutation = useMutation({
     mutationFn: async (data: { text: string; style: WritingStyle }) => {
+      console.log("Sending humanize request with style:", data.style);
       const response = await apiRequest('POST', '/api/humanize', data);
-      return response.json();
+      const jsonData = await response.json();
+      console.log("Received humanize response:", jsonData);
+      return jsonData;
     },
     onSuccess: (data) => {
       setIsProcessing(false);
       
-      // Update the text in the UI
-      setHumanizerText({
-        original: humanizerText.original,
-        humanized: data.humanized || data.humanizedText
-      });
+      // Handle both possible response formats (humanized or humanizedText)
+      const humanizedContent = data.humanized || data.humanizedText;
+      console.log("Setting humanized content:", humanizedContent);
+      
+      if (humanizedContent) {
+        // Update the text in the UI
+        setHumanizerText({
+          original: humanizerText.original,
+          humanized: humanizedContent
+        });
+      } else {
+        console.error("No humanized content found in response:", data);
+      }
       
       // Update the metrics in the UI
       if (data.metrics) {
@@ -81,13 +92,14 @@ export default function Humanizer() {
       }
       
       // Save to database after successful humanizing
-      if (user) {
+      if (user && humanizedContent) {
+        console.log("Saving humanized content to database");
         saveEntryMutation.mutate({
           id: entryId || undefined,
           userId: user.id,
           title: 'Humanized Text', 
           inputText: humanizerText.original,
-          humanizerResult: data.humanized || data.humanizedText
+          humanizerResult: humanizedContent
         });
       }
       

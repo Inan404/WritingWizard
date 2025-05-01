@@ -182,15 +182,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { text } = req.body;
       
+      console.log("Received AI check request");
+      
       if (!text || typeof text !== "string") {
         return res.status(400).json({ message: "Invalid text input" });
       }
       
       const result = await checkAIContent(text);
+      console.log("AI check result:", { 
+        textLength: result.aiAnalyzed?.length,
+        highlightsCount: result.highlights?.length,
+        suggestionsCount: result.suggestions?.length,
+        aiPercentage: result.aiPercentage
+      });
+      
       res.json(result);
     } catch (error) {
       console.error("AI check error:", error);
-      res.status(500).json({ message: "Error checking AI content" });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ 
+        message: "Error checking AI content", 
+        error: errorMessage 
+      });
     }
   });
 

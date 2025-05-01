@@ -244,12 +244,29 @@ export async function generateParaphrase(text: string, style: string = 'standard
  */
 export async function generateHumanized(text: string, style: string = 'standard'): Promise<HumanizedResult> {
   try {
+    console.log("generateHumanized called with style:", style);
+    let styleDescription = "";
+    switch (style.toLowerCase()) {
+      case 'formal':
+        styleDescription = "Keep a formal tone while making the text sound written by a human. Use sophisticated vocabulary but with natural variation.";
+        break;
+      case 'fluency':
+        styleDescription = "Make the text flow naturally with varied sentence structure, transitions, and rhythm like a human writer would use.";
+        break;
+      case 'academic':
+        styleDescription = "Maintain scholarly tone but add human touches like occasional hedging, authentic voice, and natural paragraph development.";
+        break;
+      case 'custom':
+        styleDescription = "Add a distinctive personal voice with unique phrasings, occasionally imperfect but natural language patterns.";
+        break;
+      default: // standard
+        styleDescription = "Make the text sound natural and human-written with varied sentence structures and casual language where appropriate.";
+    }
+    
     const systemPrompt = `
     You are an expert writing assistant focused on making AI-generated text sound more human.
     Rewrite the text to sound more natural, with human-like quirks, varied sentence structure, and less formal patterns.
-    If the style is "casual" add more conversational elements like contractions.
-    If the style is "expert" keep a professional tone while still sounding human.
-    If the style is "creative" add unique turns of phrase and a more distinctive voice.
+    ${styleDescription}
     Maintain the original meaning and flow but make it less recognizable as AI-generated.
     
     Return your response in JSON format with the following fields:
