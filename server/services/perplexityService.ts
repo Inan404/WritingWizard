@@ -46,7 +46,7 @@ async function callPerplexityAPI(messages: { role: string, content: string }[], 
         'Authorization': `Bearer ${PERPLEXITY_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama-3.1-405b-instruct",
+        model: "sonar-pro",
         messages,
         temperature,
         max_tokens: 1000,
