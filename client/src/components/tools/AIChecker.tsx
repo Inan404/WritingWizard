@@ -330,6 +330,7 @@ export default function AIChecker() {
             onAccept={handleAcceptSuggestion} 
             onDismiss={handleDismissSuggestion}
             type="ai"
+            suggestions={suggestions.filter(suggestion => suggestion.type === 'ai')}
           />
         ) : scoreMetrics.aiPercentage !== undefined ? (
           <div className="p-4 border rounded-md border-border mt-4">

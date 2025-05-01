@@ -6,6 +6,13 @@ interface SuggestionsProps {
   onAccept?: (id: string) => void;
   onDismiss?: (id: string) => void;
   type?: 'grammar' | 'paraphrase' | 'ai' | 'humanize';
+  suggestions?: Array<{
+    id: string;
+    type: "grammar" | "suggestion" | "ai" | "error";
+    text: string;
+    replacement: string;
+    description: string;
+  }>;
 }
 
 export default function Suggestions({ 
@@ -17,6 +24,9 @@ export default function Suggestions({
   
   // Filter suggestions based on type
   const filteredSuggestions = suggestions.filter(suggestion => {
+    // Log each suggestion for debugging
+    console.log(`Suggestion: ${JSON.stringify(suggestion)}`);
+    
     if (type === 'grammar' && (suggestion.type === 'grammar' || suggestion.type === 'error' || suggestion.type === 'suggestion')) {
       return true;
     }
@@ -30,7 +40,7 @@ export default function Suggestions({
     return false;
   });
   
-  console.log(`Showing ${filteredSuggestions.length} suggestions for ${type} tool`);
+  console.log(`Showing ${filteredSuggestions.length} suggestions for ${type} tool from total ${suggestions.length}`);
 
   const handleAccept = (id: string) => {
     if (onAccept) {
