@@ -179,6 +179,9 @@ export default function AIChecker() {
       return;
     }
     
+    // Log starting the AI check process
+    console.log("Starting AI check for text:", aiCheckText.original.substring(0, 100) + "...");
+    
     // Clear existing suggestions before starting new check
     setSuggestions([]);
     
@@ -189,7 +192,85 @@ export default function AIChecker() {
     });
     
     setIsProcessing(true);
-    aiCheckMutation.mutate(aiCheckText.original);
+    
+    // Test the API directly with fetch for debugging
+    fetch('/api/ai-check', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text: aiCheckText.original }),
+    })
+    .then(response => {
+      console.log("AI check API response status:", response.status);
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log("AI check API success data:", data);
+      
+      // Set the text content with appropriate fallbacks
+      setAiCheckText({
+        original: aiCheckText.original,
+        modified: data.aiAnalyzed || aiCheckText.original,
+        highlights: data.highlights || []
+      });
+      
+      // Update metrics from API response
+      if (data.aiPercentage !== undefined || data.metrics) {
+        console.log("Updating AI percentage:", data.aiPercentage);
+        console.log("Updating metrics:", data.metrics);
+        
+        // Create a metrics object with API values or defaults
+        const updatedMetrics = {
+          correctness: data.metrics?.correctness || scoreMetrics?.correctness || 80,
+          clarity: data.metrics?.clarity || scoreMetrics?.clarity || 80,
+          engagement: data.metrics?.engagement || scoreMetrics?.engagement || 80,
+          delivery: data.metrics?.delivery || scoreMetrics?.delivery || 80,
+          aiPercentage: data.aiPercentage || 0
+        };
+        setScoreMetrics(updatedMetrics);
+      }
+      
+      // Set suggestions if available
+      if (data.suggestions) {
+        console.log("Setting suggestions:", data.suggestions.length);
+        setSuggestions(data.suggestions);
+      }
+      
+      // Save to database after successful AI check
+      if (user) {
+        saveEntryMutation.mutate({
+          id: entryId || undefined,
+          userId: user.id,
+          title: 'AI Check Result', 
+          inputText: aiCheckText.original,
+          aiCheckResult: JSON.stringify({
+            highlights: data.highlights || [],
+            suggestions: data.suggestions || [],
+            aiPercentage: data.aiPercentage || 0
+          })
+        });
+      }
+      
+      toast({
+        title: "AI check complete",
+        description: "We've analyzed your text for AI-generated content.",
+      });
+      
+      setIsProcessing(false);
+    })
+    .catch(error => {
+      console.error("AI check API error:", error);
+      toast({
+        title: "Error checking for AI content",
+        description: error.message || "There was a problem processing your text. Please try again.",
+        variant: "destructive"
+      });
+      setIsProcessing(false);
+    });
   };
 
   const handleAcceptSuggestion = (id: string) => {
