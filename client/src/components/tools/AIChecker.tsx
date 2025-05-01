@@ -104,6 +104,7 @@ export default function AIChecker() {
       if (data.suggestions) {
         console.log("Setting suggestions:", data.suggestions.length);
         setSuggestions(data.suggestions);
+        setAiSuggestions(data.suggestions); // Also update local state
       }
       
       // Save to database after successful AI check
@@ -248,6 +249,7 @@ export default function AIChecker() {
       if (data.suggestions) {
         console.log("Setting suggestions:", data.suggestions.length);
         setSuggestions(data.suggestions);
+        setAiSuggestions(data.suggestions); // Also update local state
       }
       
       // Save to database after successful AI check
@@ -284,7 +286,7 @@ export default function AIChecker() {
   };
 
   const handleAcceptSuggestion = (id: string) => {
-    const suggestion = aiSuggestions.find(s => s.id === id);
+    const suggestion = aiSuggestions.find((s) => s.id === id);
     if (!suggestion) return;
 
     // Apply the suggestion to the text
@@ -295,13 +297,13 @@ export default function AIChecker() {
     });
 
     // Remove the suggestion from the list
-    setSuggestions(contextSuggestions.filter(s => s.id !== id));
-    setAiSuggestions(aiSuggestions.filter(s => s.id !== id));
+    setSuggestions(contextSuggestions.filter((suggestion) => suggestion.id !== id));
+    setAiSuggestions(aiSuggestions.filter((suggestion) => suggestion.id !== id));
   };
 
   const handleDismissSuggestion = (id: string) => {
-    setSuggestions(contextSuggestions.filter(s => s.id !== id));
-    setAiSuggestions(aiSuggestions.filter(s => s.id !== id));
+    setSuggestions(contextSuggestions.filter((suggestion) => suggestion.id !== id));
+    setAiSuggestions(aiSuggestions.filter((suggestion) => suggestion.id !== id));
   };
 
   const LeftPanel = (
@@ -338,12 +340,19 @@ export default function AIChecker() {
             <p>Scanning for AI content...</p>
           </div>
         ) : contextSuggestions.length > 0 || aiSuggestions.length > 0 ? (
+          <>
+          {console.log("Rendering suggestions component with:", 
+            aiSuggestions.length > 0 ? 
+              `${aiSuggestions.length} local suggestions` : 
+              `${contextSuggestions.filter(suggestion => suggestion.type === 'ai').length} filtered context suggestions`
+          )}
           <Suggestions 
             onAccept={handleAcceptSuggestion} 
             onDismiss={handleDismissSuggestion}
             type="ai"
             suggestions={aiSuggestions.length > 0 ? aiSuggestions : contextSuggestions.filter(suggestion => suggestion.type === 'ai')}
           />
+          </>
         ) : scoreMetrics.aiPercentage !== undefined ? (
           <div className="p-4 border rounded-md border-border mt-4">
             <h3 className="font-medium mb-2">AI Analysis Complete</h3>
