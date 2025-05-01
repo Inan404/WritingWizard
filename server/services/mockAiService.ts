@@ -21,8 +21,21 @@ export async function generateGrammarCheck(text: string): Promise<GrammarResult>
   
   // Generate a simple mock response
   const words = text.split(' ');
-  const highlights = [];
-  const suggestions = [];
+  const highlights: Array<{
+    type: "error" | "suggestion" | "ai";
+    start: number;
+    end: number;
+    suggestion?: string;
+    message?: string;
+  }> = [];
+  
+  const suggestions: Array<{
+    id: string;
+    type: "grammar" | "suggestion" | "ai" | "error";
+    text: string;
+    replacement: string;
+    description: string;
+  }> = [];
   
   // Create random suggestions for demonstration
   let position = 0;
@@ -38,7 +51,7 @@ export async function generateGrammarCheck(text: string): Promise<GrammarResult>
       position = end;
       
       // Type of issue - randomly assign
-      const type = Math.random() < 0.5 ? 'error' : 'suggestion';
+      const type = Math.random() < 0.5 ? 'error' as const : 'suggestion' as const;
       
       // Create a highlight
       highlights.push({
@@ -121,6 +134,50 @@ export async function generateParaphrase(text: string, style: string = 'standard
 /**
  * Generates a mock humanized text response
  */
+/**
+ * Generates a simulated chat response based on message history
+ */
+export async function generateChatResponse(messages: { role: string, content: string }[]): Promise<string> {
+  // Simulate API call delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Get the last user message
+  const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
+  
+  // If it's a greeting, respond with a greeting
+  if (/^(hi|hello|hey|greetings)/i.test(lastUserMessage)) {
+    return "Hello! I'm your AI writing assistant. How can I help with your writing today?";
+  }
+  
+  // If it's a question about capabilities
+  if (/what can you do|help me with|your capabilities/i.test(lastUserMessage)) {
+    return "I can help you with various writing tasks including grammar checking, paraphrasing, detecting AI-generated content, humanizing text, and generating new content. Just let me know what you need!";
+  }
+  
+  // If it's about grammar
+  if (/grammar|spelling|punctuation|error/i.test(lastUserMessage)) {
+    return "I'd be happy to help check your grammar. You can either use the Grammar Check tool in the tab above, or paste your text here and I'll identify any issues.";
+  }
+  
+  // If it's about paraphrasing
+  if (/paraphrase|rephrase|reword|say differently/i.test(lastUserMessage)) {
+    return "Paraphrasing content is one of my specialties. You can use the dedicated Paraphrase tool, or share the text you'd like me to reword here.";
+  }
+  
+  // If it's about AI detection
+  if (/ai detection|detect ai|written by ai|ai written/i.test(lastUserMessage)) {
+    return "I can analyze text to determine whether it was likely written by AI. This can be helpful if you want your content to appear more human-written. Use the AI Check tool or share your text here.";
+  }
+  
+  // If it contains actual text to analyze (longer message)
+  if (lastUserMessage.length > 100) {
+    return "Thank you for sharing your text. It appears well-structured, though I notice a few areas that could be improved for clarity and impact. Would you like specific feedback on grammar, style, or organization?";
+  }
+  
+  // Default response for other queries
+  return "I'm here to assist with your writing needs. Would you like help with grammar checking, paraphrasing, content generation, or making AI-generated text sound more human? Feel free to share any text you'd like me to help with.";
+}
+
 export async function generateHumanized(text: string, style: string = 'standard'): Promise<HumanizedResult> {
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 1000));
@@ -170,8 +227,20 @@ export async function checkAIContent(text: string): Promise<AICheckResult> {
   ];
   
   // Create mock AI detection highlights
-  const highlights = [];
-  const suggestions = [];
+  const highlights: Array<{
+    type: "ai";
+    start: number;
+    end: number;
+    message?: string;
+  }> = [];
+  
+  const suggestions: Array<{
+    id: string;
+    type: "error" | "ai";
+    text: string;
+    replacement: string;
+    description: string;
+  }> = [];
   
   // Find any patterns in the text
   for (const pattern of aiPatterns) {
@@ -183,7 +252,7 @@ export async function checkAIContent(text: string): Promise<AICheckResult> {
       const end = start + match[0].length;
       
       highlights.push({
-        type: 'ai',
+        type: 'ai' as const,
         start,
         end,
         message: `This phrase pattern "${pattern}" is commonly used by AI models`
@@ -219,7 +288,7 @@ export async function checkAIContent(text: string): Promise<AICheckResult> {
       
       suggestions.push({
         id: uuidv4(),
-        type: 'ai',
+        type: 'ai' as const,
         text: match[0],
         replacement,
         description: 'This phrase is commonly used in AI-generated content. Consider using a more conversational alternative.'
@@ -241,7 +310,7 @@ export async function checkAIContent(text: string): Promise<AICheckResult> {
     // If sentence is very long, flag it
     if (sentence.length > 150) {
       highlights.push({
-        type: 'ai',
+        type: 'ai' as const,
         start,
         end,
         message: 'Long, complex sentences are a common pattern in AI writing'
@@ -249,7 +318,7 @@ export async function checkAIContent(text: string): Promise<AICheckResult> {
       
       suggestions.push({
         id: uuidv4(),
-        type: 'ai',
+        type: 'ai' as const,
         text: sentence,
         replacement: 'Break this into 2-3 shorter sentences for a more human touch.',
         description: 'Human writers tend to use shorter sentences with varied structure. Consider breaking this up.'
@@ -279,34 +348,66 @@ export async function generateWriting({
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 2000));
   
-  // Generate a demo response based on the topic
+  // Generate a more realistic response based on the topic with varied content
+  let intro = '';
+  let mainPoints = '';
+  let conclusion = '';
+  
+  switch (topic.toLowerCase().split(' ')[0]) {
+    case 'climate':
+    case 'environment':
+      intro = 'Climate change presents one of the most pressing challenges of our time. Its impacts are far-reaching, affecting ecosystems, economies, and communities worldwide.';
+      mainPoints = 'Rising global temperatures have led to more frequent and severe weather events, including hurricanes, floods, and wildfires. The melting of polar ice caps has contributed to rising sea levels, threatening coastal communities and island nations. Additionally, changing climate patterns have disrupted agricultural systems, potentially leading to food insecurity in vulnerable regions.';
+      conclusion = 'Addressing climate change requires coordinated global action, involving policy reforms, technological innovation, and changes in individual behavior. While the challenges are significant, there are also opportunities for creating more sustainable and resilient societies.';
+      break;
+      
+    case 'technology':
+    case 'ai':
+    case 'digital':
+      intro = 'The rapid advancement of technology has transformed virtually every aspect of modern life, from how we communicate and work to how we learn and entertain ourselves.';
+      mainPoints = 'Artificial intelligence and machine learning have enabled unprecedented automation and data analysis capabilities, revolutionizing industries from healthcare to finance. The proliferation of smartphones and high-speed internet has connected billions of people worldwide, creating new opportunities for collaboration and knowledge sharing. However, these technological changes also raise important questions about privacy, security, and digital inequality.';
+      conclusion = 'As we continue to navigate the digital revolution, it's essential to develop frameworks that maximize the benefits of technology while mitigating potential risks. This will require thoughtful policy approaches, ethical guidelines, and ongoing dialogue among diverse stakeholders.';
+      break;
+      
+    case 'health':
+    case 'medical':
+    case 'healthcare':
+      intro = 'Healthcare systems worldwide face complex challenges, from addressing emerging infectious diseases to managing chronic conditions in aging populations.';
+      mainPoints = 'Advances in medical research have led to groundbreaking treatments and improved patient outcomes for many conditions. Preventive healthcare approaches, including vaccination programs and public health campaigns, have proven highly effective in reducing disease burden. At the same time, disparities in healthcare access and quality remain significant challenges in many regions.';
+      conclusion = 'Creating more effective, equitable, and sustainable healthcare systems will require integrated approaches that address social determinants of health, leverage technological innovations, and prioritize both treatment and prevention strategies.';
+      break;
+      
+    default:
+      intro = `The topic of ${topic} encompasses a rich and diverse array of perspectives, approaches, and implications that merit careful consideration and analysis.`;
+      mainPoints = `When examining ${topic}, it's important to consider historical context, contemporary applications, and future possibilities. This multi-faceted approach allows for a more comprehensive understanding of the subject matter. By drawing on diverse sources of knowledge and experience, we can develop more nuanced insights about ${topic} and its significance.`;
+      conclusion = `Further exploration of ${topic} promises to yield valuable insights with potential applications across various domains. By continuing to investigate this area with rigor and creativity, we can expand our collective understanding and identify new opportunities for innovation and impact.`;
+  }
+  
+  // Adjust style based on the requested style
+  if (style.toLowerCase() === 'casual' || style.toLowerCase() === 'conversational') {
+    intro = intro.replace(/presents/g, 'is').replace(/numerous/g, 'many').replace(/individuals/g, 'people');
+    mainPoints = mainPoints.replace(/additionally/g, 'also').replace(/however/g, 'but').replace(/furthermore/g, 'also');
+    conclusion = conclusion.replace(/it is essential/g, 'we need').replace(/require/g, 'need').replace(/significant/g, 'big');
+  } else if (style.toLowerCase() === 'academic' || style.toLowerCase() === 'formal') {
+    intro = intro.replace(/big/g, 'substantial').replace(/shows/g, 'demonstrates').replace(/use/g, 'utilize');
+    mainPoints = mainPoints.replace(/also/g, 'furthermore').replace(/but/g, 'however').replace(/get/g, 'obtain');
+    conclusion = conclusion.replace(/need/g, 'necessitate').replace(/big/g, 'significant').replace(/look at/g, 'examine');
+  }
+  
+  // Assemble the final text
   const generatedText = `
 # ${topic}
 
-This is a generated mock response on the topic of "${topic}" in the "${style}" style.
-
-${originalSample ? 'I have incorporated elements of your writing style sample.' : 'This is written in a general style.'}
-
-${referenceUrl ? `I have considered the reference materials at ${referenceUrl}.` : 'No reference materials were provided.'}
-
-The requested length was ${length}, and the format is ${additionalInstructions || 'essay'}.
-
 ## Introduction
-
-The topic of ${topic} is fascinating and multifaceted. There are many angles from which we could approach this subject, each offering unique insights and perspectives.
+${intro}
 
 ## Main Points
-
-First, it's important to consider the historical context surrounding ${topic}. The evolution of thought in this area has been marked by significant developments and paradigm shifts over time.
-
-Second, the contemporary relevance of ${topic} cannot be overstated. In our rapidly changing world, understanding the implications of this subject is crucial for navigating complex challenges.
-
-Finally, the future directions of research on ${topic} promise to yield exciting new discoveries and applications that could transform our understanding.
+${mainPoints}
 
 ## Conclusion
+${conclusion}
 
-In summary, ${topic} represents a rich area of inquiry with important implications for theory and practice. By continuing to explore this subject with rigor and creativity, we can develop more nuanced and comprehensive approaches.
-
+${additionalInstructions ? `\nNote: This content was prepared following these additional guidelines: ${additionalInstructions}` : ''}
 `;
 
   return { generatedText };
