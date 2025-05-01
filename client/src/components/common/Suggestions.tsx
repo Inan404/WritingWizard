@@ -14,6 +14,23 @@ export default function Suggestions({
   type = 'grammar'
 }: SuggestionsProps) {
   const { suggestions } = useWriting();
+  
+  // Filter suggestions based on type
+  const filteredSuggestions = suggestions.filter(suggestion => {
+    if (type === 'grammar' && (suggestion.type === 'grammar' || suggestion.type === 'error' || suggestion.type === 'suggestion')) {
+      return true;
+    }
+    if (type === 'ai' && suggestion.type === 'ai') {
+      return true;
+    }
+    // For other types, no filtering for now
+    if (type === 'paraphrase' || type === 'humanize') {
+      return true;
+    }
+    return false;
+  });
+  
+  console.log(`Showing ${filteredSuggestions.length} suggestions for ${type} tool`);
 
   const handleAccept = (id: string) => {
     if (onAccept) {
@@ -58,7 +75,7 @@ export default function Suggestions({
   return (
     <div className="space-y-4">
       <AnimatePresence>
-        {suggestions.map((suggestion) => (
+        {filteredSuggestions.map((suggestion) => (
           <motion.div
             key={suggestion.id}
             initial={{ opacity: 0, y: 20 }}

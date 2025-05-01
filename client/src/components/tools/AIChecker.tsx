@@ -178,6 +178,15 @@ export default function AIChecker() {
       return;
     }
     
+    // Clear existing suggestions before starting new check
+    setSuggestions([]);
+    
+    // Add visual feedback
+    toast({
+      title: "Analyzing content",
+      description: "Checking your text for AI patterns...",
+    });
+    
     setIsProcessing(true);
     aiCheckMutation.mutate(aiCheckText.original);
   };
