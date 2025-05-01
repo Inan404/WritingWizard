@@ -44,6 +44,7 @@ export interface AICheckResult {
   aiAnalyzed: string;
   aiPercentage: number;
   highlights: Array<{
+    id?: string;
     type: "ai";
     start: number;
     end: number;
@@ -56,6 +57,12 @@ export interface AICheckResult {
     replacement: string;
     description: string;
   }>;
+  metrics?: {
+    correctness: number;
+    clarity: number;
+    engagement: number;
+    delivery: number;
+  };
 }
 
 export interface GenerateWritingResult {

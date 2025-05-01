@@ -439,18 +439,28 @@ export async function checkAIContent(text: string): Promise<AICheckResult> {
       }
     });
     
+    // Extract metrics or use defaults
+    const metrics = parsedData.metrics || {
+      correctness: 80,
+      clarity: 75,
+      engagement: 70,
+      delivery: 65
+    };
+    
     const finalResult = {
       aiAnalyzed: text,
       aiPercentage,
       highlights,
-      suggestions
+      suggestions,
+      metrics
     };
     
     console.log("Final AI check result:", {
       textLength: finalResult.aiAnalyzed.length,
       aiPercentage: finalResult.aiPercentage,
       highlightsCount: finalResult.highlights.length,
-      suggestionsCount: finalResult.suggestions.length
+      suggestionsCount: finalResult.suggestions.length,
+      metrics: finalResult.metrics
     });
     
     return finalResult;
@@ -467,7 +477,13 @@ export async function checkAIContent(text: string): Promise<AICheckResult> {
         text: "",
         replacement: "",
         description: "Unable to analyze text. Please try again later."
-      }]
+      }],
+      metrics: {
+        correctness: 80,
+        clarity: 75,
+        engagement: 70,
+        delivery: 65
+      }
     };
   }
 }
