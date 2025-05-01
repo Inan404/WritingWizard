@@ -1,6 +1,6 @@
 /**
  * AI Service that integrates with language models
- * Uses Perplexity API (with Llama model) for powerful AI capabilities
+ * Uses Perplexity API (with Llama 4 model) for powerful AI capabilities
  */
 import {
   GrammarResult,
