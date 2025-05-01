@@ -333,28 +333,23 @@ export default function AIChecker() {
     <div className="h-full flex flex-col">
       <StyleOptions />
       <ProgressBars showAI={true} />
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto mt-4 px-2">
         {isProcessing ? (
           <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin mb-2" />
             <p>Scanning for AI content...</p>
           </div>
         ) : contextSuggestions.length > 0 || aiSuggestions.length > 0 ? (
-          <>
-          {console.log("Rendering suggestions component with:", 
-            aiSuggestions.length > 0 ? 
-              `${aiSuggestions.length} local suggestions` : 
-              `${contextSuggestions.filter(suggestion => suggestion.type === 'ai').length} filtered context suggestions`
-          )}
-          <Suggestions 
-            onAccept={handleAcceptSuggestion} 
-            onDismiss={handleDismissSuggestion}
-            type="ai"
-            suggestions={aiSuggestions.length > 0 ? aiSuggestions : contextSuggestions.filter(suggestion => suggestion.type === 'ai')}
-          />
-          </>
+          <div className="overflow-y-auto w-full">
+            <Suggestions 
+              onAccept={handleAcceptSuggestion} 
+              onDismiss={handleDismissSuggestion}
+              type="ai"
+              suggestions={aiSuggestions.length > 0 ? aiSuggestions : contextSuggestions.filter(suggestion => suggestion.type === 'ai')}
+            />
+          </div>
         ) : scoreMetrics.aiPercentage !== undefined ? (
-          <div className="p-4 border rounded-md border-border mt-4">
+          <div className="p-4 border rounded-md border-border">
             <h3 className="font-medium mb-2">AI Analysis Complete</h3>
             <p className="text-sm text-muted-foreground">
               {scoreMetrics.aiPercentage > 50 
@@ -363,7 +358,7 @@ export default function AIChecker() {
             </p>
           </div>
         ) : (
-          <div className="p-4 border rounded-md border-border mt-4">
+          <div className="p-4 border rounded-md border-border">
             <h3 className="font-medium mb-2">AI Analysis</h3>
             <p className="text-sm text-muted-foreground">
               Enter your text on the left and click "Check for AI Content" to analyze it for AI-generated content.

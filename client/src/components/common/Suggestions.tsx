@@ -44,7 +44,10 @@ export default function Suggestions({
     return false;
   });
   
-  console.log(`Showing ${filteredSuggestions.length} suggestions for ${type} tool from total ${suggestions.length}`);
+  // Log the number of suggestions being displayed for debugging
+  React.useEffect(() => {
+    console.log(`Showing ${filteredSuggestions.length} suggestions for ${type} tool from total ${suggestions.length}`);
+  }, [filteredSuggestions.length, suggestions.length, type]);
 
   const handleAccept = (id: string) => {
     if (onAccept) {
@@ -87,7 +90,7 @@ export default function Suggestions({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-4">
       <AnimatePresence>
         {filteredSuggestions.map((suggestion) => (
           <motion.div
@@ -96,35 +99,35 @@ export default function Suggestions({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className={`bg-muted rounded-lg p-3 border-l-4 ${getBorderColor(suggestion.type)} animate-fade-in`}
+            className={`bg-muted rounded-lg p-4 border-l-4 ${getBorderColor(suggestion.type)} animate-fade-in mb-4 shadow-sm`}
           >
             <div className="flex items-start">
-              <div className="mr-3 mt-1">
+              <div className="mr-3 mt-1 flex-shrink-0">
                 {getIcon(suggestion.type)}
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium mb-1">
-                  {suggestion.type === 'error' ? 'Missing comma' : 
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium mb-2">
+                  {suggestion.type === 'error' ? 'Grammar issue' : 
                    suggestion.type === 'suggestion' ? 'Word choice' : 
                    suggestion.type === 'ai' ? 'AI content detected' : 
                    'Fix the agreement mistake'}
                 </p>
-                <p className="text-sm text-muted-foreground mb-2">
+                <p className="text-sm text-muted-foreground mb-3 break-words">
                   {suggestion.description}
                 </p>
-                <div className="text-sm bg-card p-2 rounded mb-2">
-                  <span className={suggestion.type === 'error' ? 'text-secondary font-bold' : 
-                               suggestion.type === 'suggestion' ? 'text-primary font-bold' : 
-                               suggestion.type === 'ai' ? 'text-warning font-bold' : 
-                               'text-success font-bold'}>
+                <div className="text-sm bg-card p-3 rounded mb-3 border border-border break-words overflow-hidden">
+                  <span className={suggestion.type === 'error' ? 'text-secondary font-medium' : 
+                               suggestion.type === 'suggestion' ? 'text-primary font-medium' : 
+                               suggestion.type === 'ai' ? 'text-warning font-medium' : 
+                               'text-success font-medium'}>
                     {suggestion.replacement}
                   </span>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex space-x-3">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="px-4 py-1 bg-primary text-white text-sm rounded-md hover:bg-primary/90 transition-colors duration-200"
+                    className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-md hover:bg-primary/90 transition-colors duration-200 font-medium"
                     onClick={() => handleAccept(suggestion.id)}
                   >
                     Accept
@@ -132,7 +135,7 @@ export default function Suggestions({
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="px-4 py-1 bg-muted text-foreground text-sm rounded-md hover:bg-muted/80 transition-colors duration-200"
+                    className="px-4 py-2 bg-muted text-foreground text-sm rounded-md hover:bg-muted/80 transition-colors duration-200"
                     onClick={() => handleDismiss(suggestion.id)}
                   >
                     Dismiss
