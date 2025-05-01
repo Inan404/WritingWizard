@@ -28,9 +28,6 @@ export default function Suggestions({
   
   // Filter suggestions based on type
   const filteredSuggestions = suggestions.filter(suggestion => {
-    // Log each suggestion for debugging
-    console.log(`Suggestion: ${JSON.stringify(suggestion)}`);
-    
     if (type === 'grammar' && (suggestion.type === 'grammar' || suggestion.type === 'error' || suggestion.type === 'suggestion')) {
       return true;
     }
@@ -43,11 +40,6 @@ export default function Suggestions({
     }
     return false;
   });
-  
-  // Log the number of suggestions being displayed for debugging
-  React.useEffect(() => {
-    console.log(`Showing ${filteredSuggestions.length} suggestions for ${type} tool from total ${suggestions.length}`);
-  }, [filteredSuggestions.length, suggestions.length, type]);
 
   const handleAccept = (id: string) => {
     if (onAccept) {
