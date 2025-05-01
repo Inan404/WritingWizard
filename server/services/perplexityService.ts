@@ -39,27 +39,49 @@ async function callPerplexityAPI(messages: { role: string, content: string }[], 
       throw new Error("PERPLEXITY_API_KEY not set");
     }
 
+    // Create request body
+    const requestBody = {
+      model: "llama-3.1-sonar-small-128k-online",
+      messages,
+      temperature,
+      max_tokens: 1000,
+      stream: false
+    };
+    
+    console.log("Calling Perplexity API with model:", requestBody.model);
+    console.log("Temperature:", temperature);
+    console.log("Messages count:", messages.length);
+    
+    // Log message structure without revealing full content
+    console.log("Message structure:", messages.map(m => ({
+      role: m.role,
+      contentLength: m.content.length
+    })));
+
     const response = await fetch(API_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${PERPLEXITY_API_KEY}`
       },
-      body: JSON.stringify({
-        model: "llama-3.1-sonar-small-128k-online",
-        messages,
-        temperature,
-        max_tokens: 1000,
-        stream: false
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Perplexity API error: ${response.status} ${errorText}`);
+      console.error(`Perplexity API error: ${response.status}`, errorText);
+      throw new Error(`Perplexity API error: ${response.status} ${errorText.substring(0, 200)}`);
     }
 
     const data = await response.json();
+    console.log("Perplexity API response:", {
+      id: data.id,
+      model: data.model,
+      usage: data.usage,
+      choices: data.choices?.length || 0,
+      contentPreview: data.choices?.[0]?.message?.content?.substring(0, 50) + '...'
+    });
+    
     return data.choices[0].message.content;
   } catch (error: any) {
     console.error("Error calling Perplexity API:", error);
@@ -349,16 +371,24 @@ export async function generateHumanized(text: string, style: string = 'standard'
  */
 export async function checkAIContent(text: string): Promise<AICheckResult> {
   try {
+    console.log("checkAIContent called with text of length:", text.length);
+    
     const systemPrompt = `
     You are an expert AI detection specialist.
     Analyze the provided text and identify patterns that suggest it was written by AI.
     Look for repetitive structures, specific phrasings common in AI, unnatural flows, and other telltale signs.
-    Provide your analysis in JSON format with these keys:
+    
+    Provide your analysis in JSON format with these EXACT keys:
     - aiPercentage: a number between 0-100 indicating how likely the text is AI-generated
     - highlights: an array of objects representing AI-like patterns, each with:
-      { type: "ai", start: character index, end: character index, message: explanation }
+      { id: string, type: "ai", start: number, end: number, message: string }
     - suggestions: an array of objects with suggestions to make it seem more human, each with:
-      { id: string, type: "ai", text: original text, replacement: suggested replacement, description: explanation }
+      { id: string, type: "ai", text: string, replacement: string, description: string }
+    - metrics: an object with scores for different aspects of the text:
+      { correctness: number, clarity: number, engagement: number, delivery: number }
+    
+    The response MUST be valid JSON that can be parsed with JSON.parse(). 
+    Include ONLY the JSON object in your response, with no other text before or after it.
     Be thoughtful and precise in your analysis.
     `;
 
@@ -368,34 +398,62 @@ export async function checkAIContent(text: string): Promise<AICheckResult> {
     ];
 
     const responseText = await callPerplexityAPI(messages, 0.3);
+    console.log("AI check raw response:", responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
+    
     const jsonStartIndex = responseText.indexOf('{');
     const jsonEndIndex = responseText.lastIndexOf('}') + 1;
     
     if (jsonStartIndex === -1 || jsonEndIndex === -1) {
-      throw new Error("Invalid response format from API");
+      console.error("Failed to find JSON in response:", responseText);
+      throw new Error("Invalid response format from API - no JSON found");
     }
     
     const jsonStr = responseText.substring(jsonStartIndex, jsonEndIndex);
-    const result = JSON.parse(jsonStr);
+    console.log("Extracted JSON string:", jsonStr.substring(0, 200) + (jsonStr.length > 200 ? '...' : ''));
+    
+    let parsedData;
+    try {
+      parsedData = JSON.parse(jsonStr);
+      console.log("Parsed result:", parsedData);
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      throw new Error("Failed to parse JSON response");
+    }
     
     // Ensure the result has the correct structure
-    const aiPercentage = result.aiPercentage || 50;
-    const highlights = result.highlights || [];
-    const suggestions = result.suggestions || [];
+    const aiPercentage = parsedData.aiPercentage || 50;
+    const highlights = parsedData.highlights || [];
+    const suggestions = parsedData.suggestions || [];
     
-    // Assign UUIDs if they don't exist
+    // Assign UUIDs to highlights if they don't exist
+    (highlights as any[]).forEach((highlight) => {
+      if (!highlight.id) {
+        highlight.id = uuidv4();
+      }
+    });
+    
+    // Assign UUIDs to suggestions if they don't exist
     (suggestions as Suggestion[]).forEach((suggestion: Suggestion) => {
       if (!suggestion.id) {
         suggestion.id = uuidv4();
       }
     });
     
-    return {
+    const finalResult = {
       aiAnalyzed: text,
       aiPercentage,
       highlights,
       suggestions
     };
+    
+    console.log("Final AI check result:", {
+      textLength: finalResult.aiAnalyzed.length,
+      aiPercentage: finalResult.aiPercentage,
+      highlightsCount: finalResult.highlights.length,
+      suggestionsCount: finalResult.suggestions.length
+    });
+    
+    return finalResult;
   } catch (error) {
     console.error("Error in AI check:", error);
     // Provide a fallback response

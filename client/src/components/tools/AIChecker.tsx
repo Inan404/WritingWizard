@@ -77,10 +77,15 @@ export default function AIChecker() {
       // Update metrics with AI percentage
       if (data.aiPercentage !== undefined) {
         console.log("Updating AI percentage:", data.aiPercentage);
-        setScoreMetrics({
-          ...scoreMetrics, 
+        // Create a metrics object with default values and the AI percentage
+        const updatedMetrics = {
+          correctness: scoreMetrics?.correctness || 80,
+          clarity: scoreMetrics?.clarity || 80,
+          engagement: scoreMetrics?.engagement || 80,
+          delivery: scoreMetrics?.delivery || 80,
           aiPercentage: data.aiPercentage
-        });
+        };
+        setScoreMetrics(updatedMetrics);
       }
       
       // Set suggestions if available
