@@ -366,7 +366,7 @@ export async function generateWriting({
     case 'digital':
       intro = 'The rapid advancement of technology has transformed virtually every aspect of modern life, from how we communicate and work to how we learn and entertain ourselves.';
       mainPoints = 'Artificial intelligence and machine learning have enabled unprecedented automation and data analysis capabilities, revolutionizing industries from healthcare to finance. The proliferation of smartphones and high-speed internet has connected billions of people worldwide, creating new opportunities for collaboration and knowledge sharing. However, these technological changes also raise important questions about privacy, security, and digital inequality.';
-      conclusion = 'As we continue to navigate the digital revolution, it's essential to develop frameworks that maximize the benefits of technology while mitigating potential risks. This will require thoughtful policy approaches, ethical guidelines, and ongoing dialogue among diverse stakeholders.';
+      conclusion = 'As we continue to navigate the digital revolution, it is essential to develop frameworks that maximize the benefits of technology while mitigating potential risks. This will require thoughtful policy approaches, ethical guidelines, and ongoing dialogue among diverse stakeholders.';
       break;
       
     case 'health':
@@ -379,7 +379,7 @@ export async function generateWriting({
       
     default:
       intro = `The topic of ${topic} encompasses a rich and diverse array of perspectives, approaches, and implications that merit careful consideration and analysis.`;
-      mainPoints = `When examining ${topic}, it's important to consider historical context, contemporary applications, and future possibilities. This multi-faceted approach allows for a more comprehensive understanding of the subject matter. By drawing on diverse sources of knowledge and experience, we can develop more nuanced insights about ${topic} and its significance.`;
+      mainPoints = `When examining ${topic}, it is important to consider historical context, contemporary applications, and future possibilities. This multi-faceted approach allows for a more comprehensive understanding of the subject matter. By drawing on diverse sources of knowledge and experience, we can develop more nuanced insights about ${topic} and its significance.`;
       conclusion = `Further exploration of ${topic} promises to yield valuable insights with potential applications across various domains. By continuing to investigate this area with rigor and creativity, we can expand our collective understanding and identify new opportunities for innovation and impact.`;
   }
   

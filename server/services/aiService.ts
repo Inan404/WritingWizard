@@ -1,6 +1,6 @@
 /**
  * AI Service that integrates with language models
- * Uses Llama model via Cloudflare Workers AI
+ * Uses Perplexity API (with Llama model) for powerful AI capabilities
  */
 import {
   GrammarResult,
@@ -11,14 +11,42 @@ import {
   GenerateWritingParams
 } from './aiServiceTypes';
 
-// Use the perplexity service which now uses Llama via Cloudflare Workers AI
-import * as llmService from './perplexityService';
+// Import our primary Perplexity-based service
+import * as perplexityService from './perplexityService';
 
-// Export the implementations - this layer of indirection allows us to
-// easily swap in different implementations later
-export const generateGrammarCheck = llmService.generateGrammarCheck;
-export const generateParaphrase = llmService.generateParaphrase;
-export const generateHumanized = llmService.generateHumanized;
-export const checkAIContent = llmService.checkAIContent;
-export const generateWriting = llmService.generateWriting;
-export const generateChatResponse = llmService.generateChatResponse;
+// Import fallback mock service for when API is unavailable
+import * as mockService from './mockAiService';
+
+// Check if we have API credentials
+const hasPerplexityCredentials = !!process.env.PERPLEXITY_API_KEY;
+
+// If no credentials, log warning
+if (!hasPerplexityCredentials) {
+  console.warn('PERPLEXITY_API_KEY is not set. Using mock AI service.');
+}
+
+// Export the implementations based on available credentials
+// This layer of indirection allows us to easily swap implementations
+export const generateGrammarCheck = hasPerplexityCredentials 
+  ? perplexityService.generateGrammarCheck 
+  : mockService.generateGrammarCheck;
+
+export const generateParaphrase = hasPerplexityCredentials 
+  ? perplexityService.generateParaphrase 
+  : mockService.generateParaphrase;
+
+export const generateHumanized = hasPerplexityCredentials 
+  ? perplexityService.generateHumanized 
+  : mockService.generateHumanized;
+
+export const checkAIContent = hasPerplexityCredentials 
+  ? perplexityService.checkAIContent 
+  : mockService.checkAIContent;
+
+export const generateWriting = hasPerplexityCredentials 
+  ? perplexityService.generateWriting 
+  : mockService.generateWriting;
+
+export const generateChatResponse = hasPerplexityCredentials 
+  ? perplexityService.generateChatResponse 
+  : mockService.generateChatResponse;
