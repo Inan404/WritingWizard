@@ -56,10 +56,29 @@ export default function Humanizer() {
     },
     onSuccess: (data) => {
       setIsProcessing(false);
+      
+      // Update the text in the UI
       setHumanizerText({
         original: humanizerText.original,
-        humanized: data.humanized
+        humanized: data.humanized || data.humanizedText
       });
+      
+      // Update the metrics in the UI
+      if (data.metrics) {
+        const { correctness, clarity, engagement, delivery } = data.metrics;
+        // Update progress bars with metrics from API response
+        if (correctness !== undefined && clarity !== undefined && 
+            engagement !== undefined && delivery !== undefined) {
+          console.log("Updating metrics:", data.metrics);
+          // Update the metrics in WritingContext
+          setScoreMetrics({
+            correctness, 
+            clarity, 
+            engagement, 
+            delivery
+          });
+        }
+      }
       
       // Save to database after successful humanizing
       if (user) {
@@ -68,7 +87,7 @@ export default function Humanizer() {
           userId: user.id,
           title: 'Humanized Text', 
           inputText: humanizerText.original,
-          humanizerResult: data.humanized
+          humanizerResult: data.humanized || data.humanizedText
         });
       }
       
@@ -77,7 +96,8 @@ export default function Humanizer() {
         description: "Your AI text has been humanized successfully.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Humanizing error:", error);
       setIsProcessing(false);
       toast({
         title: "Error humanizing text",

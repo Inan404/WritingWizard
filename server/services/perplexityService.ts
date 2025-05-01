@@ -191,7 +191,17 @@ export async function generateHumanized(text: string, style: string = 'standard'
     If the style is "expert" keep a professional tone while still sounding human.
     If the style is "creative" add unique turns of phrase and a more distinctive voice.
     Maintain the original meaning and flow but make it less recognizable as AI-generated.
-    Respond with ONLY the humanized text.
+    
+    Return your response in JSON format with the following fields:
+    {
+      "humanized": "your humanized text here",
+      "metrics": {
+        "correctness": number from 0-100,
+        "clarity": number from 0-100,
+        "engagement": number from 0-100,
+        "delivery": number from 0-100
+      }
+    }
     `;
 
     const messages = [
@@ -199,9 +209,50 @@ export async function generateHumanized(text: string, style: string = 'standard'
       { role: "user", content: `Style: ${style}\n\nText to humanize: ${text}` }
     ];
 
-    const humanized = await callPerplexityAPI(messages, 0.7);
+    const responseText = await callPerplexityAPI(messages, 0.7);
     
-    return { humanized };
+    // Extract JSON from response
+    const jsonStartIndex = responseText.indexOf('{');
+    const jsonEndIndex = responseText.lastIndexOf('}') + 1;
+    
+    if (jsonStartIndex === -1 || jsonEndIndex === -1) {
+      // If no JSON found, just use the text as is
+      return { 
+        humanized: responseText,
+        metrics: {
+          correctness: 80,
+          clarity: 85,
+          engagement: 75,
+          delivery: 70
+        }
+      };
+    }
+    
+    try {
+      const jsonStr = responseText.substring(jsonStartIndex, jsonEndIndex);
+      const result = JSON.parse(jsonStr);
+      
+      return { 
+        humanized: result.humanized,
+        metrics: {
+          correctness: result.metrics?.correctness || 80,
+          clarity: result.metrics?.clarity || 85,
+          engagement: result.metrics?.engagement || 75,
+          delivery: result.metrics?.delivery || 70
+        }
+      };
+    } catch (error) {
+      // If JSON parsing fails, fall back to using the full text
+      return { 
+        humanized: responseText,
+        metrics: {
+          correctness: 80,
+          clarity: 85,
+          engagement: 75,
+          delivery: 70
+        }
+      };
+    }
   } catch (error) {
     console.error("Error in humanize:", error);
     return { humanized: text };
