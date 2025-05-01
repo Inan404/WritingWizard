@@ -19,15 +19,26 @@ export default function Paraphraser() {
   // Paraphrase text mutation
   const paraphraseMutation = useMutation({
     mutationFn: async (data: { text: string; style: WritingStyle }) => {
+      console.log("Sending paraphrase request with style:", data.style);
       const response = await apiRequest('POST', '/api/paraphrase', data);
-      return response.json();
+      const jsonData = await response.json();
+      console.log("Received paraphrase response:", jsonData);
+      return jsonData;
     },
     onSuccess: (data) => {
       setIsProcessing(false);
-      setParaphraseText({
-        original: paraphraseText.original,
-        paraphrased: data.paraphrased || data.paraphrasedText
-      });
+      // Handle both possible response formats (paraphrased or paraphrasedText)
+      const paraphrasedContent = data.paraphrased || data.paraphrasedText;
+      console.log("Setting paraphrased content:", paraphrasedContent);
+      
+      if (paraphrasedContent) {
+        setParaphraseText({
+          original: paraphraseText.original,
+          paraphrased: paraphrasedContent
+        });
+      } else {
+        console.error("No paraphrased content found in response:", data);
+      }
       
       // Update metrics if available
       if (data.metrics) {
@@ -53,7 +64,8 @@ export default function Paraphraser() {
         description: "Your text has been paraphrased successfully.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Paraphrase error:", error);
       setIsProcessing(false);
       toast({
         title: "Error paraphrasing text",

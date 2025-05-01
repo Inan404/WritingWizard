@@ -124,15 +124,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { text, style } = req.body;
       
+      console.log("Received paraphrase request with style:", style);
+      
       if (!text || typeof text !== "string") {
         return res.status(400).json({ message: "Invalid text input" });
       }
       
-      const result = await generateParaphrase(text, style);
-      res.json(result);
+      const result = await generateParaphrase(text, style || 'standard');
+      console.log("Paraphrase result:", { 
+        paraphrasedTextLength: result.paraphrased?.length,
+        metricsAvailable: !!result.metrics
+      });
+      
+      // Return result with consistent key name
+      res.json({
+        paraphrasedText: result.paraphrased,
+        metrics: result.metrics
+      });
     } catch (error) {
       console.error("Paraphrase error:", error);
-      res.status(500).json({ message: "Error paraphrasing text" });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Error paraphrasing text", error: errorMessage });
     }
   });
 
@@ -141,15 +153,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { text, style } = req.body;
       
+      console.log("Received humanize request with style:", style);
+      
       if (!text || typeof text !== "string") {
         return res.status(400).json({ message: "Invalid text input" });
       }
       
-      const result = await generateHumanized(text, style);
-      res.json(result);
+      const result = await generateHumanized(text, style || 'standard');
+      console.log("Humanize result:", { 
+        humanizedTextLength: result.humanized?.length,
+        metricsAvailable: !!result.metrics
+      });
+      
+      // Return result with consistent key names
+      res.json({
+        humanizedText: result.humanized,
+        metrics: result.metrics
+      });
     } catch (error) {
       console.error("Humanize error:", error);
-      res.status(500).json({ message: "Error humanizing text" });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Error humanizing text", error: errorMessage });
     }
   });
 

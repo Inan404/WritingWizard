@@ -139,21 +139,22 @@ export async function generateGrammarCheck(text: string): Promise<GrammarResult>
  */
 export async function generateParaphrase(text: string, style: string = 'standard'): Promise<ParaphraseResult> {
   try {
+    console.log("generateParaphrase called with style:", style);
     let styleDescription = "";
     switch (style.toLowerCase()) {
       case 'formal':
         styleDescription = "Use formal language, academic tone, and sophisticated vocabulary";
         break;
-      case 'casual':
-        styleDescription = "Use casual, conversational language with simpler sentence structures";
+      case 'fluency':
+        styleDescription = "Use natural, flowing language with a smooth and conversational tone";
         break;
-      case 'creative':
+      case 'academic':
+        styleDescription = "Use scholarly language, precise terminology, and structured argumentation";
+        break;
+      case 'custom':
         styleDescription = "Use creative, expressive language with vivid imagery and varied structures";
         break;
-      case 'technical':
-        styleDescription = "Use precise technical language with domain-specific terminology";
-        break;
-      default:
+      default: // standard
         styleDescription = "Use clear, balanced language with a neutral tone";
     }
 
