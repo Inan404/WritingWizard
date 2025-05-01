@@ -13,8 +13,10 @@ export default function StyleOptions({
   const { selectedStyle, setSelectedStyle } = useWriting();
   
   const handleStyleSelect = (style: WritingStyle) => {
+    console.log(`StyleOptions: Setting style to ${style}, current style is ${selectedStyle}`);
     setSelectedStyle(style);
     if (onSelectStyle) {
+      console.log(`StyleOptions: Calling onSelectStyle with ${style}`);
       onSelectStyle(style);
     }
   };

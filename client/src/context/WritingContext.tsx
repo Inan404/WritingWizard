@@ -157,7 +157,13 @@ const WritingContext = createContext<WritingContextType>(defaultWritingContext);
 
 export function WritingProvider({ children }: { children: ReactNode }) {
   const [activeTool, setActiveTool] = useState<WritingTool>(defaultWritingContext.activeTool);
-  const [selectedStyle, setSelectedStyle] = useState<WritingStyle>(defaultWritingContext.selectedStyle);
+  const [selectedStyle, setSelectedStyleInternal] = useState<WritingStyle>(defaultWritingContext.selectedStyle);
+  
+  // Wrap setSelectedStyle to log changes
+  const setSelectedStyle = (style: WritingStyle) => {
+    console.log(`WritingContext: Setting style from ${selectedStyle} to ${style}`);
+    setSelectedStyleInternal(style);
+  };
   const [grammarText, setGrammarText] = useState<TextContent>(defaultWritingContext.grammarText);
   const [paraphraseText, setParaphraseText] = useState(defaultWritingContext.paraphraseText);
   const [aiCheckText, setAiCheckText] = useState<TextContent>(defaultWritingContext.aiCheckText);
