@@ -106,7 +106,7 @@ export async function generateGrammarCheck(text: string): Promise<GrammarResult>
     const suggestions = result.suggestions || [];
     
     // Assign UUIDs if they don't exist
-    suggestions.forEach((suggestion) => {
+    (suggestions as Suggestion[]).forEach((suggestion: Suggestion) => {
       if (!suggestion.id) {
         suggestion.id = uuidv4();
       }
@@ -248,7 +248,7 @@ export async function checkAIContent(text: string): Promise<AICheckResult> {
     const suggestions = result.suggestions || [];
     
     // Assign UUIDs if they don't exist
-    suggestions.forEach((suggestion) => {
+    (suggestions as Suggestion[]).forEach((suggestion: Suggestion) => {
       if (!suggestion.id) {
         suggestion.id = uuidv4();
       }
