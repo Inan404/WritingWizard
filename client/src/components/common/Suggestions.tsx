@@ -18,9 +18,13 @@ interface SuggestionsProps {
 export default function Suggestions({ 
   onAccept, 
   onDismiss,
-  type = 'grammar'
+  type = 'grammar',
+  suggestions: propSuggestions
 }: SuggestionsProps) {
-  const { suggestions } = useWriting();
+  const { suggestions: contextSuggestions } = useWriting();
+  
+  // Use the suggestions from props if provided, otherwise use from context
+  const suggestions = propSuggestions || contextSuggestions;
   
   // Filter suggestions based on type
   const filteredSuggestions = suggestions.filter(suggestion => {

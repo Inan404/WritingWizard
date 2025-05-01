@@ -15,11 +15,20 @@ export default function AIChecker() {
   const { 
     aiCheckText, 
     setAiCheckText, 
-    suggestions, 
+    suggestions: contextSuggestions, 
     setSuggestions,
     scoreMetrics,
     setScoreMetrics
   } = useWriting();
+  
+  // Local state for AI suggestions
+  const [aiSuggestions, setAiSuggestions] = useState<Array<{
+    id: string;
+    type: "grammar" | "suggestion" | "ai" | "error";
+    text: string;
+    replacement: string;
+    description: string;
+  }>>([]);
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -146,7 +155,7 @@ export default function AIChecker() {
           inputText: aiCheckText.original,
           aiCheckResult: aiCheckText.highlights.length > 0 ? JSON.stringify({
             highlights: aiCheckText.highlights,
-            suggestions: suggestions,
+            suggestions: aiSuggestions,
             aiPercentage: 0 // We don't have this yet
           }) : null
         });
@@ -160,7 +169,7 @@ export default function AIChecker() {
         clearTimeout(saveTimeout);
       }
     };
-  }, [aiCheckText.original, user]);
+  }, [aiCheckText.original, user, aiSuggestions]);
 
   const handleTextChange = (text: string) => {
     setAiCheckText({
@@ -184,6 +193,7 @@ export default function AIChecker() {
     
     // Clear existing suggestions before starting new check
     setSuggestions([]);
+    setAiSuggestions([]);
     
     // Add visual feedback
     toast({
@@ -274,7 +284,7 @@ export default function AIChecker() {
   };
 
   const handleAcceptSuggestion = (id: string) => {
-    const suggestion = suggestions.find(s => s.id === id);
+    const suggestion = aiSuggestions.find(s => s.id === id);
     if (!suggestion) return;
 
     // Apply the suggestion to the text
@@ -285,11 +295,13 @@ export default function AIChecker() {
     });
 
     // Remove the suggestion from the list
-    setSuggestions(suggestions.filter(s => s.id !== id));
+    setSuggestions(contextSuggestions.filter(s => s.id !== id));
+    setAiSuggestions(aiSuggestions.filter(s => s.id !== id));
   };
 
   const handleDismissSuggestion = (id: string) => {
-    setSuggestions(suggestions.filter(s => s.id !== id));
+    setSuggestions(contextSuggestions.filter(s => s.id !== id));
+    setAiSuggestions(aiSuggestions.filter(s => s.id !== id));
   };
 
   const LeftPanel = (
@@ -325,12 +337,12 @@ export default function AIChecker() {
             <Loader2 className="h-8 w-8 animate-spin mb-2" />
             <p>Scanning for AI content...</p>
           </div>
-        ) : suggestions.length > 0 ? (
+        ) : contextSuggestions.length > 0 || aiSuggestions.length > 0 ? (
           <Suggestions 
             onAccept={handleAcceptSuggestion} 
             onDismiss={handleDismissSuggestion}
             type="ai"
-            suggestions={suggestions.filter(suggestion => suggestion.type === 'ai')}
+            suggestions={aiSuggestions.length > 0 ? aiSuggestions : contextSuggestions.filter(suggestion => suggestion.type === 'ai')}
           />
         ) : scoreMetrics.aiPercentage !== undefined ? (
           <div className="p-4 border rounded-md border-border mt-4">
