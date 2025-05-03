@@ -16,6 +16,8 @@ interface Message {
 }
 
 export function ChatInterface() {
+  // The first message is always from the assistant (welcome message)
+  // But when we send to the API, we need to make sure we follow the system -> user -> assistant pattern
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'initial-message',
@@ -49,60 +51,21 @@ export function ChatInterface() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     
-    // Prepare messages for API with strict alternation (system → user → assistant → user → ...)
+    // Start with just the system message and current user input 
+    // This is the simplest approach to ensure proper alternation
     const messagesToSend: ApiMessage[] = [
       {
         role: 'system',
         content: 'You are a helpful, friendly AI writing assistant. Provide detailed and thoughtful responses to help users with their writing needs.'
+      },
+      {
+        role: 'user',
+        content: input
       }
     ];
     
-    // Create properly alternating messages array
-    const normalizedMessages: ApiMessage[] = [];
-    let expectedRole: MessageRole = 'user'; // First message after system should be user
-    
-    // Process existing messages and add the current input as a user message
-    for (const msg of [...messages, { id: 'current', role: 'user' as const, content: input, timestamp: Date.now() }]) {
-      // Our UI messages don't have system role - we have a type constraint
-      // that ensures they are only 'user' or 'assistant'
-      
-      // If this message doesn't match the expected role, insert a placeholder
-      if (msg.role !== expectedRole && normalizedMessages.length > 0) {
-        // Insert empty message from the expected role to maintain alternation
-        normalizedMessages.push({ 
-          role: expectedRole, 
-          content: expectedRole === 'assistant' ? 'I understand.' : 'Please continue.'
-        });
-      }
-      
-      // Only add message if it has content
-      if (msg.content.trim()) {
-        normalizedMessages.push({
-          role: msg.role,
-          content: msg.content
-        });
-        
-        // Update expected role for next message
-        expectedRole = msg.role === 'user' ? 'assistant' : 'user';
-      }
-    }
-    
-    // Ensure the last message is from user (API requirement)
-    if (normalizedMessages.length > 0 && normalizedMessages[normalizedMessages.length - 1].role !== 'user') {
-      // Remove the last assistant message if there's no valid user query
-      normalizedMessages.pop();
-    }
-    
-    // Only add messages if we have at least one
-    if (normalizedMessages.length > 0) {
-      messagesToSend.push(...normalizedMessages);
-    } else {
-      // Fallback if no messages
-      messagesToSend.push({
-        role: 'user',
-        content: input || 'Hello, can you help me with my writing?'
-      });
-    }
+    // This simplification may lose conversation history,
+    // but it ensures we follow the exact pattern Perplexity requires: system → user
     
     console.log('Prepared messages for Perplexity API:', messagesToSend);
     

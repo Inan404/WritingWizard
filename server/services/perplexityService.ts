@@ -2,6 +2,7 @@
  * Perplexity API Service
  * Uses the Perplexity API with the llama-3.1-sonar-small-128k-online model
  */
+import { sanitizeMessages, SanitizedMessage } from '../utils/sanitizeMessages';
 
 // Get the Perplexity API key from environment variables
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
@@ -353,55 +354,14 @@ The metrics should be scores from 0-100 assessing aspects of the writing.`;
  * Generate a chat response based on conversation history
  */
 export async function generateChatResponse(messages: PerplexityMessage[]): Promise<string> {
-  // Prepare the messages for the API
-  const systemPrompt = {
-    role: 'system' as const,
-    content: 'You are a helpful, friendly AI writing assistant. Provide detailed and thoughtful responses to help users with their writing needs.'
-  };
-
-  // Create a new array with properly alternating messages
-  const preparedMessages: PerplexityMessage[] = [];
-  
-  // Always start with system prompt
-  preparedMessages.push(systemPrompt);
-  
-  // Ensure messages alternate between user and assistant
-  let lastRole: string | null = 'system';
-  let userMessageIncluded = false;
-  
-  for (const msg of messages) {
-    // Skip system messages after the first one
-    if (msg.role === 'system') continue;
-    
-    // Skip if the role is the same as the last one (no consecutive same roles)
-    if (msg.role === lastRole) continue;
-    
-    // Add the message
-    preparedMessages.push(msg);
-    lastRole = msg.role;
-    
-    // Track if we've included at least one user message
-    if (msg.role === 'user') userMessageIncluded = true;
-  }
-  
-  // If no user messages were included, add a default one
-  if (!userMessageIncluded) {
-    preparedMessages.push({
-      role: 'user',
-      content: 'Hello, I need help with my writing.'
-    });
-  }
-  
-  // Ensure the last message is from the user (API requirement)
-  if (lastRole !== 'user') {
-    preparedMessages.pop(); // Remove the last assistant message
-  }
-
   try {
-    console.log('Sending prepared messages to Perplexity:', JSON.stringify(preparedMessages));
+    // Use the sanitizeMessages function to guarantee proper message formatting
+    const sanitizedMessages = sanitizeMessages(messages as SanitizedMessage[]);
+    
+    console.log('Sending sanitized messages to Perplexity:', JSON.stringify(sanitizedMessages));
     const response = await callPerplexityAPI({
-      messages: preparedMessages,
-      temperature: 0.7, // Balanced temperature for creative but coherent responses
+      messages: sanitizedMessages,
+      temperature: 0.7,
     });
 
     return response.choices[0].message.content;
