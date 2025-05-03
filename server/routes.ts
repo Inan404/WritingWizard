@@ -316,7 +316,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Chat sessions endpoints
+  // Comment: The writing chats endpoint is defined more completely below
+  
+  // Create new writing chat entry
+  app.post("/api/db/writing-chats", isAuthenticated, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      
+      const { title, inputText } = req.body;
+      
+      if (!title || !inputText) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+      
+      // Create chat session 
+      const chatSession = await dbStorage.createChatSession({
+        userId: req.user!.id, // We've already checked if req.user exists
+        name: title, // Use name instead of title for the chatSession schema
+        isFavorite: false
+      });
+      
+      if (!chatSession) {
+        return res.status(500).json({ error: 'Failed to create chat' });
+      }
+      
+      // Create initial message
+      await dbStorage.createChatMessage({
+        sessionId: chatSession.id,
+        role: 'assistant',
+        content: inputText
+      });
+      
+      return res.status(201).json({ success: true, chat: chatSession });
+    } catch (error) {
+      console.error('Error creating writing chat:', error);
+      return res.status(500).json({ error: 'Failed to create writing chat' });
+    }
+  });
+  
+  // Chat sessions endpoints 
   app.post("/api/chat-sessions", async (req, res) => {
     try {
       const { name } = req.body;

@@ -231,9 +231,9 @@ The metrics should be scores from 0-100 assessing aspects of the writing.`;
     const content = response.choices[0].message.content;
     const parsedResponse = JSON.parse(content);
     return parsedResponse;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in humanizing:', error);
-    throw new Error(`Failed to humanize text: ${error.message}`);
+    throw new Error(`Failed to humanize text: ${error?.message || 'Unknown error'}`);
   }
 }
 
@@ -257,9 +257,9 @@ export async function generateChatResponse(messages: PerplexityMessage[]): Promi
     });
 
     return response.choices[0].message.content;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in chat response:', error);
-    throw new Error(`Failed to generate chat response: ${error.message}`);
+    throw new Error(`Failed to generate chat response: ${error?.message || 'Unknown error'}`);
   }
 }
 
