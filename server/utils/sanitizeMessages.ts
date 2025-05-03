@@ -12,7 +12,11 @@ export interface SanitizedMessage {
  * - Last message should be from user
  */
 export function sanitizeMessages(messages: SanitizedMessage[]): SanitizedMessage[] {
-  // Handle empty array case
+  // The most reliable method to guarantee proper message format is:
+  // 1. Extract system message if it exists
+  // 2. Extract the last user message
+  // 3. Return [system, user]
+  
   if (!messages || messages.length === 0) {
     return [
       { role: 'system', content: 'You are a helpful, friendly AI writing assistant.' },
@@ -20,68 +24,40 @@ export function sanitizeMessages(messages: SanitizedMessage[]): SanitizedMessage
     ];
   }
 
-  const sanitized: SanitizedMessage[] = [];
-  let lastRole: Role | null = null;
-
-  // Process each message
+  // Extract system message (first one only)
+  let systemMessage: SanitizedMessage | null = null;
   for (const msg of messages) {
-    // Skip empty messages
-    if (!msg.content.trim()) continue;
-
-    // Handle system messages - only include the first one
     if (msg.role === 'system') {
-      if (!sanitized.some(m => m.role === 'system')) {
-        sanitized.push(msg);
-      }
-      lastRole = msg.role;
-      continue;
+      systemMessage = msg;
+      break;
     }
-
-    // Insert dummy message to fix alternation
-    if (msg.role === lastRole) {
-      if (msg.role === 'user') {
-        sanitized.push({ role: 'assistant', content: 'I understand.' });
-      } else if (msg.role === 'assistant') {
-        sanitized.push({ role: 'user', content: 'Please continue.' });
-      }
-    }
-
-    sanitized.push(msg);
-    lastRole = msg.role;
   }
 
-  // If there's no system message at the beginning, add one
-  if (sanitized.length === 0 || sanitized[0].role !== 'system') {
-    sanitized.unshift({
+  // If no system message found, create a default one
+  if (!systemMessage) {
+    systemMessage = {
       role: 'system',
-      content: 'You are a helpful, friendly AI writing assistant.'
-    });
+      content: 'You are a helpful, friendly AI writing assistant. Provide detailed and thoughtful responses to help users with their writing needs.'
+    };
   }
 
-  // Ensure we have at least one user message
-  if (!sanitized.some(msg => msg.role === 'user')) {
-    sanitized.push({
+  // Find the last user message
+  let userMessage: SanitizedMessage | null = null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user' && messages[i].content.trim()) {
+      userMessage = messages[i];
+      break;
+    }
+  }
+
+  // If no user message found, create a default one
+  if (!userMessage) {
+    userMessage = {
       role: 'user',
       content: 'Hello, can you help me with my writing?'
-    });
+    };
   }
 
-  // Ensure the last message is from user
-  if (sanitized[sanitized.length - 1].role !== 'user') {
-    // If the last message is from assistant, remove it 
-    // since we need to end with a user message
-    if (sanitized[sanitized.length - 1].role === 'assistant') {
-      sanitized.pop();
-    }
-    
-    // If we still don't have a user message at the end, add a generic one
-    if (sanitized[sanitized.length - 1].role !== 'user') {
-      sanitized.push({
-        role: 'user',
-        content: 'Please continue.'
-      });
-    }
-  }
-
-  return sanitized;
+  // Return the simplest valid message sequence
+  return [systemMessage, userMessage];
 }

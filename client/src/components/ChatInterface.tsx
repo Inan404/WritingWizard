@@ -51,8 +51,13 @@ export function ChatInterface() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     
-    // Start with just the system message and current user input 
-    // This is the simplest approach to ensure proper alternation
+    // IMPORTANT: For Perplexity API, we must maintain strict message order:
+    // 1. First message must be system (optional)
+    // 2. Messages must alternate strictly between user and assistant roles
+    // 3. Must end with a user message
+    
+    // Strip the conversation down to just system and current user message
+    // This is guaranteed to work since it follows the format: system → user
     const messagesToSend: ApiMessage[] = [
       {
         role: 'system',
