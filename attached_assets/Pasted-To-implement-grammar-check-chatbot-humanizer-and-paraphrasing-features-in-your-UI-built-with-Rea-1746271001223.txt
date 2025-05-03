@@ -1,0 +1,121 @@
+To implement grammar check, chatbot, humanizer, and paraphrasing features in your UI (built with React + TypeScript + Tailwind + Shadcn + React Query), here's a step-by-step guide tailored to your stack.
+
+✅ GOAL
+You're calling your Node.js + Express API, which in turn connects to Perplexity API, and displays the AI output for different tabs.
+
+Each tab (Grammar, Chat, Paraphrase, Humanizer) triggers:
+
+a different mode value,
+
+with shared backend logic.
+
+🎯 1. React Query Hook for API
+tsx
+Copy
+Edit
+// hooks/useAiTool.ts
+import { useMutation } from '@tanstack/react-query';
+
+type Mode = 'chat' | 'grammar' | 'paraphrase' | 'humanize';
+
+export function useAiTool() {
+  return useMutation({
+    mutationFn: async ({ text, mode }: { text: string; mode: Mode }) => {
+      const res = await fetch('/api/ai/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, mode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Something went wrong');
+      return data.result;
+    },
+  });
+}
+🧠 2. Shared Text Tool Component
+tsx
+Copy
+Edit
+// components/AiTool.tsx
+import { useAiTool } from '@/hooks/useAiTool';
+import { useState } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+
+export function AiTool({ mode }: { mode: 'chat' | 'grammar' | 'paraphrase' | 'humanize' }) {
+  const [input, setInput] = useState('');
+  const [output, setOutput] = useState('');
+  const { mutate, isLoading } = useAiTool();
+
+  const handleSubmit = () => {
+    mutate({ text: input, mode }, {
+      onSuccess: (result) => setOutput(result),
+    });
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <Textarea
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Enter your text here..."
+        rows={6}
+      />
+      <Button onClick={handleSubmit} disabled={isLoading}>
+        {isLoading ? 'Processing...' : 'Submit'}
+      </Button>
+      {output && (
+        <div className="bg-muted p-4 rounded-xl shadow">
+          <h3 className="font-semibold mb-2">AI Response:</h3>
+          <p>{output}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+🧩 3. Tabbed Page UI
+tsx
+Copy
+Edit
+// pages/Dashboard.tsx
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AiTool } from '@/components/AiTool';
+
+export default function Dashboard() {
+  return (
+    <div className="container py-10">
+      <h1 className="text-2xl font-bold mb-6">AI Writing Assistant</h1>
+
+      <Tabs defaultValue="chat" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="chat">Chat</TabsTrigger>
+          <TabsTrigger value="grammar">Grammar Check</TabsTrigger>
+          <TabsTrigger value="paraphrase">Paraphrase</TabsTrigger>
+          <TabsTrigger value="humanize">Humanizer</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="chat">
+          <AiTool mode="chat" />
+        </TabsContent>
+        <TabsContent value="grammar">
+          <AiTool mode="grammar" />
+        </TabsContent>
+        <TabsContent value="paraphrase">
+          <AiTool mode="paraphrase" />
+        </TabsContent>
+        <TabsContent value="humanize">
+          <AiTool mode="humanize" />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+🧼 Bonus UI Ideas
+Add Framer Motion to animate responses.
+
+Add a Copy button to copy AI results.
+
+Show token usage or latency (if you log it on the backend).
+
+Save each session to your PostgreSQL via Drizzle if logged in.
+

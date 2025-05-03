@@ -10,6 +10,7 @@ import {
   generateWriting,
   generateChatResponse 
 } from "./services/aiService";
+import { processAi } from "./api/processAi";
 import { setupAuth } from "./auth";
 import { ensureTablesExist } from "./db";
 
@@ -101,7 +102,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Set up authentication
   setupAuth(app);
+  
+  // Unified AI processing endpoint (follows the guideline design)
+  app.post("/api/ai/process", processAi);
 
+  // Individual endpoints (legacy support)
   // Grammar check endpoint
   app.post("/api/grammar-check", async (req, res) => {
     try {
