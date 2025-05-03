@@ -3,23 +3,19 @@
  * Uses the Perplexity API with the llama-3.1-sonar-small-128k-online model
  */
 
-import fetch from 'node-fetch';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-// Check if Perplexity API key is available
+// Get the Perplexity API key from environment variables
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 
-if (!PERPLEXITY_API_KEY) {
-  console.warn("Warning: PERPLEXITY_API_KEY is not set. AI features will be limited.");
-}
+// Default AI model to use
+const DEFAULT_MODEL = 'llama-3.1-sonar-small-128k-online';
 
+// Define message interface for chat requests
 interface PerplexityMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
 
+// Options for API requests
 interface PerplexityRequestOptions {
   model?: string;
   messages: PerplexityMessage[];
@@ -31,6 +27,7 @@ interface PerplexityRequestOptions {
   stream?: boolean;
 }
 
+// Response choice from API
 interface PerplexityResponseChoice {
   index: number;
   finish_reason: string;
@@ -40,6 +37,7 @@ interface PerplexityResponseChoice {
   };
 }
 
+// Complete response interface
 interface PerplexityResponse {
   id: string;
   model: string;
@@ -52,32 +50,32 @@ interface PerplexityResponse {
   };
 }
 
-// Default model - Llama 3.1 Sonar Small with 128k context
-const DEFAULT_MODEL = 'llama-3.1-sonar-small-128k-online';
-
 /**
  * Call the Perplexity API with the provided messages
  */
 async function callPerplexityAPI(options: PerplexityRequestOptions): Promise<PerplexityResponse> {
-  if (!PERPLEXITY_API_KEY) {
-    throw new Error("PERPLEXITY_API_KEY is not set. Cannot use AI features.");
-  }
-
-  // Default parameters for the API
-  const requestOptions = {
-    model: options.model || DEFAULT_MODEL,
-    messages: options.messages,
-    max_tokens: options.max_tokens || 1024,
-    temperature: options.temperature || 0.7,
-    top_p: options.top_p || 0.9,
-    frequency_penalty: options.frequency_penalty || 0,
-    presence_penalty: options.presence_penalty || 0,
-    stream: options.stream || false
+  // Default options
+  const defaultOptions = {
+    model: DEFAULT_MODEL,
+    stream: false,
+    max_tokens: 2048,
+    temperature: 0.7,
+    top_p: 0.9,
+    frequency_penalty: 0,
+    presence_penalty: 0
   };
 
+  // Merge with provided options
+  const requestOptions = {
+    ...defaultOptions,
+    ...options
+  };
+
+  // Log the call
+  console.log(`Calling Perplexity API with model: ${requestOptions.model}`);
+
   try {
-    console.log(`Calling Perplexity API with model: ${requestOptions.model}`);
-    
+    // Make the API request
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
@@ -87,17 +85,18 @@ async function callPerplexityAPI(options: PerplexityRequestOptions): Promise<Per
       body: JSON.stringify(requestOptions)
     });
 
+    // Check for errors
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Perplexity API error:', errorText);
-      throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Perplexity API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    const data = await response.json() as PerplexityResponse;
-    return data;
-  } catch (error) {
-    console.error('Error calling Perplexity API:', error);
-    throw error;
+    // Parse the response
+    const data = await response.json();
+    return data as PerplexityResponse;
+  } catch (error: any) {
+    console.error('Perplexity API call failed:', error);
+    throw new Error(`Failed to call Perplexity API: ${error?.message || 'Unknown error'}`);
   }
 }
 
@@ -105,16 +104,30 @@ async function callPerplexityAPI(options: PerplexityRequestOptions): Promise<Per
  * Generate a response for grammar checking
  */
 export async function generateGrammarCheck(text: string) {
-  const systemPrompt = `You are an expert writing assistant specializing in grammar correction.
-Analyze the provided text and correct any grammatical, punctuation, spelling, or syntax errors.
+  const systemPrompt = `You are an expert grammar and writing assistant. 
+Analyze the provided text for grammar, punctuation, style, and clarity issues.
 Provide your response in the following JSON format:
 {
-  "corrected": "The corrected text with all errors fixed",
-  "highlights": [
+  "errors": [
     {
-      "original": "text with error",
-      "correction": "corrected text",
-      "explanation": "Brief explanation of the error"
+      "id": "unique-id-1",
+      "type": "grammar|punctuation|style|clarity",
+      "errorText": "the original text with the error",
+      "replacementText": "suggested correction",
+      "description": "brief explanation of the error and correction",
+      "position": {
+        "start": 0,
+        "end": 10
+      }
+    }
+  ],
+  "suggestions": [
+    {
+      "id": "unique-id-2",
+      "type": "wordChoice|structure|clarity|conciseness",
+      "originalText": "original text that could be improved",
+      "suggestedText": "improved version",
+      "description": "reason for the suggestion"
     }
   ],
   "metrics": {
@@ -132,7 +145,7 @@ The metrics should be scores from 0-100 assessing aspects of the writing.`;
         { role: 'system', content: systemPrompt },
         { role: 'user', content: text }
       ],
-      temperature: 0.2, // Lower temperature for more deterministic results
+      temperature: 0.2, // Lower temperature for more accurate, consistent corrections
     });
 
     // Parse the response content as JSON

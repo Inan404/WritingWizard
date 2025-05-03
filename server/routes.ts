@@ -211,6 +211,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Unified AI processing endpoint for all writing tools (alternative implementation)
+  // This doesn't change the UI but offers a more streamlined API for future use
+  app.post('/api/ai/process', async (req, res) => {
+    // Just forward to the processAi handler
+    await processAi(req, res);
+  });
 
   // Generate writing endpoint
   app.post("/api/generate-writing", async (req, res) => {
