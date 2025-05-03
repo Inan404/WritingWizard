@@ -4,7 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
-import Dashboard from "@/pages/dashboard";
+import DashboardPage from "@/pages/DashboardPage";
 import AuthPage from "@/pages/auth-page";
 import LandingPage from "@/pages/landing-page";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -16,7 +16,7 @@ function Router() {
     <Switch>
       <Route path="/" component={LandingPage} />
       <ProtectedRoute path="/home" component={Home} />
-      <ProtectedRoute path="/dashboard" component={Dashboard} />
+      <ProtectedRoute path="/dashboard" component={DashboardPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
