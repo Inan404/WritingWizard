@@ -214,7 +214,7 @@ function MetricBar({ label, value, color }: { label: string; value: number; colo
         <span>{label}</span>
         <span>{value}%</span>
       </div>
-      <Progress value={value} className="h-1.5" indicatorClassName={color} />
+      <Progress value={value} className={`h-1.5 ${color}`} />
     </div>
   );
 }
