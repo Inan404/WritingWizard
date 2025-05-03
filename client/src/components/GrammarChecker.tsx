@@ -95,6 +95,12 @@ export function GrammarChecker() {
     );
   };
 
+  // Helper function to remove duplicate phrases like "the Conqueror the conqueror"
+  const removeDuplicates = (text: string): string => {
+    // Clean repeated phrases (case insensitive)
+    return text.replace(/\b(\w+(?:\s+\w+){1,3})\s+\1\b/gi, '$1');
+  };
+
   // Function to apply a suggestion to the text
   const applySuggestion = (suggestion: GrammarSuggestion | GrammarError) => {
     // Type guards to safely access properties
@@ -121,14 +127,21 @@ export function GrammarChecker() {
     
     if (!originalText || !replacementText) return;
     
-    // Use regex with word boundaries to avoid partial replacements
-    // This prevents duplicated text when replacing parts of words
-    const escapedOriginal = originalText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\b${escapedOriginal}\\b`, 'g');
-    const newText = text.replace(regex, replacementText);
-    
-    // If regex replacement fails (e.g., for punctuation), fall back to simple replacement
-    setText(newText !== text ? newText : text.replace(originalText, replacementText));
+    // For full replacements (when original text contains multiple words),
+    // we need a different strategy to avoid duplication
+    if (originalText.includes(' ') && originalText.length > 10) {
+      // Treat this as a full replacement
+      setText(replacementText);
+    } else {
+      // For smaller suggestions, do a more targeted replacement
+      // Use regex with word boundaries to avoid partial replacements
+      const escapedOriginal = originalText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${escapedOriginal}\\b`, 'g');
+      const newText = text.replace(regex, replacementText);
+      
+      // If regex replacement fails (e.g., for punctuation), fall back to simple replacement
+      setText(removeDuplicates(newText !== text ? newText : text.replace(originalText, replacementText)));
+    }
     
     // Flash effect on textarea to indicate changes
     if (textareaRef.current) {
@@ -154,14 +167,18 @@ export function GrammarChecker() {
     if (error.position && error.replacementText) {
       const { start, end } = error.position;
       
-      // Replace text at the specified position
-      const newText = text.substring(0, start) + error.replacementText + text.substring(end);
-      
-      // Check for and fix duplicate phrases that might have been introduced
-      // This often happens with errors like "The conqueror The conqueror"
-      const fixedText = newText.replace(/\b(\w+\s+\w+)\s+\1\b/gi, '$1');
-      
-      setText(fixedText);
+      // For errors with long replacement text or full sentence replacements
+      if (error.errorText.includes(' ') && error.errorText.length > 10) {
+        // Just use the complete corrected text
+        setText(error.replacementText);
+      } else {
+        // For smaller targeted corrections
+        // Replace text at the specified position
+        const newText = text.substring(0, start) + error.replacementText + text.substring(end);
+        
+        // Check for and fix duplicate phrases that might have been introduced
+        setText(removeDuplicates(newText));
+      }
       
       // Flash effect
       if (textareaRef.current) {
@@ -329,9 +346,9 @@ export function GrammarChecker() {
   );
 }
 
-function MetricBar({ label, value, color }: { label: string; value: number; color: string }) {
-  // Ensure we have a valid display value
-  const displayValue = Math.round(value);
+function MetricBar({ label, value, color }: { label: string; value: number | undefined; color: string }) {
+  // Ensure we have a valid display value, defaulting to 50 if undefined
+  const displayValue = Math.round(value ?? 50);
   
   return (
     <div className="space-y-1">

@@ -144,10 +144,18 @@ Respond with ONLY the following JSON format:
   }
 }
 
-The metrics should be scores from 0-100 assessing aspects of the writing. 
-- For capitalization errors like lowercase 'i' that should be uppercase 'I', assign lower correctness scores (below 50)
-- Be precise with error positions in the text
-- Include corrected full text in the response to reflect all applied fixes`;
+METRICS SCORING GUIDELINES:
+- Correctness: Start at 100 and subtract 5-20 points per error depending on severity
+- Clarity: Start at 80 and adjust based on how easy the text is to understand
+- Engagement: Start at 70 and adjust based on how interesting the content is
+- Delivery: Start at 75 and adjust based on flow and style
+- NEVER return scores of 0 for any category - minimum value should be 20
+- For capitalization errors like lowercase 'i' that should be uppercase 'I', reduce correctness by 20 points
+- Subject-verb agreement errors like "I is" instead of "I am" should reduce correctness by 30 points
+- Spelling errors should reduce correctness by 10-15 points each
+
+Be precise with error positions in the text.
+Include corrected full text in the response to reflect all applied fixes.`;
 
   try {
     // Find common grammar errors before API call
@@ -297,7 +305,13 @@ Respond with ONLY the following JSON format:
     "delivery": 75
   }
 }
-The metrics should be scores from 0-100 assessing aspects of the writing.`;
+
+METRICS SCORING GUIDELINES:
+- Correctness: Rate how well the paraphrased text preserves the original meaning (50-100)
+- Clarity: Rate how clear and understandable the paraphrased text is (50-100)
+- Engagement: Rate how engaging and interesting the paraphrased text is (50-100)
+- Delivery: Rate how well the paraphrased text flows and sounds natural (50-100)
+- NEVER return scores of 0 for any category - minimum value should be 50`;
 
   try {
     const response = await callPerplexityAPI({
@@ -373,7 +387,13 @@ Respond with ONLY the following JSON format:
     "delivery": 75
   }
 }
-The metrics should be scores from 0-100 assessing aspects of the writing.`;
+
+METRICS SCORING GUIDELINES:
+- Correctness: Rate how well the humanized text preserves the original meaning (50-100)
+- Clarity: Rate how clear and understandable the humanized text is (50-100)
+- Engagement: Rate how engaging and interesting the humanized text is (50-100)
+- Delivery: Rate how well the humanized text flows and sounds natural (50-100)
+- NEVER return scores of 0 for any category - minimum value should be 50`;
 
   try {
     const response = await callPerplexityAPI({
