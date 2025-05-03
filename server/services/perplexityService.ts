@@ -106,7 +106,8 @@ async function callPerplexityAPI(options: PerplexityRequestOptions): Promise<Per
 export async function generateGrammarCheck(text: string) {
   const systemPrompt = `You are an expert grammar and writing assistant. 
 Analyze the provided text for grammar, punctuation, style, and clarity issues.
-Provide your response in the following JSON format:
+IMPORTANT: Provide your response as a raw, valid JSON object with no markdown formatting, no extra text, and no explanation outside the JSON object.
+Respond with ONLY the following JSON format:
 {
   "errors": [
     {
@@ -148,10 +149,48 @@ The metrics should be scores from 0-100 assessing aspects of the writing.`;
       temperature: 0.2, // Lower temperature for more accurate, consistent corrections
     });
 
-    // Parse the response content as JSON
+    // Get raw content from the API response
     const content = response.choices[0].message.content;
-    const parsedResponse = JSON.parse(content);
-    return parsedResponse;
+    
+    try {
+      // Try to parse as JSON directly first
+      const parsedResponse = JSON.parse(content);
+      return parsedResponse;
+    } catch (jsonError) {
+      console.warn("JSON parsing failed, attempting to extract JSON from text");
+      
+      // Try to find the JSON object in the text (between curly braces)
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const extractedJson = JSON.parse(jsonMatch[0]);
+          return extractedJson;
+        } catch (extractError) {
+          console.error("Failed to extract valid JSON:", extractError);
+        }
+      }
+      
+      // If JSON parsing fails, extract useful information and format it properly
+      console.warn("Falling back to text processing for grammar check");
+      
+      // Create a minimal grammar check response with the content as a suggestion
+      return {
+        errors: [],
+        suggestions: [{
+          id: "suggestion-1",
+          type: "fallback",
+          originalText: text,
+          suggestedText: text,
+          description: "Grammar analysis failed to generate structured output" 
+        }],
+        metrics: {
+          correctness: 50,
+          clarity: 50,
+          engagement: 50,
+          delivery: 50
+        }
+      };
+    }
   } catch (error: any) {
     console.error('Error in grammar check:', error);
     throw new Error(`Failed to check grammar: ${error?.message || 'Unknown error'}`);
@@ -173,7 +212,8 @@ export async function generateParaphrase(text: string, style: string = 'standard
   const systemPrompt = `You are an expert writing assistant specializing in paraphrasing.
 Rewrite the provided text in a different way while preserving its original meaning.
 Style: ${styleDescriptions[style] || styleDescriptions.standard}
-Provide your response in the following JSON format:
+IMPORTANT: Provide your response as a raw, valid JSON object with no markdown formatting, no extra text, and no explanation outside the JSON object.
+Respond with ONLY the following JSON format:
 {
   "paraphrased": "The paraphrased text",
   "metrics": {
@@ -194,10 +234,39 @@ The metrics should be scores from 0-100 assessing aspects of the writing.`;
       temperature: 0.7, // Higher temperature for more creative paraphrasing
     });
 
-    // Parse the response content as JSON
+    // Get raw content from the API response
     const content = response.choices[0].message.content;
-    const parsedResponse = JSON.parse(content);
-    return parsedResponse;
+    
+    try {
+      // Try to parse as JSON directly first
+      const parsedResponse = JSON.parse(content);
+      return parsedResponse;
+    } catch (jsonError) {
+      console.warn("JSON parsing failed for paraphrase, attempting to extract JSON from text");
+      
+      // Try to find the JSON object in the text (between curly braces)
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const extractedJson = JSON.parse(jsonMatch[0]);
+          return extractedJson;
+        } catch (extractError) {
+          console.error("Failed to extract valid JSON for paraphrase:", extractError);
+        }
+      }
+      
+      // If JSON parsing fails, use the raw content as the paraphrased text
+      console.warn("Falling back to text processing for paraphrase");
+      return {
+        paraphrased: content,
+        metrics: {
+          correctness: 50,
+          clarity: 50,
+          engagement: 50,
+          delivery: 50
+        }
+      };
+    }
   } catch (error: any) {
     console.error('Error in paraphrasing:', error);
     throw new Error(`Failed to paraphrase text: ${error?.message || 'Unknown error'}`);
@@ -240,10 +309,39 @@ The metrics should be scores from 0-100 assessing aspects of the writing.`;
       temperature: 0.7, // Higher temperature for more human-like variations
     });
 
-    // Parse the response content as JSON
+    // Get raw content from the API response
     const content = response.choices[0].message.content;
-    const parsedResponse = JSON.parse(content);
-    return parsedResponse;
+    
+    try {
+      // Try to parse as JSON directly first
+      const parsedResponse = JSON.parse(content);
+      return parsedResponse;
+    } catch (jsonError) {
+      console.warn("JSON parsing failed for humanize, attempting to extract JSON from text");
+      
+      // Try to find the JSON object in the text (between curly braces)
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const extractedJson = JSON.parse(jsonMatch[0]);
+          return extractedJson;
+        } catch (extractError) {
+          console.error("Failed to extract valid JSON for humanize:", extractError);
+        }
+      }
+      
+      // If JSON parsing fails, use the raw content as the humanized text
+      console.warn("Falling back to text processing for humanize");
+      return {
+        humanized: content,
+        metrics: {
+          correctness: 50,
+          clarity: 50,
+          engagement: 50,
+          delivery: 50
+        }
+      };
+    }
   } catch (error: any) {
     console.error('Error in humanizing:', error);
     throw new Error(`Failed to humanize text: ${error?.message || 'Unknown error'}`);
