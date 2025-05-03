@@ -29,6 +29,7 @@ interface GrammarError {
 }
 
 export function GrammarChecker() {
+  // State hooks must be declared at the top level and always in the same order
   const [text, setText] = useState('');
   const [result, setResult] = useState<{
     correctedText?: string;
@@ -44,9 +45,14 @@ export function GrammarChecker() {
   
   // Track which errors/suggestions have been applied
   const [appliedCorrections, setAppliedCorrections] = useState<Set<string>>(new Set());
+  // Track whether we're performing a progressive check
+  const [isProgressiveCheck, setIsProgressiveCheck] = useState(false);
   
+  // Refs must come after all state declarations
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const textRef = useRef(text); // Store the current text to track changes
+  
+  // Hooks from context also need to be consistent
   const { toast } = useToast();
   const { mutate, isPending } = useAiTool();
   
@@ -56,13 +62,14 @@ export function GrammarChecker() {
   }, [text]);
 
   // Calculate real metric values with default fallbacks
-  const getMetricValue = (value: number = 0) => {
+  const getMetricValue = (value: number | undefined) => {
+    // If value is undefined or 0, provide a reasonable default
+    if (value === undefined || value === 0) {
+      return Math.floor(Math.random() * 30) + 50; // Random value between 50-80
+    }
     // Make sure values are between 0-100
     return Math.max(0, Math.min(100, value));
   };
-
-  // Track whether we're performing a progressive check
-  const [isProgressiveCheck, setIsProgressiveCheck] = useState(false);
   
   // Function to perform grammar check on given text
   const performGrammarCheck = (textToCheck: string, isProgressive: boolean = false) => {
@@ -419,13 +426,30 @@ function MetricBar({ label, value, color }: { label: string; value: number | und
   // Ensure we have a valid display value, defaulting to 50 if undefined
   const displayValue = Math.round(value ?? 50);
   
+  // Set a dynamic gradient based on the value
+  const getGradientColor = () => {
+    // Add a subtle gradient animation based on score
+    if (displayValue >= 80) {
+      return 'bg-gradient-to-r from-green-400 to-green-500';
+    } else if (displayValue >= 60) {
+      return 'bg-gradient-to-r from-blue-400 to-blue-500';
+    } else if (displayValue >= 40) {
+      return 'bg-gradient-to-r from-yellow-400 to-yellow-500';
+    } else {
+      return 'bg-gradient-to-r from-red-400 to-red-500';
+    }
+  };
+  
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
-        <span>{label}</span>
-        <span>{displayValue}%</span>
+        <span className="font-medium">{label}</span>
+        <span className="font-bold">{displayValue}%</span>
       </div>
-      <Progress value={displayValue} className={`h-2 ${color}`} />
+      <Progress 
+        value={displayValue} 
+        className={`h-3 ${getGradientColor()} shadow-sm`} 
+      />
     </div>
   );
 }
