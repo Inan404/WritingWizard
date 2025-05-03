@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAiTool } from '@/hooks/useAiTool';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -12,14 +12,27 @@ interface GrammarSuggestion {
   id: string;
   type: string;
   description: string;
-  originalText?: string;
-  suggestedText?: string;
+  originalText: string;
+  suggestedText: string;
+}
+
+interface GrammarError {
+  id: string;
+  type: string;
+  errorText: string;
+  replacementText: string;
+  description: string;
+  position?: {
+    start: number;
+    end: number;
+  };
 }
 
 export function GrammarChecker() {
   const [text, setText] = useState('');
   const [result, setResult] = useState<{
-    correctedText: string;
+    correctedText?: string;
+    errors?: GrammarError[];
     suggestions: GrammarSuggestion[];
     metrics?: {
       correctness: number;
@@ -29,8 +42,15 @@ export function GrammarChecker() {
     };
   } | null>(null);
   
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
   const { mutate, isPending } = useAiTool();
+
+  // Calculate real metric values with default fallbacks
+  const getMetricValue = (value: number = 0) => {
+    // Make sure values are between 0-100
+    return Math.max(0, Math.min(100, value));
+  };
 
   const handleSubmit = () => {
     if (!text.trim()) {
@@ -46,14 +66,18 @@ export function GrammarChecker() {
       { text, mode: 'grammar' },
       {
         onSuccess: (data) => {
+          console.log("Grammar check response:", data);
+          
+          // Process and display the results
           setResult({
             correctedText: data.correctedText || text,
+            errors: data.errors || [],
             suggestions: data.suggestions || [],
-            metrics: data.metrics || {
-              correctness: 0,
-              clarity: 0,
-              engagement: 0,
-              delivery: 0
+            metrics: {
+              correctness: getMetricValue(data.metrics?.correctness),
+              clarity: getMetricValue(data.metrics?.clarity),
+              engagement: getMetricValue(data.metrics?.engagement),
+              delivery: getMetricValue(data.metrics?.delivery)
             }
           });
         },
@@ -68,14 +92,90 @@ export function GrammarChecker() {
     );
   };
 
+  // Function to apply a suggestion to the text
+  const applySuggestion = (suggestion: GrammarSuggestion | GrammarError) => {
+    // Type guards to safely access properties
+    const isError = (obj: GrammarSuggestion | GrammarError): obj is GrammarError => 
+      'errorText' in obj && 'replacementText' in obj;
+    
+    const isSuggestion = (obj: GrammarSuggestion | GrammarError): obj is GrammarSuggestion => 
+      'originalText' in obj && 'suggestedText' in obj;
+    
+    // Skip if we can't determine what kind of object this is
+    if (!isError(suggestion) && !isSuggestion(suggestion)) return;
+    
+    // Get the appropriate text values based on the object type
+    let originalText: string | undefined;
+    let replacementText: string | undefined;
+    
+    if (isError(suggestion)) {
+      originalText = suggestion.errorText;
+      replacementText = suggestion.replacementText;
+    } else if (isSuggestion(suggestion)) {
+      originalText = suggestion.originalText;
+      replacementText = suggestion.suggestedText;
+    }
+    
+    if (!originalText || !replacementText) return;
+    
+    // Simple replacement
+    const newText = text.replace(originalText, replacementText);
+    setText(newText);
+    
+    // Flash effect on textarea to indicate changes
+    if (textareaRef.current) {
+      textareaRef.current.classList.add('bg-primary/10');
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.classList.remove('bg-primary/10');
+        }
+      }, 300);
+    }
+    
+    toast({
+      title: 'Correction applied',
+      description: `"${originalText}" replaced with "${replacementText}"`,
+    });
+  };
+
+  // Handle direct corrections for errors with position data
+  const applyErrorCorrection = (error: GrammarError) => {
+    if (error.position && error.replacementText) {
+      const { start, end } = error.position;
+      
+      // Replace text at the specified position
+      const newText = text.substring(0, start) + error.replacementText + text.substring(end);
+      setText(newText);
+      
+      // Flash effect
+      if (textareaRef.current) {
+        textareaRef.current.classList.add('bg-primary/10');
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.classList.remove('bg-primary/10');
+          }
+        }, 300);
+      }
+      
+      toast({
+        title: 'Correction applied',
+        description: `"${error.errorText}" replaced with "${error.replacementText}"`,
+      });
+    } else {
+      // Fallback to regular text replacement if position data is missing
+      applySuggestion(error);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       <div className="space-y-4">
         <Textarea
+          ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Enter text to check for grammar and style issues..."
-          className="min-h-[200px] resize-none"
+          className="min-h-[200px] resize-none transition-colors"
           rows={8}
         />
         
@@ -130,15 +230,49 @@ export function GrammarChecker() {
                 </div>
               )}
               
-              {result.suggestions.length > 0 ? (
+              {/* Display errors */}
+              {result.errors && result.errors.length > 0 && (
                 <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2">
-                  {result.suggestions.map((suggestion) => (
-                    <Card key={suggestion.id} className="overflow-hidden border-l-4 border-l-red-500">
+                  <h3 className="text-sm font-medium mb-2">Errors to Fix</h3>
+                  {result.errors.map((error) => (
+                    <Card 
+                      key={error.id} 
+                      className="overflow-hidden border-l-4 border-l-red-500 cursor-pointer hover:bg-secondary/50 transition-colors"
+                      onClick={() => applyErrorCorrection(error)}
+                    >
                       <CardContent className="p-3">
                         <div className="flex gap-2 items-start">
                           <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
                           <div>
-                            <p className="text-sm font-medium">{suggestion.type}</p>
+                            <p className="text-sm font-medium">{error.type}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{error.description}</p>
+                            <div className="mt-2 text-xs">
+                              <p className="line-through">{error.errorText}</p>
+                              <p className="text-green-500">{error.replacementText}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+              
+              {/* Display suggestions */}
+              {result.suggestions.length > 0 ? (
+                <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2">
+                  <h3 className="text-sm font-medium mb-2">Suggestions</h3>
+                  {result.suggestions.map((suggestion) => (
+                    <Card 
+                      key={suggestion.id} 
+                      className="overflow-hidden border-l-4 border-l-amber-500 cursor-pointer hover:bg-secondary/50 transition-colors"
+                      onClick={() => suggestion.originalText && suggestion.suggestedText ? applySuggestion(suggestion) : null}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex gap-2 items-start">
+                          <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium capitalize">{suggestion.type}</p>
                             <p className="text-xs text-muted-foreground mt-1">{suggestion.description}</p>
                             {suggestion.originalText && suggestion.suggestedText && (
                               <div className="mt-2 text-xs">
@@ -168,13 +302,16 @@ export function GrammarChecker() {
 }
 
 function MetricBar({ label, value, color }: { label: string; value: number; color: string }) {
+  // Ensure we have a valid display value
+  const displayValue = Math.round(value);
+  
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
         <span>{label}</span>
-        <span>{value}%</span>
+        <span>{displayValue}%</span>
       </div>
-      <Progress value={value} className={`h-2 ${color}`} />
+      <Progress value={displayValue} className={`h-2 ${color}`} />
     </div>
   );
 }

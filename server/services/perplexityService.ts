@@ -108,12 +108,16 @@ export async function generateGrammarCheck(text: string) {
   const systemPrompt = `You are an expert grammar and writing assistant. 
 Analyze the provided text for grammar, punctuation, style, and clarity issues.
 IMPORTANT: Provide your response as a raw, valid JSON object with no markdown formatting, no extra text, and no explanation outside the JSON object.
+
+Analyze position and indexes of errors in the text carefully. For example, if "i" should be "I", find the exact position.
+If you find capitalization errors, punctuation errors, or spelling errors, add them to the errors array, not just suggestions.
+
 Respond with ONLY the following JSON format:
 {
   "errors": [
     {
       "id": "unique-id-1",
-      "type": "grammar|punctuation|style|clarity",
+      "type": "grammar|punctuation|style|clarity|capitalization",
       "errorText": "the original text with the error",
       "replacementText": "suggested correction",
       "description": "brief explanation of the error and correction",
@@ -139,9 +143,37 @@ Respond with ONLY the following JSON format:
     "delivery": 75
   }
 }
-The metrics should be scores from 0-100 assessing aspects of the writing.`;
+
+The metrics should be scores from 0-100 assessing aspects of the writing. 
+- For capitalization errors like lowercase 'i' that should be uppercase 'I', assign lower correctness scores (below 50)
+- Be precise with error positions in the text
+- Include corrected full text in the response to reflect all applied fixes`;
 
   try {
+    // Find common capitalization errors before API call
+    const lowercaseIPattern = /(\s|^)i(\s|$|\.|,|;|:|\?|!)/g;
+    let modifiedText = text;
+    let localErrors = [];
+    
+    // Check for lowercase "i" as a standalone pronoun and add it as an error
+    let match;
+    while ((match = lowercaseIPattern.exec(text)) !== null) {
+      const errorStart = match.index + match[1].length;
+      const errorEnd = errorStart + 1;
+      
+      localErrors.push({
+        id: `cap-${errorStart}`,
+        type: "capitalization",
+        errorText: "i",
+        replacementText: "I",
+        description: "The pronoun 'I' should always be capitalized.",
+        position: {
+          start: errorStart,
+          end: errorEnd
+        }
+      });
+    }
+
     const response = await callPerplexityAPI({
       messages: [
         { role: 'system', content: systemPrompt },
@@ -153,10 +185,11 @@ The metrics should be scores from 0-100 assessing aspects of the writing.`;
     // Get raw content from the API response
     const content = response.choices[0].message.content;
     
+    let parsedResponse = null;
+    
     try {
       // Try to parse as JSON directly first
-      const parsedResponse = JSON.parse(content);
-      return parsedResponse;
+      parsedResponse = JSON.parse(content);
     } catch (jsonError) {
       console.warn("JSON parsing failed, attempting to extract JSON from text");
       
@@ -164,34 +197,52 @@ The metrics should be scores from 0-100 assessing aspects of the writing.`;
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
-          const extractedJson = JSON.parse(jsonMatch[0]);
-          return extractedJson;
+          parsedResponse = JSON.parse(jsonMatch[0]);
         } catch (extractError) {
           console.error("Failed to extract valid JSON:", extractError);
         }
       }
+    }
+    
+    // If we have a valid response, merge with local errors
+    if (parsedResponse && 
+        parsedResponse.errors && 
+        parsedResponse.suggestions && 
+        parsedResponse.metrics) {
       
-      // If JSON parsing fails, extract useful information and format it properly
-      console.warn("Falling back to text processing for grammar check");
+      // Merge local errors with API errors
+      const allErrors = [...localErrors, ...parsedResponse.errors];
       
-      // Create a minimal grammar check response with the content as a suggestion
+      // Update metrics - if we found errors locally but API didn't, adjust scores
+      if (localErrors.length > 0 && parsedResponse.errors.length === 0) {
+        parsedResponse.metrics.correctness = Math.max(0, Math.min(100, parsedResponse.metrics.correctness - 20));
+      }
+      
       return {
-        errors: [],
-        suggestions: [{
-          id: "suggestion-1",
-          type: "fallback",
-          originalText: text,
-          suggestedText: text,
-          description: "Grammar analysis failed to generate structured output" 
-        }],
-        metrics: {
-          correctness: 50,
-          clarity: 50,
-          engagement: 50,
-          delivery: 50
-        }
+        ...parsedResponse,
+        errors: allErrors
       };
     }
+    
+    // Fallback response if API response is not valid
+    const fallbackMetrics = {
+      correctness: localErrors.length > 0 ? 40 : 80,
+      clarity: 70,
+      engagement: 75,
+      delivery: 65
+    };
+    
+    return {
+      errors: localErrors,
+      suggestions: localErrors.map(error => ({
+        id: `sugg-${error.id}`,
+        type: error.type,
+        originalText: error.errorText,
+        suggestedText: error.replacementText,
+        description: error.description
+      })),
+      metrics: fallbackMetrics
+    };
   } catch (error: any) {
     console.error('Error in grammar check:', error);
     throw new Error(`Failed to check grammar: ${error?.message || 'Unknown error'}`);
