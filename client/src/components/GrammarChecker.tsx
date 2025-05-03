@@ -121,9 +121,14 @@ export function GrammarChecker() {
     
     if (!originalText || !replacementText) return;
     
-    // Simple replacement
-    const newText = text.replace(originalText, replacementText);
-    setText(newText);
+    // Use regex with word boundaries to avoid partial replacements
+    // This prevents duplicated text when replacing parts of words
+    const escapedOriginal = originalText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escapedOriginal}\\b`, 'g');
+    const newText = text.replace(regex, replacementText);
+    
+    // If regex replacement fails (e.g., for punctuation), fall back to simple replacement
+    setText(newText !== text ? newText : text.replace(originalText, replacementText));
     
     // Flash effect on textarea to indicate changes
     if (textareaRef.current) {
@@ -151,7 +156,12 @@ export function GrammarChecker() {
       
       // Replace text at the specified position
       const newText = text.substring(0, start) + error.replacementText + text.substring(end);
-      setText(newText);
+      
+      // Check for and fix duplicate phrases that might have been introduced
+      // This often happens with errors like "The conqueror The conqueror"
+      const fixedText = newText.replace(/\b(\w+\s+\w+)\s+\1\b/gi, '$1');
+      
+      setText(fixedText);
       
       // Flash effect
       if (textareaRef.current) {

@@ -245,12 +245,13 @@ The metrics should be scores from 0-100 assessing aspects of the writing.
       };
     }
     
-    // Fallback response if API response is not valid
+    // Generate metrics based on error count - more errors means lower scores
+    const errorCount = localErrors.length;
     const fallbackMetrics = {
-      correctness: localErrors.length > 0 ? 40 : 80,
-      clarity: 70,
-      engagement: 75,
-      delivery: 65
+      correctness: errorCount > 0 ? Math.max(20, 100 - (errorCount * 20)) : 100,
+      clarity: errorCount > 0 ? Math.max(30, 90 - (errorCount * 15)) : 90,
+      engagement: errorCount > 0 ? Math.max(40, 85 - (errorCount * 10)) : 85,
+      delivery: errorCount > 0 ? Math.max(35, 90 - (errorCount * 15)) : 90
     };
     
     return {
