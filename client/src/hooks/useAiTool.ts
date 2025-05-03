@@ -7,7 +7,7 @@ interface AiToolParams {
   text: string;
   mode: Mode;
   style?: Style;
-  messages?: { role: 'user' | 'assistant'; content: string }[];
+  messages?: { role: 'user' | 'assistant' | 'system'; content: string }[];
 }
 
 export function useAiTool() {
@@ -34,13 +34,42 @@ export function useAiTool() {
         body: JSON.stringify(payload),
       });
       
-      const data = await res.json();
-      
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to process AI request');
+        const errorData = await res.json();
+        throw new Error(errorData.message || errorData.error || 'Failed to process AI request');
       }
       
-      return data.result;
+      const data = await res.json().catch(() => ({}));
+      
+      // Different modes return different response formats
+      if (mode === 'grammar') {
+        return {
+          correctedText: data.correctedText || data.suggestedText || 
+            (data.suggestions && data.suggestions[0]?.suggestedText) || text,
+          errors: data.errors || [],
+          suggestions: data.suggestions || []
+        };
+      } else if (mode === 'paraphrase') {
+        return {
+          paraphrasedText: data.paraphrased || data.paraphrasedText || text,
+          metrics: data.metrics || {}
+        };
+      } else if (mode === 'humanize') {
+        return {
+          humanizedText: data.humanized || data.humanizedText || text,
+          metrics: data.metrics || {}
+        };
+      } else if (mode === 'ai-check') {
+        return {
+          aiPercentage: data.aiPercentage || 0,
+          metrics: data.metrics || {},
+          highlights: data.highlights || []
+        };
+      } else if (mode === 'chat') {
+        return data.response || '';
+      }
+      
+      return data;
     },
   });
 }

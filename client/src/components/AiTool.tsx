@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress';
 
 interface AiToolProps {
   mode: Mode;
@@ -22,6 +23,7 @@ interface AiToolProps {
 export function AiTool({ mode, defaultText = '' }: AiToolProps) {
   const [input, setInput] = useState(defaultText);
   const [output, setOutput] = useState('');
+  const [metrics, setMetrics] = useState<any>(null);
   const [style, setStyle] = useState<Style>('standard');
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
@@ -47,10 +49,16 @@ export function AiTool({ mode, defaultText = '' }: AiToolProps) {
           // Handle different response formats based on mode
           if (mode === 'grammar') {
             resultText = result.correctedText || '';
+            setMetrics(result.metrics || null);
           } else if (mode === 'paraphrase') {
             resultText = result.paraphrasedText || '';
+            setMetrics(result.metrics || null);
           } else if (mode === 'humanize') {
             resultText = result.humanizedText || '';
+            setMetrics(result.metrics || null);
+          } else if (mode === 'ai-check') {
+            resultText = `AI Content Detection: ${result.aiPercentage || 0}%`;
+            setMetrics(result.metrics || null);
           } else if (mode === 'chat') {
             resultText = typeof result === 'string' ? result : '';
           } else {
@@ -169,6 +177,82 @@ export function AiTool({ mode, defaultText = '' }: AiToolProps) {
                 <div className="p-4 text-sm whitespace-pre-wrap">
                   {output}
                 </div>
+                
+                {metrics && mode === 'ai-check' && (
+                  <div className="p-4 pt-0">
+                    <div className="flex flex-col items-center mb-4">
+                      <div className="relative h-24 w-24 flex items-center justify-center mb-2">
+                        <svg viewBox="0 0 100 100" className="h-full w-full transform -rotate-90">
+                          <circle
+                            cx="50"
+                            cy="50"
+                            r="40"
+                            stroke="currentColor"
+                            strokeWidth="10"
+                            fill="transparent"
+                            className="text-muted-foreground/20"
+                          />
+                          <circle
+                            cx="50"
+                            cy="50"
+                            r="40"
+                            stroke="currentColor"
+                            strokeWidth="10"
+                            fill="transparent"
+                            strokeDasharray="251.2"
+                            strokeDashoffset={251.2 - (251.2 * (metrics.aiPercentage || 0)) / 100}
+                            className="text-blue-500"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-2xl font-bold">{metrics.aiPercentage || 0}%</span>
+                        </div>
+                      </div>
+                      <span className="text-center text-sm text-muted-foreground">AI Content</span>
+                    </div>
+                  </div>
+                )}
+
+                {metrics && (metrics.correctness || metrics.clarity || metrics.engagement || metrics.delivery) && (
+                  <div className="p-4 pt-0 space-y-2">
+                    {metrics.correctness !== undefined && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span>Correctness</span>
+                          <span>{metrics.correctness}%</span>
+                        </div>
+                        <Progress value={metrics.correctness} className="h-1.5" indicatorClassName="bg-red-500" />
+                      </div>
+                    )}
+                    {metrics.clarity !== undefined && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span>Clarity</span>
+                          <span>{metrics.clarity}%</span>
+                        </div>
+                        <Progress value={metrics.clarity} className="h-1.5" indicatorClassName="bg-blue-500" />
+                      </div>
+                    )}
+                    {metrics.engagement !== undefined && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span>Engagement</span>
+                          <span>{metrics.engagement}%</span>
+                        </div>
+                        <Progress value={metrics.engagement} className="h-1.5" indicatorClassName="bg-green-500" />
+                      </div>
+                    )}
+                    {metrics.delivery !== undefined && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span>Delivery</span>
+                          <span>{metrics.delivery}%</span>
+                        </div>
+                        <Progress value={metrics.delivery} className="h-1.5" indicatorClassName="bg-yellow-500" />
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
