@@ -288,7 +288,8 @@ export async function generateHumanized(text: string, style: string = 'standard'
   const systemPrompt = `You are an expert writing assistant specializing in making AI-generated text sound more human.
 Rewrite the provided text to sound more natural and human-written.
 Style: ${styleDescriptions[style] || styleDescriptions.standard}
-Provide your response in the following JSON format:
+IMPORTANT: Provide your response as a raw, valid JSON object with no markdown formatting, no extra text, and no explanation outside the JSON object.
+Respond with ONLY the following JSON format:
 {
   "humanized": "The humanized text",
   "metrics": {
