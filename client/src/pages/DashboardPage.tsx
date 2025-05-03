@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AiTool } from '@/components/AiTool';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import WritingSidebar from '../components/WritingSidebar';
+import WritingSidebar from '@/components/WritingSidebar';
 import { Button } from '@/components/ui/button';
 import { 
   MessageSquare, 
@@ -13,7 +13,7 @@ import {
   ScrollText,
   Menu
 } from 'lucide-react';
-import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import {
   Sheet,
   SheetContent,

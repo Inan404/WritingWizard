@@ -1,43 +1,46 @@
-import { useAuth } from '@/hooks/use-auth';
-import { Loader2 } from 'lucide-react';
-import { Redirect, Route, RouteComponentProps } from 'wouter';
+import { Redirect, Route } from "wouter";
+import { Loader2 } from "lucide-react";
+
+// This is a placeholder mock version for now.
+// In a full app, this would use proper authentication.
+interface AuthState {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
+
+// Mock auth state for development - always authenticated
+const useAuth = (): AuthState => {
+  return {
+    isAuthenticated: true,
+    isLoading: false,
+  };
+};
 
 interface ProtectedRouteProps {
   path: string;
   component: React.ComponentType;
 }
 
-// This wrapper ensures the component gets the route props it needs
-const RouteWrapper = ({ component: Component }: { component: React.ComponentType<any> }) => {
-  return <Component />;
-};
-
-export function ProtectedRoute({ path, component }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <Route path={path}>
-        {() => (
-          <div className="flex items-center justify-center min-h-screen">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        )}
-      </Route>
-    );
-  }
-
-  if (!user) {
-    return (
-      <Route path={path}>
-        {() => <Redirect to="/auth" />}
-      </Route>
-    );
-  }
+export function ProtectedRoute({ path, component: Component }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <Route path={path}>
-      {() => <RouteWrapper component={component} />}
+      {() => {
+        if (isLoading) {
+          return (
+            <div className="flex items-center justify-center min-h-screen">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          );
+        }
+
+        if (!isAuthenticated) {
+          return <Redirect to="/auth" />;
+        }
+
+        return <Component />;
+      }}
     </Route>
   );
 }

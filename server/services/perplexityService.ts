@@ -1,637 +1,267 @@
 /**
- * Perplexity API Service Implementation
- * Uses Perplexity's API to provide AI functionality for all features
+ * Perplexity API Service
+ * Uses the Perplexity API with the llama-3.1-sonar-small-128k-online model
  */
 
-import { 
-  GrammarResult, 
-  ParaphraseResult, 
-  HumanizedResult, 
-  AICheckResult, 
-  GenerateWritingResult, 
-  GenerateWritingParams 
-} from './aiServiceTypes';
-import { v4 as uuidv4 } from 'uuid';
+import fetch from 'node-fetch';
+import dotenv from 'dotenv';
 
-// Define types for suggestions
-interface Suggestion {
-  id?: string;
-  type: "grammar" | "suggestion" | "ai" | "error";
-  text: string;
-  replacement: string;
-  description: string;
-}
+dotenv.config();
 
 // Check if Perplexity API key is available
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
-const API_ENDPOINT = "https://api.perplexity.ai/chat/completions";
 
 if (!PERPLEXITY_API_KEY) {
-  console.warn('PERPLEXITY_API_KEY not set. Using fallback service.');
+  console.warn("Warning: PERPLEXITY_API_KEY is not set. AI features will be limited.");
 }
 
+interface PerplexityMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface PerplexityRequestOptions {
+  model?: string;
+  messages: PerplexityMessage[];
+  max_tokens?: number;
+  temperature?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  stream?: boolean;
+}
+
+interface PerplexityResponseChoice {
+  index: number;
+  finish_reason: string;
+  message: {
+    role: string;
+    content: string;
+  };
+}
+
+interface PerplexityResponse {
+  id: string;
+  model: string;
+  created: number;
+  choices: PerplexityResponseChoice[];
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+// Default model - Llama 3.1 Sonar Small with 128k context
+const DEFAULT_MODEL = 'llama-3.1-sonar-small-128k-online';
+
 /**
- * Makes a request to Perplexity API
+ * Call the Perplexity API with the provided messages
  */
-async function callPerplexityAPI(messages: { role: string, content: string }[], temperature: number = 0.7): Promise<string> {
+async function callPerplexityAPI(options: PerplexityRequestOptions): Promise<PerplexityResponse> {
+  if (!PERPLEXITY_API_KEY) {
+    throw new Error("PERPLEXITY_API_KEY is not set. Cannot use AI features.");
+  }
+
+  // Default parameters for the API
+  const requestOptions = {
+    model: options.model || DEFAULT_MODEL,
+    messages: options.messages,
+    max_tokens: options.max_tokens || 1024,
+    temperature: options.temperature || 0.7,
+    top_p: options.top_p || 0.9,
+    frequency_penalty: options.frequency_penalty || 0,
+    presence_penalty: options.presence_penalty || 0,
+    stream: options.stream || false
+  };
+
   try {
-    if (!PERPLEXITY_API_KEY) {
-      throw new Error("PERPLEXITY_API_KEY not set");
-    }
-
-    // Create request body according to Perplexity API documentation
-    const requestBody = {
-      model: "llama-3.1-sonar-small-128k-online", // Perplexity Sonar as described in guide
-      messages,
-      temperature,
-      max_tokens: 1000,
-      stream: false,
-      top_p: 0.9,
-      frequency_penalty: 1,
-      presence_penalty: 0
-    };
+    console.log(`Calling Perplexity API with model: ${requestOptions.model}`);
     
-    console.log("Calling Perplexity API with model:", requestBody.model);
-    console.log("Temperature:", temperature);
-    console.log("Messages count:", messages.length);
-    
-    // Log message structure without revealing full content
-    console.log("Message structure:", messages.map(m => ({
-      role: m.role,
-      contentLength: m.content.length
-    })));
-
-    const response = await fetch(API_ENDPOINT, {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${PERPLEXITY_API_KEY}`
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestOptions)
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Perplexity API error: ${response.status}`, errorText);
-      throw new Error(`Perplexity API error: ${response.status} ${errorText.substring(0, 200)}`);
+      console.error('Perplexity API error:', errorText);
+      throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    
-    // Log response data (without sensitive info)
-    console.log("Perplexity API response:", {
-      id: data.id,
-      model: data.model,
-      usage: data.usage,
-      choices: data.choices?.length || 0,
-      contentPreview: data.choices?.[0]?.message?.content?.substring(0, 50) + '...'
-    });
-    
-    // Extract and log citations if they exist
-    if (data.citations && data.citations.length > 0) {
-      console.log("Response includes citations:", data.citations.length);
+    const data = await response.json() as PerplexityResponse;
+    return data;
+  } catch (error) {
+    console.error('Error calling Perplexity API:', error);
+    throw error;
+  }
+}
+
+/**
+ * Generate a response for grammar checking
+ */
+export async function generateGrammarCheck(text: string) {
+  const systemPrompt = `You are an expert writing assistant specializing in grammar correction.
+Analyze the provided text and correct any grammatical, punctuation, spelling, or syntax errors.
+Provide your response in the following JSON format:
+{
+  "corrected": "The corrected text with all errors fixed",
+  "highlights": [
+    {
+      "original": "text with error",
+      "correction": "corrected text",
+      "explanation": "Brief explanation of the error"
     }
-    
-    return data.choices[0].message.content;
+  ],
+  "metrics": {
+    "correctness": 85,
+    "clarity": 70,
+    "engagement": 80,
+    "delivery": 75
+  }
+}
+The metrics should be scores from 0-100 assessing aspects of the writing.`;
+
+  try {
+    const response = await callPerplexityAPI({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: text }
+      ],
+      temperature: 0.2, // Lower temperature for more deterministic results
+    });
+
+    // Parse the response content as JSON
+    const content = response.choices[0].message.content;
+    const parsedResponse = JSON.parse(content);
+    return parsedResponse;
   } catch (error: any) {
-    console.error("Error calling Perplexity API:", error);
-    throw new Error(`Failed to get response from AI service: ${error.message || 'Unknown error'}`);
+    console.error('Error in grammar check:', error);
+    throw new Error(`Failed to check grammar: ${error?.message || 'Unknown error'}`);
   }
 }
 
 /**
- * Implements grammar checking using Perplexity API
+ * Generate a paraphrased version of the text
  */
-export async function generateGrammarCheck(text: string): Promise<GrammarResult> {
+export async function generateParaphrase(text: string, style: string = 'standard') {
+  const styleDescriptions: Record<string, string> = {
+    'standard': 'Maintain the original tone while rewording for clarity.',
+    'formal': 'Use more formal language with academic vocabulary and structure.',
+    'fluency': 'Optimize for smooth, natural-sounding flow.',
+    'academic': 'Use academic terminology and structures appropriate for scholarly work.',
+    'custom': 'Be more creative with rephrasing while preserving meaning.'
+  };
+
+  const systemPrompt = `You are an expert writing assistant specializing in paraphrasing.
+Rewrite the provided text in a different way while preserving its original meaning.
+Style: ${styleDescriptions[style] || styleDescriptions.standard}
+Provide your response in the following JSON format:
+{
+  "paraphrased": "The paraphrased text",
+  "metrics": {
+    "correctness": 85,
+    "clarity": 70,
+    "engagement": 80,
+    "delivery": 75
+  }
+}
+The metrics should be scores from 0-100 assessing aspects of the writing.`;
+
   try {
-    const systemPrompt = `
-    You are an expert writing assistant focused on grammar checking.
-    Analyze the user's text for grammatical errors, style issues, and clarity problems.
-    Provide your response in JSON format with these keys:
-    - corrected: The corrected version of the text with all errors fixed
-    - highlights: An array of objects representing errors found, each with: 
-      { type: "error" or "suggestion", start: character index, end: character index, message: explanation }
-    - suggestions: An array of objects with concrete suggestions, each with: 
-      { id: UUID, type: "grammar" or "suggestion", text: original text, replacement: suggested replacement, description: explanation }
-    Only include actual errors or strong suggestions, be selective.
-    `;
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: text }
-    ];
-
-    const responseText = await callPerplexityAPI(messages, 0.3);
-    const jsonStartIndex = responseText.indexOf('{');
-    const jsonEndIndex = responseText.lastIndexOf('}') + 1;
-    
-    if (jsonStartIndex === -1 || jsonEndIndex === -1) {
-      throw new Error("Invalid response format from API");
-    }
-    
-    const jsonStr = responseText.substring(jsonStartIndex, jsonEndIndex);
-    const result = JSON.parse(jsonStr);
-    
-    // Ensure the result has the correct structure
-    const corrected = result.corrected || text;
-    const highlights = result.highlights || [];
-    const suggestions = result.suggestions || [];
-    
-    // Assign UUIDs if they don't exist
-    (suggestions as Suggestion[]).forEach((suggestion: Suggestion) => {
-      if (!suggestion.id) {
-        suggestion.id = uuidv4();
-      }
+    const response = await callPerplexityAPI({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: text }
+      ],
+      temperature: 0.7, // Higher temperature for more creative paraphrasing
     });
-    
-    return {
-      corrected,
-      highlights,
-      suggestions
-    };
-  } catch (error) {
-    console.error("Error in grammar check:", error);
-    // Provide a fallback response
-    return {
-      corrected: text,
-      highlights: [],
-      suggestions: [{
-        id: uuidv4(),
-        type: "grammar",
-        text: "",
-        replacement: "",
-        description: "Unable to analyze text. Please try again later."
-      }]
-    };
+
+    // Parse the response content as JSON
+    const content = response.choices[0].message.content;
+    const parsedResponse = JSON.parse(content);
+    return parsedResponse;
+  } catch (error: any) {
+    console.error('Error in paraphrasing:', error);
+    throw new Error(`Failed to paraphrase text: ${error?.message || 'Unknown error'}`);
   }
 }
 
 /**
- * Implements paraphrasing using Perplexity API
+ * Generate a humanized version of AI-generated text
  */
-export async function generateParaphrase(text: string, style: string = 'standard'): Promise<ParaphraseResult> {
-  try {
-    console.log("generateParaphrase called with style:", style);
-    let styleDescription = "";
-    switch (style.toLowerCase()) {
-      case 'formal':
-        styleDescription = "Use formal language, academic tone, and sophisticated vocabulary";
-        break;
-      case 'fluency':
-        styleDescription = "Use natural, flowing language with a smooth and conversational tone";
-        break;
-      case 'academic':
-        styleDescription = "Use scholarly language, precise terminology, and structured argumentation";
-        break;
-      case 'custom':
-        styleDescription = "Use creative, expressive language with vivid imagery and varied structures";
-        break;
-      default: // standard
-        styleDescription = "Use clear, balanced language with a neutral tone";
-    }
+export async function generateHumanized(text: string, style: string = 'standard') {
+  const styleDescriptions: Record<string, string> = {
+    'standard': 'Make the text sound more human by adding natural variations and flow.',
+    'formal': 'Humanize while maintaining formal tone suitable for professional contexts.',
+    'fluency': 'Optimize for conversational flow and natural rhythm.',
+    'academic': 'Humanize while preserving academic integrity and appropriate terminology.',
+    'custom': 'Be creative with humanizing the text while making it sound authentic.'
+  };
 
-    const systemPrompt = `
-    You are an expert writing assistant focused on paraphrasing.
-    Rewrite the user's text to express the same meaning in a different way.
-    ${styleDescription}.
-    Maintain the original meaning while changing the sentence structure and vocabulary.
-    
-    Return your response in JSON format with the following fields:
-    {
-      "paraphrased": "your paraphrased text here",
-      "metrics": {
-        "correctness": number from 0-100,
-        "clarity": number from 0-100,
-        "engagement": number from 0-100,
-        "delivery": number from 0-100
-      }
-    }
-    `;
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: text }
-    ];
-
-    const responseText = await callPerplexityAPI(messages, 0.7);
-    
-    // Extract JSON from response
-    const jsonStartIndex = responseText.indexOf('{');
-    const jsonEndIndex = responseText.lastIndexOf('}') + 1;
-    
-    if (jsonStartIndex === -1 || jsonEndIndex === -1) {
-      // If no JSON found, just use the text as is
-      return { 
-        paraphrased: responseText,
-        metrics: {
-          correctness: 85,
-          clarity: 80,
-          engagement: 75,
-          delivery: 80
-        }
-      };
-    }
-    
-    try {
-      const jsonStr = responseText.substring(jsonStartIndex, jsonEndIndex);
-      const result = JSON.parse(jsonStr);
-      
-      return { 
-        paraphrased: result.paraphrased,
-        metrics: {
-          correctness: result.metrics?.correctness || 85,
-          clarity: result.metrics?.clarity || 80,
-          engagement: result.metrics?.engagement || 75,
-          delivery: result.metrics?.delivery || 80
-        }
-      };
-    } catch (error) {
-      // If JSON parsing fails, fall back to using the full text
-      return { 
-        paraphrased: responseText,
-        metrics: {
-          correctness: 85,
-          clarity: 80,
-          engagement: 75,
-          delivery: 80
-        }
-      };
-    }
-  } catch (error) {
-    console.error("Error in paraphrase:", error);
-    return { 
-      paraphrased: text,
-      metrics: {
-        correctness: 85,
-        clarity: 80,
-        engagement: 75,
-        delivery: 80
-      }
-    };
+  const systemPrompt = `You are an expert writing assistant specializing in making AI-generated text sound more human.
+Rewrite the provided text to sound more natural and human-written.
+Style: ${styleDescriptions[style] || styleDescriptions.standard}
+Provide your response in the following JSON format:
+{
+  "humanized": "The humanized text",
+  "metrics": {
+    "correctness": 85,
+    "clarity": 70,
+    "engagement": 80,
+    "delivery": 75
   }
 }
+The metrics should be scores from 0-100 assessing aspects of the writing.`;
 
-/**
- * Implements text humanization using Perplexity API
- */
-export async function generateHumanized(text: string, style: string = 'standard'): Promise<HumanizedResult> {
   try {
-    console.log("generateHumanized called with style:", style);
-    let styleDescription = "";
-    switch (style.toLowerCase()) {
-      case 'formal':
-        styleDescription = "Keep a formal tone while making the text sound written by a human. Use sophisticated vocabulary but with natural variation.";
-        break;
-      case 'fluency':
-        styleDescription = "Make the text flow naturally with varied sentence structure, transitions, and rhythm like a human writer would use.";
-        break;
-      case 'academic':
-        styleDescription = "Maintain scholarly tone but add human touches like occasional hedging, authentic voice, and natural paragraph development.";
-        break;
-      case 'custom':
-        styleDescription = "Add a distinctive personal voice with unique phrasings, occasionally imperfect but natural language patterns.";
-        break;
-      default: // standard
-        styleDescription = "Make the text sound natural and human-written with varied sentence structures and casual language where appropriate.";
-    }
-    
-    const systemPrompt = `
-    You are an expert writing assistant focused on making AI-generated text sound more human.
-    Rewrite the text to sound more natural, with human-like quirks, varied sentence structure, and less formal patterns.
-    ${styleDescription}
-    Maintain the original meaning and flow but make it less recognizable as AI-generated.
-    
-    Return your response in JSON format with the following fields:
-    {
-      "humanized": "your humanized text here",
-      "metrics": {
-        "correctness": number from 0-100,
-        "clarity": number from 0-100,
-        "engagement": number from 0-100,
-        "delivery": number from 0-100
-      }
-    }
-    `;
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: `Style: ${style}\n\nText to humanize: ${text}` }
-    ];
-
-    const responseText = await callPerplexityAPI(messages, 0.7);
-    
-    // Extract JSON from response
-    const jsonStartIndex = responseText.indexOf('{');
-    const jsonEndIndex = responseText.lastIndexOf('}') + 1;
-    
-    if (jsonStartIndex === -1 || jsonEndIndex === -1) {
-      // If no JSON found, just use the text as is
-      return { 
-        humanized: responseText,
-        metrics: {
-          correctness: 80,
-          clarity: 85,
-          engagement: 75,
-          delivery: 70
-        }
-      };
-    }
-    
-    try {
-      const jsonStr = responseText.substring(jsonStartIndex, jsonEndIndex);
-      const result = JSON.parse(jsonStr);
-      
-      return { 
-        humanized: result.humanized,
-        metrics: {
-          correctness: result.metrics?.correctness || 80,
-          clarity: result.metrics?.clarity || 85,
-          engagement: result.metrics?.engagement || 75,
-          delivery: result.metrics?.delivery || 70
-        }
-      };
-    } catch (error) {
-      // If JSON parsing fails, fall back to using the full text
-      return { 
-        humanized: responseText,
-        metrics: {
-          correctness: 80,
-          clarity: 85,
-          engagement: 75,
-          delivery: 70
-        }
-      };
-    }
-  } catch (error) {
-    console.error("Error in humanize:", error);
-    return { 
-      humanized: text,
-      metrics: {
-        correctness: 80,
-        clarity: 85,
-        engagement: 75,
-        delivery: 70
-      }
-    };
-  }
-}
-
-/**
- * Implements AI content detection using Perplexity API
- * Note: Perplexity itself doesn't have a dedicated AI detection feature,
- * but we can use its powerful language model capabilities to analyze text patterns
- */
-export async function checkAIContent(text: string): Promise<AICheckResult> {
-  try {
-    console.log("checkAIContent called with text of length:", text.length);
-    
-    const systemPrompt = `
-    You are an expert AI detection specialist with deep knowledge of language patterns.
-    You're helping users identify if text was likely written by AI like ChatGPT, Claude, or other LLMs.
-    
-    Analyze the provided text and identify patterns that suggest it was written by AI such as:
-    - Repetitive structures and phrasings common in AI outputs
-    - Unnatural flows, awkward transitions, or overly formal language
-    - Lack of personal voice or experience
-    - Excessive balance in presenting multiple viewpoints
-    - Perfect grammar and structured formatting
-    - Generic examples and explanations
-    
-    Provide your analysis in JSON format with these EXACT keys:
-    - aiPercentage: a number between 0-100 indicating how likely the text is AI-generated
-    - highlights: an array of objects representing AI-like patterns, each with:
-      { id: string, type: "ai", start: number, end: number, message: string }
-    - suggestions: an array of objects with suggestions to make it seem more human, each with:
-      { id: string, type: "ai", text: string, replacement: string, description: string }
-    - metrics: an object with scores for different aspects of the text:
-      { correctness: number, clarity: number, engagement: number, delivery: number }
-    
-    The response MUST be valid JSON that can be parsed with JSON.parse(). 
-    Include ONLY the JSON object in your response, with no other text before or after it.
-    Be thoughtful and precise in your analysis.
-    `;
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: text }
-    ];
-
-    // Lower temperature for more consistent, analytical responses
-    const responseText = await callPerplexityAPI(messages, 0.2);
-    console.log("AI check raw response:", responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
-    
-    const jsonStartIndex = responseText.indexOf('{');
-    const jsonEndIndex = responseText.lastIndexOf('}') + 1;
-    
-    if (jsonStartIndex === -1 || jsonEndIndex === -1) {
-      console.error("Failed to find JSON in response:", responseText);
-      throw new Error("Invalid response format from API - no JSON found");
-    }
-    
-    const jsonStr = responseText.substring(jsonStartIndex, jsonEndIndex);
-    console.log("Extracted JSON string:", jsonStr.substring(0, 200) + (jsonStr.length > 200 ? '...' : ''));
-    
-    let parsedData;
-    try {
-      parsedData = JSON.parse(jsonStr);
-      console.log("Parsed result:", parsedData);
-    } catch (parseError) {
-      console.error("JSON parse error:", parseError);
-      throw new Error("Failed to parse JSON response");
-    }
-    
-    // Ensure the result has the correct structure
-    const aiPercentage = parsedData.aiPercentage || 50;
-    const highlights = parsedData.highlights || [];
-    const suggestions = parsedData.suggestions || [];
-    
-    // Assign UUIDs to highlights if they don't exist
-    (highlights as any[]).forEach((highlight) => {
-      if (!highlight.id) {
-        highlight.id = uuidv4();
-      }
+    const response = await callPerplexityAPI({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: text }
+      ],
+      temperature: 0.7, // Higher temperature for more human-like variations
     });
-    
-    // Assign UUIDs to suggestions if they don't exist
-    (suggestions as Suggestion[]).forEach((suggestion: Suggestion) => {
-      if (!suggestion.id) {
-        suggestion.id = uuidv4();
-      }
-    });
-    
-    // Extract metrics or use defaults
-    const metrics = parsedData.metrics || {
-      correctness: 80,
-      clarity: 75,
-      engagement: 70,
-      delivery: 65
-    };
-    
-    const finalResult = {
-      aiAnalyzed: text,
-      aiPercentage,
-      highlights,
-      suggestions,
-      metrics
-    };
-    
-    console.log("Final AI check result:", {
-      textLength: finalResult.aiAnalyzed.length,
-      aiPercentage: finalResult.aiPercentage,
-      highlightsCount: finalResult.highlights.length,
-      suggestionsCount: finalResult.suggestions.length,
-      metrics: finalResult.metrics
-    });
-    
-    return finalResult;
+
+    // Parse the response content as JSON
+    const content = response.choices[0].message.content;
+    const parsedResponse = JSON.parse(content);
+    return parsedResponse;
   } catch (error) {
-    console.error("Error in AI check:", error);
-    // Provide a fallback response
-    return {
-      aiAnalyzed: text,
-      aiPercentage: 50,
-      highlights: [],
-      suggestions: [{
-        id: uuidv4(),
-        type: "ai",
-        text: "",
-        replacement: "",
-        description: "Unable to analyze text. Please try again later."
-      }],
-      metrics: {
-        correctness: 80,
-        clarity: 75,
-        engagement: 70,
-        delivery: 65
-      }
-    };
+    console.error('Error in humanizing:', error);
+    throw new Error(`Failed to humanize text: ${error.message}`);
   }
 }
 
 /**
- * Implements AI writing generation using Perplexity API
+ * Generate a chat response based on conversation history
  */
-export async function generateWriting({
-  originalSample = '',
-  referenceUrl = '',
-  topic,
-  length = '500 words',
-  style = 'Academic',
-  additionalInstructions = ''
-}: GenerateWritingParams): Promise<GenerateWritingResult> {
+export async function generateChatResponse(messages: PerplexityMessage[]): Promise<string> {
+  // Prepare the messages for the API
+  const systemPrompt = {
+    role: 'system' as const,
+    content: 'You are a helpful, friendly AI writing assistant. Provide detailed and thoughtful responses to help users with their writing needs.'
+  };
+
+  // Include system prompt at the beginning if not present
+  const preparedMessages = messages[0]?.role === 'system' ? messages : [systemPrompt, ...messages];
+
   try {
-    let stylePrompt = "";
-    switch (style.toLowerCase()) {
-      case 'academic':
-        stylePrompt = "Use formal academic language with proper citations, structured arguments, and scholarly tone.";
-        break;
-      case 'creative':
-        stylePrompt = "Use creative, engaging language with vivid imagery, varied sentence structure, and an expressive voice.";
-        break;
-      case 'business':
-        stylePrompt = "Use clear, professional language with concise points, data-driven insights, and actionable recommendations.";
-        break;
-      case 'conversational':
-        stylePrompt = "Use a casual, friendly tone with contractions, simpler vocabulary, and a more personal approach.";
-        break;
-      default:
-        stylePrompt = "Use a balanced, clear writing style with a professional tone and accessible language.";
-    }
+    const response = await callPerplexityAPI({
+      messages: preparedMessages,
+      temperature: 0.7, // Balanced temperature for creative but coherent responses
+    });
 
-    let contentPrompt = `Write about the following topic: ${topic}. `;
-    contentPrompt += `Create content that is approximately ${length}. `;
-    contentPrompt += stylePrompt + " ";
-    
-    if (originalSample) {
-      contentPrompt += `Emulate aspects of this writing style: "${originalSample.substring(0, 300)}${originalSample.length > 300 ? '...' : ''}" `;
-    }
-    
-    if (referenceUrl) {
-      contentPrompt += `Consider information from this reference: ${referenceUrl} `;
-    }
-    
-    if (additionalInstructions) {
-      contentPrompt += `Additional instructions: ${additionalInstructions}`;
-    }
-
-    const systemPrompt = `
-    You are an expert writing assistant capable of generating high-quality, well-structured content on any topic.
-    Produce thoughtful, original content that is engaging and informative.
-    Include a clear introduction, well-developed main points, and a strong conclusion.
-    Format with appropriate headers and structure for readability.
-    Respond with ONLY the generated content.
-    `;
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: contentPrompt }
-    ];
-
-    const generatedText = await callPerplexityAPI(messages, 0.7);
-    
-    return { generatedText };
+    return response.choices[0].message.content;
   } catch (error) {
-    console.error("Error in writing generation:", error);
-    return { 
-      generatedText: `Unable to generate content on "${topic}" at this time. Please try again later or adjust your request parameters.` 
-    };
+    console.error('Error in chat response:', error);
+    throw new Error(`Failed to generate chat response: ${error.message}`);
   }
 }
 
-/**
- * Implements chat functionality using Perplexity API
- * Following Perplexity API best practices for maintaining chat history
- */
-export async function generateChatResponse(messages: { role: string, content: string }[]): Promise<string> {
-  try {
-    const systemMessage = {
-      role: "system",
-      content: `You are a helpful AI writing assistant specializing in grammar, style, paraphrasing, 
-      and creating original content. You provide thoughtful, detailed responses about writing topics. 
-      When asked to analyze text, provide specific feedback and constructive suggestions for improvement. 
-      
-      For grammar issues, point out specific problems and explain the rules.
-      For style improvements, give concrete examples of better phrasing.
-      For content generation, create well-structured, engaging text.
-      
-      Stay focused on writing assistance and don't discuss topics unrelated to writing, language, 
-      or communication. Maintain a friendly, supportive tone and be concise while remaining helpful.`
-    };
-
-    // Prepend the system message to the chat history
-    const fullMessages = [systemMessage, ...messages];
-    
-    // Ensure the last message is from the user (Perplexity API requirement)
-    if (fullMessages[fullMessages.length - 1].role !== 'user') {
-      throw new Error("The last message must be from the user");
-    }
-    
-    // Check if messages alternate properly between user and assistant
-    // This is important for Perplexity API to function correctly
-    for (let i = 1; i < messages.length; i++) {
-      if (messages[i].role === messages[i-1].role) {
-        console.warn(`Chat history contains consecutive messages with the same role: ${messages[i].role}`);
-        // Fix the message flow by filtering out problematic messages
-        const fixedMessages = [messages[0]];
-        let lastRole = messages[0].role;
-        
-        for (let j = 1; j < messages.length; j++) {
-          if (messages[j].role !== lastRole) {
-            fixedMessages.push(messages[j]);
-            lastRole = messages[j].role;
-          }
-        }
-        
-        // Replace with fixed messages
-        messages = fixedMessages;
-        break;
-      }
-    }
-
-    // Use slightly higher temperature for more conversational responses
-    return await callPerplexityAPI(fullMessages, 0.75);
-  } catch (error) {
-    console.error("Error in chat response:", error);
-    return "I apologize, but I'm having trouble generating a response right now. Please try again in a moment.";
-  }
-}
+// Export function that checks if we have credentials
+export const hasPerplexityCredentials = !!PERPLEXITY_API_KEY;
