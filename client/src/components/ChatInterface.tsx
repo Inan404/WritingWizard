@@ -3,10 +3,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Loader2, Clock, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAiTool } from '@/hooks/useAiTool';
+import { useAiTool, ApiMessage, MessageRole } from '@/hooks/useAiTool';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 
+// Local UI message interface
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -48,39 +49,62 @@ export function ChatInterface() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     
-    // Prepare messages for API, ensuring proper alternating pattern
-    // Start with a filtered list that properly alternates user/assistant messages
-    const messagesToSend = [];
+    // Prepare messages for API with strict alternation (system → user → assistant → user → ...)
+    const messagesToSend: ApiMessage[] = [
+      {
+        role: 'system',
+        content: 'You are a helpful, friendly AI writing assistant. Provide detailed and thoughtful responses to help users with their writing needs.'
+      }
+    ];
     
-    // Add system message first if needed
-    messagesToSend.push({
-      role: 'system',
-      content: 'You are a helpful, friendly AI writing assistant. Provide detailed and thoughtful responses to help users with their writing needs.'
-    });
+    // Create properly alternating messages array
+    const normalizedMessages: ApiMessage[] = [];
+    let expectedRole: MessageRole = 'user'; // First message after system should be user
     
-    // Make sure messages alternate properly
-    let lastRole = 'system';
-    for (const msg of messages) {
-      // Skip if we would have two of the same role in sequence
-      if (lastRole === msg.role) {
-        continue;
+    // Process existing messages and add the current input as a user message
+    for (const msg of [...messages, { id: 'current', role: 'user' as const, content: input, timestamp: Date.now() }]) {
+      // Our UI messages don't have system role - we have a type constraint
+      // that ensures they are only 'user' or 'assistant'
+      
+      // If this message doesn't match the expected role, insert a placeholder
+      if (msg.role !== expectedRole && normalizedMessages.length > 0) {
+        // Insert empty message from the expected role to maintain alternation
+        normalizedMessages.push({ 
+          role: expectedRole, 
+          content: expectedRole === 'assistant' ? 'I understand.' : 'Please continue.'
+        });
       }
       
-      messagesToSend.push({
-        role: msg.role,
-        content: msg.content,
-      });
-      
-      lastRole = msg.role;
+      // Only add message if it has content
+      if (msg.content.trim()) {
+        normalizedMessages.push({
+          role: msg.role,
+          content: msg.content
+        });
+        
+        // Update expected role for next message
+        expectedRole = msg.role === 'user' ? 'assistant' : 'user';
+      }
     }
     
-    // Add the current user input if it doesn't break the alternating pattern
-    if (lastRole !== 'user') {
+    // Ensure the last message is from user (API requirement)
+    if (normalizedMessages.length > 0 && normalizedMessages[normalizedMessages.length - 1].role !== 'user') {
+      // Remove the last assistant message if there's no valid user query
+      normalizedMessages.pop();
+    }
+    
+    // Only add messages if we have at least one
+    if (normalizedMessages.length > 0) {
+      messagesToSend.push(...normalizedMessages);
+    } else {
+      // Fallback if no messages
       messagesToSend.push({
         role: 'user',
-        content: input,
+        content: input || 'Hello, can you help me with my writing?'
       });
     }
+    
+    console.log('Prepared messages for Perplexity API:', messagesToSend);
     
     // Send to AI API
     mutate(

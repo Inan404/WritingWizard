@@ -2,12 +2,18 @@ import { useMutation } from '@tanstack/react-query';
 
 export type Mode = 'chat' | 'grammar' | 'paraphrase' | 'humanize' | 'ai-check';
 export type Style = 'standard' | 'formal' | 'fluency' | 'academic' | 'custom';
+export type MessageRole = 'user' | 'assistant' | 'system';
+
+export interface ApiMessage {
+  role: MessageRole;
+  content: string;
+}
 
 interface AiToolParams {
   text: string;
   mode: Mode;
   style?: Style;
-  messages?: { role: 'user' | 'assistant' | 'system'; content: string }[];
+  messages?: ApiMessage[];
 }
 
 export function useAiTool() {

@@ -359,10 +359,46 @@ export async function generateChatResponse(messages: PerplexityMessage[]): Promi
     content: 'You are a helpful, friendly AI writing assistant. Provide detailed and thoughtful responses to help users with their writing needs.'
   };
 
-  // Include system prompt at the beginning if not present
-  const preparedMessages = messages[0]?.role === 'system' ? messages : [systemPrompt, ...messages];
+  // Create a new array with properly alternating messages
+  const preparedMessages: PerplexityMessage[] = [];
+  
+  // Always start with system prompt
+  preparedMessages.push(systemPrompt);
+  
+  // Ensure messages alternate between user and assistant
+  let lastRole: string | null = 'system';
+  let userMessageIncluded = false;
+  
+  for (const msg of messages) {
+    // Skip system messages after the first one
+    if (msg.role === 'system') continue;
+    
+    // Skip if the role is the same as the last one (no consecutive same roles)
+    if (msg.role === lastRole) continue;
+    
+    // Add the message
+    preparedMessages.push(msg);
+    lastRole = msg.role;
+    
+    // Track if we've included at least one user message
+    if (msg.role === 'user') userMessageIncluded = true;
+  }
+  
+  // If no user messages were included, add a default one
+  if (!userMessageIncluded) {
+    preparedMessages.push({
+      role: 'user',
+      content: 'Hello, I need help with my writing.'
+    });
+  }
+  
+  // Ensure the last message is from the user (API requirement)
+  if (lastRole !== 'user') {
+    preparedMessages.pop(); // Remove the last assistant message
+  }
 
   try {
+    console.log('Sending prepared messages to Perplexity:', JSON.stringify(preparedMessages));
     const response = await callPerplexityAPI({
       messages: preparedMessages,
       temperature: 0.7, // Balanced temperature for creative but coherent responses
