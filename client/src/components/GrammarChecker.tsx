@@ -42,6 +42,9 @@ export function GrammarChecker() {
     };
   } | null>(null);
   
+  // Track which errors/suggestions have been applied
+  const [appliedCorrections, setAppliedCorrections] = useState<Set<string>>(new Set());
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
   const { mutate, isPending } = useAiTool();
@@ -132,6 +135,9 @@ export function GrammarChecker() {
       }, 300);
     }
     
+    // Mark this suggestion as applied
+    setAppliedCorrections(prev => new Set(Array.from(prev).concat(suggestion.id)));
+    
     toast({
       title: 'Correction applied',
       description: `"${originalText}" replaced with "${replacementText}"`,
@@ -156,6 +162,9 @@ export function GrammarChecker() {
           }
         }, 300);
       }
+      
+      // Mark this error as fixed
+      setAppliedCorrections(prev => new Set(Array.from(prev).concat(error.id)));
       
       toast({
         title: 'Correction applied',
@@ -230,66 +239,75 @@ export function GrammarChecker() {
                 </div>
               )}
               
-              {/* Display errors */}
-              {result.errors && result.errors.length > 0 && (
+              {/* Display errors - filter out applied corrections */}
+              {result.errors && result.errors.filter(error => !appliedCorrections.has(error.id)).length > 0 && (
                 <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2">
                   <h3 className="text-sm font-medium mb-2">Errors to Fix</h3>
-                  {result.errors.map((error) => (
-                    <Card 
-                      key={error.id} 
-                      className="overflow-hidden border-l-4 border-l-red-500 cursor-pointer hover:bg-secondary/50 transition-colors"
-                      onClick={() => applyErrorCorrection(error)}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex gap-2 items-start">
-                          <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm font-medium">{error.type}</p>
-                            <p className="text-xs text-muted-foreground mt-1">{error.description}</p>
-                            <div className="mt-2 text-xs">
-                              <p className="line-through">{error.errorText}</p>
-                              <p className="text-green-500">{error.replacementText}</p>
+                  {result.errors
+                    .filter(error => !appliedCorrections.has(error.id))
+                    .map((error) => (
+                      <Card 
+                        key={error.id} 
+                        className="overflow-hidden border-l-4 border-l-red-500 cursor-pointer hover:bg-secondary/50 transition-colors"
+                        onClick={() => applyErrorCorrection(error)}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex gap-2 items-start">
+                            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium">{error.type}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{error.description}</p>
+                              <div className="mt-2 text-xs">
+                                <p className="line-through">{error.errorText}</p>
+                                <p className="text-green-500">{error.replacementText}</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))}
                 </div>
               )}
               
-              {/* Display suggestions */}
-              {result.suggestions.length > 0 ? (
+              {/* Display suggestions - filter out applied corrections */}
+              {result.suggestions.filter(suggestion => !appliedCorrections.has(suggestion.id)).length > 0 ? (
                 <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2">
                   <h3 className="text-sm font-medium mb-2">Suggestions</h3>
-                  {result.suggestions.map((suggestion) => (
-                    <Card 
-                      key={suggestion.id} 
-                      className="overflow-hidden border-l-4 border-l-amber-500 cursor-pointer hover:bg-secondary/50 transition-colors"
-                      onClick={() => suggestion.originalText && suggestion.suggestedText ? applySuggestion(suggestion) : null}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex gap-2 items-start">
-                          <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm font-medium capitalize">{suggestion.type}</p>
-                            <p className="text-xs text-muted-foreground mt-1">{suggestion.description}</p>
-                            {suggestion.originalText && suggestion.suggestedText && (
-                              <div className="mt-2 text-xs">
-                                <p className="line-through">{suggestion.originalText}</p>
-                                <p className="text-green-500">{suggestion.suggestedText}</p>
-                              </div>
-                            )}
+                  {result.suggestions
+                    .filter(suggestion => !appliedCorrections.has(suggestion.id))
+                    .map((suggestion) => (
+                      <Card 
+                        key={suggestion.id} 
+                        className="overflow-hidden border-l-4 border-l-amber-500 cursor-pointer hover:bg-secondary/50 transition-colors"
+                        onClick={() => suggestion.originalText && suggestion.suggestedText ? applySuggestion(suggestion) : null}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex gap-2 items-start">
+                            <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium capitalize">{suggestion.type}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{suggestion.description}</p>
+                              {suggestion.originalText && suggestion.suggestedText && (
+                                <div className="mt-2 text-xs">
+                                  <p className="line-through">{suggestion.originalText}</p>
+                                  <p className="text-green-500">{suggestion.suggestedText}</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))}
                 </div>
               ) : (
+                // If no suggestions or all are applied, show the "no issues" card
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <p className="text-sm text-muted-foreground">No grammar issues found.</p>
+                    <p className="text-sm text-muted-foreground">
+                      {appliedCorrections.size > 0 
+                        ? "All issues have been fixed!" 
+                        : "No grammar issues found."}
+                    </p>
                   </CardContent>
                 </Card>
               )}

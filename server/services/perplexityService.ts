@@ -150,8 +150,10 @@ The metrics should be scores from 0-100 assessing aspects of the writing.
 - Include corrected full text in the response to reflect all applied fixes`;
 
   try {
-    // Find common capitalization errors before API call
+    // Find common grammar errors before API call
     const lowercaseIPattern = /(\s|^)i(\s|$|\.|,|;|:|\?|!)/g;
+    const subjectVerbAgreementPattern = /(\s|^)I\s+is(\s|$|\.|,|;|:|\?|!)/g;
+    
     let modifiedText = text;
     let localErrors = [];
     
@@ -167,6 +169,25 @@ The metrics should be scores from 0-100 assessing aspects of the writing.
         errorText: "i",
         replacementText: "I",
         description: "The pronoun 'I' should always be capitalized.",
+        position: {
+          start: errorStart,
+          end: errorEnd
+        }
+      });
+    }
+    
+    // Check for "I is" subject-verb agreement errors
+    let svMatch;
+    while ((svMatch = subjectVerbAgreementPattern.exec(text)) !== null) {
+      const errorStart = svMatch.index + svMatch[1].length;
+      const errorEnd = errorStart + 4; // 'I is'
+      
+      localErrors.push({
+        id: `sva-${errorStart}`,
+        type: "grammar",
+        errorText: "I is",
+        replacementText: "I am",
+        description: "Subject-verb agreement error. The first-person singular pronoun 'I' should be followed by 'am', not 'is'.",
         position: {
           start: errorStart,
           end: errorEnd
