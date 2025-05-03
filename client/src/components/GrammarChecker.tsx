@@ -3,7 +3,7 @@ import { useAiTool } from '@/hooks/useAiTool';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
@@ -46,8 +46,14 @@ export function GrammarChecker() {
   const [appliedCorrections, setAppliedCorrections] = useState<Set<string>>(new Set());
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textRef = useRef(text); // Store the current text to track changes
   const { toast } = useToast();
   const { mutate, isPending } = useAiTool();
+  
+  // Effect to update the textRef when text changes
+  useEffect(() => {
+    textRef.current = text;
+  }, [text]);
 
   // Calculate real metric values with default fallbacks
   const getMetricValue = (value: number = 0) => {
@@ -55,8 +61,12 @@ export function GrammarChecker() {
     return Math.max(0, Math.min(100, value));
   };
 
-  const handleSubmit = () => {
-    if (!text.trim()) {
+  // Track whether we're performing a progressive check
+  const [isProgressiveCheck, setIsProgressiveCheck] = useState(false);
+  
+  // Function to perform grammar check on given text
+  const performGrammarCheck = (textToCheck: string, isProgressive: boolean = false) => {
+    if (!textToCheck.trim()) {
       toast({
         title: 'Empty input',
         description: 'Please enter some text to check.',
@@ -65,15 +75,17 @@ export function GrammarChecker() {
       return;
     }
     
+    setIsProgressiveCheck(isProgressive);
+    
     mutate(
-      { text, mode: 'grammar' },
+      { text: textToCheck, mode: 'grammar' },
       {
         onSuccess: (data) => {
           console.log("Grammar check response:", data);
           
           // Process and display the results
           setResult({
-            correctedText: data.correctedText || text,
+            correctedText: data.correctedText || textToCheck,
             errors: data.errors || [],
             suggestions: data.suggestions || [],
             metrics: {
@@ -83,8 +95,12 @@ export function GrammarChecker() {
               delivery: getMetricValue(data.metrics?.delivery)
             }
           });
+          
+          // Clear progressive check flag
+          setIsProgressiveCheck(false);
         },
         onError: (error) => {
+          setIsProgressiveCheck(false);
           toast({
             title: 'Error',
             description: error.message || 'Failed to check grammar',
@@ -93,6 +109,19 @@ export function GrammarChecker() {
         }
       }
     );
+  };
+  
+  // Initial grammar check
+  const handleSubmit = () => {
+    // Reset corrections when starting a new check
+    setAppliedCorrections(new Set());
+    performGrammarCheck(text);
+  };
+  
+  // Function to recheck after applying a correction
+  const recheckGrammar = () => {
+    // Keep track of applied corrections
+    performGrammarCheck(text, true);
   };
 
   // Helper function to remove duplicate phrases like "the Conqueror the conqueror"
@@ -160,6 +189,10 @@ export function GrammarChecker() {
       title: 'Correction applied',
       description: `"${originalText}" replaced with "${replacementText}"`,
     });
+    
+    // Schedule a recheck to find new issues based on the corrected text
+    // Need a small delay to let the text state update first
+    setTimeout(() => recheckGrammar(), 500);
   };
 
   // Handle direct corrections for errors with position data
@@ -197,6 +230,10 @@ export function GrammarChecker() {
         title: 'Correction applied',
         description: `"${error.errorText}" replaced with "${error.replacementText}"`,
       });
+      
+      // Schedule a recheck to find new issues based on the corrected text
+      // Need a small delay to let the text state update first
+      setTimeout(() => recheckGrammar(), 500);
     } else {
       // Fallback to regular text replacement if position data is missing
       applySuggestion(error);
@@ -242,27 +279,44 @@ export function GrammarChecker() {
               className="space-y-4"
             >
               {result.metrics && (
-                <div className="grid grid-cols-2 gap-4">
-                  <MetricBar 
-                    label="Correctness" 
-                    value={result.metrics.correctness} 
-                    color="bg-red-500" 
-                  />
-                  <MetricBar 
-                    label="Clarity" 
-                    value={result.metrics.clarity} 
-                    color="bg-blue-500" 
-                  />
-                  <MetricBar 
-                    label="Engagement" 
-                    value={result.metrics.engagement} 
-                    color="bg-green-500" 
-                  />
-                  <MetricBar 
-                    label="Delivery" 
-                    value={result.metrics.delivery} 
-                    color="bg-yellow-500" 
-                  />
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-sm font-medium">Writing Metrics</h3>
+                    {appliedCorrections.size > 0 && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={recheckGrammar}
+                        disabled={isPending || isProgressiveCheck}
+                        className="flex items-center gap-1 text-xs h-7"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${isPending || isProgressiveCheck ? 'animate-spin' : ''}`} />
+                        Recheck Text
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <MetricBar 
+                      label="Correctness" 
+                      value={result.metrics.correctness} 
+                      color="bg-red-500" 
+                    />
+                    <MetricBar 
+                      label="Clarity" 
+                      value={result.metrics.clarity} 
+                      color="bg-blue-500" 
+                    />
+                    <MetricBar 
+                      label="Engagement" 
+                      value={result.metrics.engagement} 
+                      color="bg-green-500" 
+                    />
+                    <MetricBar 
+                      label="Delivery" 
+                      value={result.metrics.delivery} 
+                      color="bg-yellow-500" 
+                    />
+                  </div>
                 </div>
               )}
               
@@ -329,12 +383,27 @@ export function GrammarChecker() {
               ) : (
                 // If no suggestions or all are applied, show the "no issues" card
                 <Card>
-                  <CardContent className="p-4 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      {appliedCorrections.size > 0 
-                        ? "All issues have been fixed!" 
-                        : "No grammar issues found."}
-                    </p>
+                  <CardContent className="p-4">
+                    <div className="flex flex-col items-center gap-3">
+                      <p className="text-sm text-muted-foreground">
+                        {appliedCorrections.size > 0 
+                          ? "All issues have been fixed!" 
+                          : "No grammar issues found."}
+                      </p>
+                      
+                      {appliedCorrections.size > 0 && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={recheckGrammar}
+                          disabled={isPending || isProgressiveCheck}
+                          className="flex items-center gap-1 text-xs"
+                        >
+                          <RefreshCw className={`h-3 w-3 ${isPending || isProgressiveCheck ? 'animate-spin' : ''}`} />
+                          Check for More Issues
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               )}
