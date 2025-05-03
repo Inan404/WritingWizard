@@ -48,16 +48,39 @@ export function ChatInterface() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     
-    // Prepare messages for API
-    const messagesToSend = messages.map(msg => ({
-      role: msg.role,
-      content: msg.content,
-    }));
+    // Prepare messages for API, ensuring proper alternating pattern
+    // Start with a filtered list that properly alternates user/assistant messages
+    const messagesToSend = [];
     
+    // Add system message first if needed
     messagesToSend.push({
-      role: 'user',
-      content: input,
+      role: 'system',
+      content: 'You are a helpful, friendly AI writing assistant. Provide detailed and thoughtful responses to help users with their writing needs.'
     });
+    
+    // Make sure messages alternate properly
+    let lastRole = 'system';
+    for (const msg of messages) {
+      // Skip if we would have two of the same role in sequence
+      if (lastRole === msg.role) {
+        continue;
+      }
+      
+      messagesToSend.push({
+        role: msg.role,
+        content: msg.content,
+      });
+      
+      lastRole = msg.role;
+    }
+    
+    // Add the current user input if it doesn't break the alternating pattern
+    if (lastRole !== 'user') {
+      messagesToSend.push({
+        role: 'user',
+        content: input,
+      });
+    }
     
     // Send to AI API
     mutate(
