@@ -39,13 +39,16 @@ async function callPerplexityAPI(messages: { role: string, content: string }[], 
       throw new Error("PERPLEXITY_API_KEY not set");
     }
 
-    // Create request body
+    // Create request body according to Perplexity API documentation
     const requestBody = {
-      model: "llama-3.1-sonar-small-128k-online",
+      model: "llama-3.1-sonar-small-128k-online", // Perplexity Sonar as described in guide
       messages,
       temperature,
       max_tokens: 1000,
-      stream: false
+      stream: false,
+      top_p: 0.9,
+      frequency_penalty: 1,
+      presence_penalty: 0
     };
     
     console.log("Calling Perplexity API with model:", requestBody.model);
@@ -74,6 +77,8 @@ async function callPerplexityAPI(messages: { role: string, content: string }[], 
     }
 
     const data = await response.json();
+    
+    // Log response data (without sensitive info)
     console.log("Perplexity API response:", {
       id: data.id,
       model: data.model,
@@ -81,6 +86,11 @@ async function callPerplexityAPI(messages: { role: string, content: string }[], 
       choices: data.choices?.length || 0,
       contentPreview: data.choices?.[0]?.message?.content?.substring(0, 50) + '...'
     });
+    
+    // Extract and log citations if they exist
+    if (data.citations && data.citations.length > 0) {
+      console.log("Response includes citations:", data.citations.length);
+    }
     
     return data.choices[0].message.content;
   } catch (error: any) {
@@ -368,15 +378,24 @@ export async function generateHumanized(text: string, style: string = 'standard'
 
 /**
  * Implements AI content detection using Perplexity API
+ * Note: Perplexity itself doesn't have a dedicated AI detection feature,
+ * but we can use its powerful language model capabilities to analyze text patterns
  */
 export async function checkAIContent(text: string): Promise<AICheckResult> {
   try {
     console.log("checkAIContent called with text of length:", text.length);
     
     const systemPrompt = `
-    You are an expert AI detection specialist.
-    Analyze the provided text and identify patterns that suggest it was written by AI.
-    Look for repetitive structures, specific phrasings common in AI, unnatural flows, and other telltale signs.
+    You are an expert AI detection specialist with deep knowledge of language patterns.
+    You're helping users identify if text was likely written by AI like ChatGPT, Claude, or other LLMs.
+    
+    Analyze the provided text and identify patterns that suggest it was written by AI such as:
+    - Repetitive structures and phrasings common in AI outputs
+    - Unnatural flows, awkward transitions, or overly formal language
+    - Lack of personal voice or experience
+    - Excessive balance in presenting multiple viewpoints
+    - Perfect grammar and structured formatting
+    - Generic examples and explanations
     
     Provide your analysis in JSON format with these EXACT keys:
     - aiPercentage: a number between 0-100 indicating how likely the text is AI-generated
@@ -397,7 +416,8 @@ export async function checkAIContent(text: string): Promise<AICheckResult> {
       { role: "user", content: text }
     ];
 
-    const responseText = await callPerplexityAPI(messages, 0.3);
+    // Lower temperature for more consistent, analytical responses
+    const responseText = await callPerplexityAPI(messages, 0.2);
     console.log("AI check raw response:", responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
     
     const jsonStartIndex = responseText.indexOf('{');
@@ -560,6 +580,7 @@ export async function generateWriting({
 
 /**
  * Implements chat functionality using Perplexity API
+ * Following Perplexity API best practices for maintaining chat history
  */
 export async function generateChatResponse(messages: { role: string, content: string }[]): Promise<string> {
   try {
@@ -568,19 +589,47 @@ export async function generateChatResponse(messages: { role: string, content: st
       content: `You are a helpful AI writing assistant specializing in grammar, style, paraphrasing, 
       and creating original content. You provide thoughtful, detailed responses about writing topics. 
       When asked to analyze text, provide specific feedback and constructive suggestions for improvement. 
+      
+      For grammar issues, point out specific problems and explain the rules.
+      For style improvements, give concrete examples of better phrasing.
+      For content generation, create well-structured, engaging text.
+      
       Stay focused on writing assistance and don't discuss topics unrelated to writing, language, 
-      or communication. Maintain a friendly, supportive tone.`
+      or communication. Maintain a friendly, supportive tone and be concise while remaining helpful.`
     };
 
     // Prepend the system message to the chat history
     const fullMessages = [systemMessage, ...messages];
     
-    // Ensure the last message is from the user
+    // Ensure the last message is from the user (Perplexity API requirement)
     if (fullMessages[fullMessages.length - 1].role !== 'user') {
       throw new Error("The last message must be from the user");
     }
+    
+    // Check if messages alternate properly between user and assistant
+    // This is important for Perplexity API to function correctly
+    for (let i = 1; i < messages.length; i++) {
+      if (messages[i].role === messages[i-1].role) {
+        console.warn(`Chat history contains consecutive messages with the same role: ${messages[i].role}`);
+        // Fix the message flow by filtering out problematic messages
+        const fixedMessages = [messages[0]];
+        let lastRole = messages[0].role;
+        
+        for (let j = 1; j < messages.length; j++) {
+          if (messages[j].role !== lastRole) {
+            fixedMessages.push(messages[j]);
+            lastRole = messages[j].role;
+          }
+        }
+        
+        // Replace with fixed messages
+        messages = fixedMessages;
+        break;
+      }
+    }
 
-    return await callPerplexityAPI(fullMessages, 0.7);
+    // Use slightly higher temperature for more conversational responses
+    return await callPerplexityAPI(fullMessages, 0.75);
   } catch (error) {
     console.error("Error in chat response:", error);
     return "I apologize, but I'm having trouble generating a response right now. Please try again in a moment.";

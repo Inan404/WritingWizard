@@ -1,0 +1,130 @@
+That's a great project idea! If you already have a Perplexity API key, and you're aiming to use Perplexity Sonar (which is their advanced LLM, similar to GPT-4), here’s a clear roadmap to integrate it into your EdTech site with features like grammar checking, AI detection, text humanization, and chatbot interactions.
+
+🔧 STEP 1: Understand Perplexity API Capabilities
+As of now, Perplexity API primarily provides access to their Sonar LLMs (text generation models) and retrieval-augmented generation (RAG) capabilities.
+
+So using Sonar, you can:
+
+Generate text
+
+Rewrite content (for humanization or grammar)
+
+Act as a chatbot
+
+Process and analyze input
+
+But Perplexity does not currently provide a specialized AI-detector like GPTZero or ZeroGPT, so you may need to use another tool for AI detection.
+
+✅ STEP 2: Core Features You Want
+Here’s how you can implement each feature:
+
+1. Grammar Check (like Grammarly)
+Prompt Engineering + Sonar API
+Send a prompt like:
+
+text
+Copy
+Edit
+Check this paragraph for grammar, spelling, and clarity issues. Return the corrected version and a brief explanation of the changes.
+
+Text: "He go to school every day but he not like it."
+Example API usage (Python):
+
+python
+Copy
+Edit
+import requests
+
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+
+payload = {
+    "model": "sonar-small-chat",  # or sonar-medium, etc.
+    "messages": [
+        {"role": "system", "content": "You are a helpful grammar assistant."},
+        {"role": "user", "content": "Check this for grammar: He go to school every day but he not like it."}
+    ]
+}
+
+response = requests.post("https://api.perplexity.ai/chat/completions", headers=headers, json=payload)
+print(response.json())
+2. AI Check (detect if text is AI-generated)
+⚠️ Perplexity Sonar doesn’t natively detect AI-generated text.
+
+Alternative:
+
+Use GPTZero API, Sapling AI detector, or OpenAI’s AI detection endpoint.
+
+Optionally, use linguistic heuristics (e.g., burstiness, perplexity) but accuracy may be limited.
+
+3. Text Humanizer
+Send prompt like:
+
+text
+Copy
+Edit
+Make this AI-generated text sound more natural and human, as if written by a high school student: 
+"Modern technology has revolutionized the way we communicate with each other."
+You can adjust tone/style level in your prompt:
+
+"Make it informal"
+
+"Make it sound like a student from Bangladesh"
+
+"Add some humor" — etc.
+
+4. Chatbot (Tutoring or General Chat)
+Create a persistent chat interface using the messages array to maintain history, just like OpenAI chat APIs.
+
+Example:
+
+json
+Copy
+Edit
+"messages": [
+  {"role": "system", "content": "You are an education assistant helping students prepare for IBA admission."},
+  {"role": "user", "content": "Give me a shortcut for math percentage problems."}
+]
+🔌 STEP 3: Build Your Backend (Node.js / Python / etc.)
+Use a backend to securely store your API key and handle requests:
+
+Accept input from front-end (text)
+
+Process it with Perplexity API
+
+Return results to front-end (formatted nicely)
+
+🎨 STEP 4: Front-End Integration
+If you're using:
+
+React/Vue → Set up a clean interface with tabs for Grammar, AI check, Humanizer, and Chatbot.
+
+Tailwind or Bootstrap → For quick and responsive UI
+
+Add loading spinners, copy buttons, and response cards.
+
+🧠 BONUS: AI Check (Alternative Services)
+Since Perplexity doesn’t support AI detection natively, try integrating:
+
+GPTZero
+
+Sapling AI
+
+Originality.ai — Paid
+
+These have APIs you can connect to separately.
+
+📦 Final Tech Stack Suggestion
+Frontend: React + Tailwind
+
+Backend: Node.js or Python (FastAPI)
+
+LLM: Perplexity Sonar API
+
+AI Detector: GPTZero or other
+
+Database (optional): Firebase or Supabase
+
+Deployment: Vercel/Netlify for frontend, Render/Heroku for backend
