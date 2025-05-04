@@ -123,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Error sending ping:', error);
       }
     });
-  }, 30000); // Ping every 30 seconds
+  }, 45000); // Ping every 45 seconds (longer than client ping interval of 25 seconds)
   
   // Clear interval when server closes
   wss.on('close', () => {
@@ -152,27 +152,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('message', async (message) => {
       try {
         const data = JSON.parse(message.toString());
+        
+        // Handle client ping messages specifically
+        if (data.type === 'ping') {
+          // Respond with pong to maintain bidirectional heartbeat
+          ws.send(JSON.stringify({ 
+            type: 'pong', 
+            time: Date.now(),
+            echo: data.time // Echo back the client's timestamp for roundtrip calculation
+          }));
+          return; // Don't process ping messages further
+        }
         console.log('Received message type:', data.type);
         
-        if (data.type === 'ping') {
-          // Respond to client pings
-          ws.send(JSON.stringify({
-            type: 'pong',
-            time: Date.now()
+        try {
+          if (data.type === 'chat') {
+            await handleChatMessage(ws, data);
+          } else if (data.type === 'grammar-check') {
+            await handleGrammarCheck(ws, data);
+          } else if (data.type === 'paraphrase') {
+            await handleParaphrase(ws, data);
+          } else if (data.type === 'humanize') {
+            await handleHumanize(ws, data);
+          } else if (data.type === 'ai-check') {
+            await handleAiCheck(ws, data);
+          } else {
+            console.log(`Unknown message type: ${data.type}`);
+          }
+        } catch (handlerError) {
+          console.error(`Error in handler for ${data.type}:`, handlerError);
+          ws.send(JSON.stringify({ 
+            type: 'error', 
+            error: handlerError instanceof Error ? handlerError.message : 'Error processing your request',
+            messageId: data.messageId
           }));
-          return;
-        }
-        
-        if (data.type === 'chat') {
-          handleChatMessage(ws, data);
-        } else if (data.type === 'grammar-check') {
-          handleGrammarCheck(ws, data);
-        } else if (data.type === 'paraphrase') {
-          handleParaphrase(ws, data);
-        } else if (data.type === 'humanize') {
-          handleHumanize(ws, data);
-        } else if (data.type === 'ai-check') {
-          handleAiCheck(ws, data);
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);

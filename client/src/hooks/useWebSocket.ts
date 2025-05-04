@@ -33,7 +33,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     onMessage,
     reconnectDelay = 1500,
     maxReconnectAttempts = 5,
-    pingInterval = 15000 // Ping every 15 seconds by default
+    pingInterval = 25000 // Ping every 25 seconds by default
   } = options;
   
   // Ref for the ping interval
