@@ -57,11 +57,15 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     onError: (error) => {
       console.error('WebSocket error:', error);
       toast({
-        title: 'Connection Error',
-        description: 'Failed to connect to chat server. Some features may be unavailable.',
-        variant: 'destructive',
+        title: 'Connection Info',
+        description: 'Using standard chat mode. Real-time mode unavailable.',
+        duration: 3000,
       });
-    }
+    },
+    // Increase max reconnection attempts and use longer delay for chat
+    maxReconnectAttempts: 3,
+    reconnectDelay: 2000,
+    pingInterval: 20000 // Longer ping interval
   });
   
   // Legacy REST API approach as fallback

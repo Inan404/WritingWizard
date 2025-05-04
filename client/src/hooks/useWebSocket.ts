@@ -107,10 +107,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           onClose();
         }
         
-        // Attempt to reconnect
+        // Attempt to reconnect with exponential backoff
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current++;
-          console.log(`Attempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`);
+          
+          // Exponential backoff: base delay × 2^attempts (with max of 30 seconds)
+          const delay = Math.min(reconnectDelay * Math.pow(2, reconnectAttemptsRef.current - 1), 30000);
+          console.log(`Attempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts}) in ${delay}ms...`);
           
           if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
@@ -118,7 +121,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           
           reconnectTimeoutRef.current = setTimeout(() => {
             connect();
-          }, reconnectDelay);
+          }, delay);
         } else {
           console.error(`Failed to reconnect after ${maxReconnectAttempts} attempts`);
         }

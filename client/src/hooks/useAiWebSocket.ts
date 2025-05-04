@@ -29,16 +29,21 @@ export function useAiWebSocket(options: WebSocketAiToolOptions) {
     onError: (error) => {
       console.error('WebSocket error:', error);
       
-      // Only show toast once
+      // Only show toast once - and use a less alarming message
       if (!hasShownErrorToastRef.current) {
         toast({
           title: 'Connection Info',
-          description: 'Using standard mode instead of real-time mode.',
+          description: 'Using standard processing mode. Real-time mode unavailable.',
+          variant: 'default',
           duration: 3000,
         });
         hasShownErrorToastRef.current = true;
       }
-    }
+    },
+    // Increase max reconnection attempts and use longer delay
+    maxReconnectAttempts: 3,
+    reconnectDelay: 2000,
+    pingInterval: 20000 // Longer ping interval
   });
   
   // Set up WebSocket message handlers
