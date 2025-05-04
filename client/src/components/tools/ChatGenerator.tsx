@@ -107,28 +107,46 @@ export default function ChatGenerator() {
     mutationFn: async ({ sessionId, role, content }: { sessionId: number, role: string, content: string }) => {
       try {
         // First try with the db endpoint
-        console.log(`Saving message to session ${sessionId} with endpoint /api/db/chat-sessions/${sessionId}/messages`);
+        console.log(`Saving message with role "${role}" to session ${sessionId}`);
+        console.log(`Using endpoint /api/db/chat-sessions/${sessionId}/messages`);
+        
         const response = await apiRequest('POST', `/api/db/chat-sessions/${sessionId}/messages`, {
           role,
           content
         });
-        return response.json();
+        const responseData = await response.json();
+        console.log(`Message saved successfully with ID: ${responseData.message?.id || 'unknown'}`);
+        return responseData;
       } catch (error) {
-        console.error('Error saving message with db endpoint:', error);
+        console.error(`Error saving message with db endpoint for session ${sessionId}:`, error);
+        
         // Fall back to the non-db endpoint
         console.log(`Trying fallback endpoint /api/chat-sessions/${sessionId}/messages`);
-        const response = await apiRequest('POST', `/api/chat-sessions/${sessionId}/messages`, {
-          role,
-          content
-        });
-        return response.json();
+        try {
+          const response = await apiRequest('POST', `/api/chat-sessions/${sessionId}/messages`, {
+            role,
+            content
+          });
+          const responseData = await response.json();
+          console.log(`Message saved successfully with fallback endpoint, message ID: ${responseData.message?.id || 'unknown'}`);
+          return responseData;
+        } catch (fallbackError) {
+          console.error(`Both endpoints failed for session ${sessionId}. Original error:`, error);
+          console.error(`Fallback error:`, fallbackError);
+          throw new Error(`Failed to save message: ${fallbackError?.message || 'Unknown error'}`);
+        }
       }
     },
     onSuccess: (data) => {
       console.log('Saved chat message:', data.message);
+      
+      // Invalidate the sidebar query to ensure the chat list updates
+      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
     },
     onError: (error) => {
       console.error('Failed to save chat message:', error);
+      // Don't show a toast as it would be distracting during chat
+      // But log the error for debugging
     }
   });
   
@@ -213,9 +231,9 @@ export default function ChatGenerator() {
       sessionStorage.removeItem('forceLoadChat');
       sessionStorage.removeItem('currentChatSessionId');
     } 
-    else if (user && !sessionId && !sessionStorage.getItem('disableAutoCreate')) {
-      // Check if this is the first load and we're not specifically trying to load an existing chat
-      // Only auto-create new chat if we really want a new chat
+    else if (user && !sessionId) {
+      // ALWAYS auto-create a new chat session on component mount if user is authenticated
+      // and no session is active - this ensures the default chat gets saved
       console.log("Auto-creating new chat session on component mount");
       createSessionMutation.mutate();
     }
@@ -329,16 +347,24 @@ export default function ChatGenerator() {
         content: msg.content
       }));
       
-      // Add the new user message
+      // Add the new user message - note we don't include the user message in this array
+      // because it's already been added to the UI separately to avoid the latency issue
+      // where both messages appear at once
       const chatMessages = [
-        ...previousMessages,
+        ...previousMessages
+        // We don't add the new user message here, it was already added to the UI
+      ];
+      
+      // Add the new user message only for the API request
+      const apiMessages = [
+        ...chatMessages,
         { role: 'user' as const, content: message }
       ];
       
       // Use the dedicated AI chat endpoint
       const response = await apiRequest('POST', '/api/chat-generate', {
         sessionId: sessionId,
-        messages: chatMessages
+        messages: apiMessages
       });
       
       const data = await response.json();
@@ -348,15 +374,17 @@ export default function ChatGenerator() {
       
       // If response was very fast, add a small artificial delay for better UX
       // This prevents the typing indicator from flashing too quickly
-      if (responseTime < 500) {
+      if (responseTime < 800) {
         console.log(`Response was fast (${responseTime}ms), adding artificial delay`);
-        await new Promise(resolve => setTimeout(resolve, 500 - responseTime));
+        await new Promise(resolve => setTimeout(resolve, 800 - responseTime));
       }
       
       return data;
     },
     onSuccess: (data) => {
-      // Short delay to make typing indicator more natural
+      // Show the AI's response with a slight delay to create a more natural 
+      // conversation flow - this helps with the issue where the messages
+      // appear simultaneously
       setTimeout(() => {
         setIsLoading(false);
         
@@ -380,7 +408,7 @@ export default function ChatGenerator() {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
           }
         }, 100);
-      }, 200);
+      }, 500); // Increased delay for more natural typing appearance
     },
     onError: () => {
       setIsLoading(false);
