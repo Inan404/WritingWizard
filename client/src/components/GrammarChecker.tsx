@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useAiTool } from '@/hooks/useAiTool';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -45,7 +44,6 @@ export function GrammarChecker() {
   // State for text input and results
   const [text, setText] = useState('');
   const [language, setLanguage] = useState('en-US');
-  const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [appliedCorrections, setAppliedCorrections] = useState<Set<string>>(new Set());
   
   // UI state
@@ -54,11 +52,9 @@ export function GrammarChecker() {
   // Toast hook
   const { toast } = useToast();
   
-  // State for storing results
+  // State for storing results and loading state
   const [result, setResult] = useState<any>(null);
-  
-  // Using HTTP API for grammar checking
-  const { mutate, isPending } = useAiTool();
+  const [isPending, setIsPending] = useState(false);
   
   // Function to handle grammar check
   const handleCheckGrammar = () => {
@@ -73,6 +69,9 @@ export function GrammarChecker() {
     
     // Reset any previously applied corrections
     setAppliedCorrections(new Set());
+    
+    // Set loading state
+    setIsPending(true);
     
     // Use direct API endpoint for grammar checking
     fetch('/api/grammar-check', {
@@ -89,6 +88,7 @@ export function GrammarChecker() {
     .then(data => {
       console.log('Grammar check completed via direct HTTP API');
       setResult(data);
+      setIsPending(false);
     })
     .catch(error => {
       toast({
@@ -96,6 +96,7 @@ export function GrammarChecker() {
         description: error.message || 'An error occurred while checking grammar',
         variant: 'destructive'
       });
+      setIsPending(false);
     });
   };
   
