@@ -72,7 +72,7 @@ export function AICheckComponent({ defaultText = '' }: AICheckProps) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Enter text to check if it was written by AI..."
-          className="min-h-[150px] h-[40vh] resize-none"
+          className="min-h-[150px] h-[35vh] sm:h-[40vh] resize-none p-2 sm:p-4 hover-scrollbar"
           rows={6}
         />
         

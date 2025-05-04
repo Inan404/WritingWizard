@@ -122,7 +122,7 @@ export function GrammarChecker() {
   };
 
   return (
-    <div className="h-full flex flex-col md:flex-row gap-4">
+    <div className="h-full flex flex-col md:flex-row gap-4 md:gap-6">
       {/* Left side - Text entry */}
       <div className="flex-1">
         <Textarea
@@ -130,7 +130,7 @@ export function GrammarChecker() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Enter text to check for grammar and style issues..."
-          className="w-full h-[50vh] min-h-[200px] resize-none transition-colors bg-background text-foreground rounded-md border border-border p-4"
+          className="w-full h-[40vh] sm:h-[45vh] md:h-[50vh] min-h-[150px] resize-none transition-colors bg-background text-foreground rounded-md border border-border p-2 sm:p-4"
         />
         
         <div className="mt-4 flex flex-col items-center gap-2">
@@ -175,7 +175,7 @@ export function GrammarChecker() {
         </div>
         
         {/* Errors and suggestions */}
-        <div className="mt-4 overflow-y-auto max-h-[40vh] rounded-md border border-border show-scrollbar">
+        <div className="mt-4 overflow-y-auto max-h-[35vh] sm:max-h-[40vh] rounded-md border border-border hover-scrollbar">
           <AnimatePresence>
             {result && (
               <motion.div
