@@ -64,6 +64,7 @@ export default function Dashboard() {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     refetchInterval: 5000, // Refetch every 5 seconds
+    enabled: !!user, // Only fetch data if user is authenticated
   });
   
   // Safely handle the chat data
