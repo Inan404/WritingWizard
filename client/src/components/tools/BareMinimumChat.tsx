@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Send, Plus, Save } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Create a custom type for chat messages to ensure consistent structure
 type ChatMessage = {
@@ -24,6 +25,9 @@ export default function BareMinimumChat({
   isDefaultChat = false, 
   defaultChatId 
 }: BareMinimumChatProps = {}) {
+  // Initialize query client for cache invalidation
+  const queryClient = useQueryClient();
+  
   // Create state for messages and input text
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -80,11 +84,10 @@ export default function BareMinimumChat({
           // Store the chat ID in sessionStorage so other components can access it
           sessionStorage.setItem('currentChatSessionId', result.chat.id.toString());
           
-          // Trigger refresh of the sidebar
-          const refreshEvent = new CustomEvent('refreshChatSidebar');
-          window.dispatchEvent(refreshEvent);
+          // Invalidate the writing chats query to refresh the sidebar immediately
+          queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
           
-          console.log('Created new chat session and dispatched refresh event');
+          console.log('Created new chat session and invalidated cache for refresh');
         } catch (error) {
           console.error('Error creating default chat session:', error);
         }
@@ -121,10 +124,9 @@ export default function BareMinimumChat({
       
       console.log(`Message saved successfully to session ${chatSessionId}`);
       
-      // After successfully saving a message, trigger a refresh of the sidebar
+      // After successfully saving a message, invalidate the query to refresh the sidebar
       // This ensures the chat appears in the sidebar immediately
-      const refreshEvent = new CustomEvent('refreshChatSidebar');
-      window.dispatchEvent(refreshEvent);
+      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
     } catch (error) {
       console.error('Error saving message to session:', error);
     } finally {
@@ -188,9 +190,8 @@ export default function BareMinimumChat({
         // Store the chat ID in sessionStorage so other components can access it
         sessionStorage.setItem('currentChatSessionId', result.chat.id.toString());
         
-        // Trigger refresh of the sidebar immediately
-        const refreshEvent = new CustomEvent('refreshChatSidebar');
-        window.dispatchEvent(refreshEvent);
+        // Invalidate the writing chats query to refresh the sidebar immediately
+        queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
         
         // No need to explicitly save the first message as it was included in the creation
       } catch (error) {
@@ -332,9 +333,8 @@ export default function BareMinimumChat({
         });
       }
       
-      // Trigger refresh of the sidebar
-      const refreshEvent = new CustomEvent('refreshChatSidebar');
-      window.dispatchEvent(refreshEvent);
+      // Invalidate the writing chats query to refresh the sidebar
+      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
       
       alert(`Chat session saved successfully! Session ID: ${result.chat.id}`);
     } catch (error) {
