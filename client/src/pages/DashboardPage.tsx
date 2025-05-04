@@ -137,7 +137,7 @@ export default function DashboardPage() {
       const chatToUpdate = chats.find((c: any) => c.id === chatId);
       if (!chatToUpdate) return;
 
-      const res = await fetch(`/api/chat-sessions/${chatId}`, {
+      const res = await fetch(`/api/db/chat-sessions/${chatId}/favorite`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -174,7 +174,7 @@ export default function DashboardPage() {
     if (!chatToDelete) return;
     
     try {
-      const res = await fetch(`/api/chat-sessions/${chatToDelete}`, {
+      const res = await fetch(`/api/db/chat-sessions/${chatToDelete}`, {
         method: 'DELETE',
       });
 
