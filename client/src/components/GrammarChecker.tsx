@@ -43,7 +43,7 @@ const languageOptions = [
 
 export function GrammarChecker() {
   // State for text input and results
-  const [text, setText] = useState('Neural networks can recognize various representations of the same digit, such as the number three, despite differences in pixel values across images.');
+  const [text, setText] = useState('');
   const [language, setLanguage] = useState('en-US');
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [result, setResult] = useState<GrammarResult | null>(null);
