@@ -190,10 +190,8 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#040b14] text-white">
       {/* Top navigation bar */}
-      <header className="py-2 sm:py-4 px-3 sm:px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-800 gap-2">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
-          <h1 className="text-base sm:text-lg font-medium truncate">{user?.username || 'User'}'s Dashboard</h1>
-        </div>
+      <header className="py-2 sm:py-4 px-3 sm:px-6 flex items-center justify-between border-b border-gray-800">
+        <h1 className="text-base sm:text-lg font-medium truncate">{user?.username || 'User'}'s Dashboard</h1>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
