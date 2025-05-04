@@ -298,7 +298,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
 
   return (
     <div className="flex flex-col h-full max-h-[calc(100vh-240px)]">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 mb-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 mb-4 show-scrollbar">
         <AnimatePresence>
           {messages.map((message) => (
             <motion.div
