@@ -132,9 +132,9 @@ export function GrammarChecker() {
         
         <div className="mt-4 flex justify-center">
           <Button 
-            onClick={handleSubmit} 
+            onClick={handleCheckGrammar} 
             disabled={isPending || !text.trim()}
-            className="w-[200px] bg-blue-600 hover:bg-blue-700"
+            className="w-[200px] bg-blue-600 hover:bg-blue-700 text-white"
             size="lg"
           >
             {isPending ? (
@@ -264,14 +264,14 @@ export function GrammarChecker() {
                       <Card 
                         key={error.id} 
                         className="mb-2 overflow-hidden border-l-4 border-l-red-500 cursor-pointer hover:bg-secondary/50 transition-colors"
-                        onClick={() => applyErrorCorrection(error)}
+                        onClick={() => applyCorrection(error)}
                       >
                         <CardContent className="p-3">
                           <div className="flex gap-2 items-start">
                             <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
                             <div>
                               <p className="text-sm font-medium">Grammar issue</p>
-                              <p className="text-sm mt-1">Add a comma before "despite" for clarity</p>
+                              <p className="text-sm mt-1">{error.description}</p>
                               <div className="mt-2 text-sm">
                                 <p className="font-mono">{error.errorText}</p>
                               </div>
@@ -296,34 +296,3 @@ export function GrammarChecker() {
   );
 }
 
-function MetricBar({ label, value, color }: { label: string; value: number | undefined; color: string }) {
-  // Ensure we have a valid display value, defaulting to 50 if undefined
-  const displayValue = Math.round(value ?? 50);
-  
-  // Set a dynamic gradient based on the value
-  const getGradientColor = () => {
-    // Add a subtle gradient animation based on score
-    if (displayValue >= 80) {
-      return 'bg-gradient-to-r from-green-400 to-green-500';
-    } else if (displayValue >= 60) {
-      return 'bg-gradient-to-r from-blue-400 to-blue-500';
-    } else if (displayValue >= 40) {
-      return 'bg-gradient-to-r from-yellow-400 to-yellow-500';
-    } else {
-      return 'bg-gradient-to-r from-red-400 to-red-500';
-    }
-  };
-  
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs">
-        <span className="font-medium">{label}</span>
-        <span className="font-bold">{displayValue}%</span>
-      </div>
-      <Progress 
-        value={displayValue} 
-        className={`h-3 ${getGradientColor()} shadow-sm`} 
-      />
-    </div>
-  );
-}
