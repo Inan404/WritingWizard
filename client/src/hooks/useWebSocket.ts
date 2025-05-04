@@ -23,6 +23,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const reconnectAttemptsRef = useRef<number>(0);
   const messageHandlersRef = useRef<Record<string, MessageHandler[]>>({});
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasShownErrorRef = useRef<boolean>(false);
   
   const {
     onOpen,
@@ -99,8 +100,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       socket.onerror = (e) => {
         console.error('WebSocket error:', e);
         
-        if (onError) {
+        // Mark the connection as not connected on error
+        // This will let components know to use the HTTP fallback
+        setIsConnected(false);
+        
+        if (onError && !hasShownErrorRef.current) {
           onError(e);
+          hasShownErrorRef.current = true;
         }
       };
       

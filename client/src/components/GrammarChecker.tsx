@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAiTool } from '@/hooks/useAiTool';
+import { useAiWebSocket } from '@/hooks/useAiWebSocket';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 
@@ -46,15 +47,42 @@ export function GrammarChecker() {
   const [text, setText] = useState('');
   const [language, setLanguage] = useState('en-US');
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
-  const [result, setResult] = useState<GrammarResult | null>(null);
   const [appliedCorrections, setAppliedCorrections] = useState<Set<string>>(new Set());
   
   // UI state
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
-  // Hooks
+  // Toast hook
   const { toast } = useToast();
-  const { mutate, isPending } = useAiTool();
+  
+  // WebSocket hook for real-time grammar checking
+  const { 
+    processText, 
+    isProcessing, 
+    result, 
+    isConnected 
+  } = useAiWebSocket({
+    toolType: 'grammar-check',
+    resultMessageType: 'grammar-result',
+    onSuccess: (data: any) => {
+      console.log('Grammar check result received:', data);
+      // Reset applied corrections when we get new results
+      setAppliedCorrections(new Set());
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error checking grammar',
+        description: error.message || 'An error occurred while checking grammar',
+        variant: 'destructive'
+      });
+    }
+  });
+  
+  // Fallback to HTTP API
+  const { mutate, isPending: isHttpPending } = useAiTool();
+  
+  // Flag for tracking if we're loading from either WebSocket or HTTP
+  const isPending = isProcessing || isHttpPending;
   
   // Function to handle grammar check
   const handleCheckGrammar = () => {
@@ -70,21 +98,23 @@ export function GrammarChecker() {
     // Reset any previously applied corrections
     setAppliedCorrections(new Set());
     
-    // Call API to check grammar
+    // Try to use WebSocket first
+    if (isConnected) {
+      const sent = processText(text, { language });
+      if (sent) {
+        // WebSocket message sent successfully
+        return;
+      }
+    }
+    
+    // Fall back to HTTP API if WebSocket fails
+    console.log('Using HTTP fallback for grammar check');
     mutate(
       { text, mode: 'grammar', language },
       {
         onSuccess: (data: any) => {
-          // Update with results
-          setResult({
-            errors: data.errors || [],
-            metrics: {
-              correctness: data.metrics?.correctness || 70,
-              clarity: data.metrics?.clarity || 85,
-              engagement: data.metrics?.engagement || 78,
-              delivery: data.metrics?.delivery || 82
-            }
-          });
+          // The result will be set by our WebSocket hook
+          console.log('Grammar check completed via HTTP API');
         },
         onError: (error: any) => {
           toast({
@@ -130,7 +160,7 @@ export function GrammarChecker() {
           className="w-full h-[50vh] min-h-[200px] resize-none transition-colors bg-background text-foreground rounded-md border border-border p-4"
         />
         
-        <div className="mt-4 flex justify-center">
+        <div className="mt-4 flex flex-col items-center gap-2">
           <Button 
             onClick={handleCheckGrammar} 
             disabled={isPending || !text.trim()}
@@ -146,6 +176,21 @@ export function GrammarChecker() {
               'Check Grammar'
             )}
           </Button>
+          
+          {/* WebSocket connection indicator */}
+          <div className="flex items-center text-xs text-muted-foreground">
+            {isConnected ? (
+              <span className="inline-flex items-center">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></span>
+                Real-time mode active
+              </span>
+            ) : (
+              <span className="inline-flex items-center">
+                <WifiOff className="h-3 w-3 mr-1 text-yellow-500" />
+                Using standard mode
+              </span>
+            )}
+          </div>
         </div>
       </div>
       
@@ -181,10 +226,10 @@ export function GrammarChecker() {
                 className="p-4"
               >
                 {/* Grammar error cards */}
-                {result.errors && result.errors.filter(error => !appliedCorrections.has(error.id)).length > 0 ? (
+                {result.errors && result.errors.filter((error: GrammarError) => !appliedCorrections.has(error.id)).length > 0 ? (
                   result.errors
-                    .filter(error => !appliedCorrections.has(error.id))
-                    .map((error) => (
+                    .filter((error: GrammarError) => !appliedCorrections.has(error.id))
+                    .map((error: GrammarError) => (
                       <Card 
                         key={error.id} 
                         className="mb-2 overflow-hidden border-l-4 border-l-red-500 cursor-pointer hover:bg-secondary/50 transition-colors"

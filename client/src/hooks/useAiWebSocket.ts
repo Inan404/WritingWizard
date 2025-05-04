@@ -16,18 +16,28 @@ export function useAiWebSocket(options: WebSocketAiToolOptions) {
   const pendingMessageIdRef = useRef<string | null>(null);
   const { toast } = useToast();
   
+  // Track if we've shown a connection error toast
+  const hasShownErrorToastRef = useRef(false);
+  
   // Set up WebSocket
   const { isConnected, sendMessage, addMessageHandler } = useWebSocket({
     onOpen: () => {
       console.log(`WebSocket connected, ready for ${toolType}`);
+      // Reset error flag when connected
+      hasShownErrorToastRef.current = false;
     },
     onError: (error) => {
       console.error('WebSocket error:', error);
-      toast({
-        title: 'Connection Error',
-        description: 'Failed to connect to AI server. Some features may be unavailable.',
-        variant: 'destructive',
-      });
+      
+      // Only show toast once
+      if (!hasShownErrorToastRef.current) {
+        toast({
+          title: 'Connection Info',
+          description: 'Using standard mode instead of real-time mode.',
+          duration: 3000,
+        });
+        hasShownErrorToastRef.current = true;
+      }
     }
   });
   
@@ -118,12 +128,8 @@ export function useAiWebSocket(options: WebSocketAiToolOptions) {
       
       return sent;
     } else {
-      // WebSocket not connected
-      toast({
-        title: 'Connection Error',
-        description: 'Not connected to AI server. Please try again later.',
-        variant: 'destructive',
-      });
+      // WebSocket not connected - no need for toast here as we'll use HTTP fallback
+      console.log('WebSocket not connected, should try HTTP fallback');
       return false;
     }
   };
