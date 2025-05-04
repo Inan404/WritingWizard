@@ -1053,5 +1053,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Save chat sessions with messages from the BareMinimumChat component
+  app.post("/api/db/chat-sessions", isAuthenticated, async (req, res) => {
+    try {
+      const { title, messages } = req.body;
+      
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      
+      // Create chat session
+      const chatSession = await dbStorage.createChatSession({
+        userId: req.user.id,
+        name: title || `Chat ${new Date().toLocaleString()}`,
+        isFavorite: false
+      });
+      
+      if (!chatSession) {
+        return res.status(500).json({ error: 'Failed to create chat session' });
+      }
+      
+      // Insert messages if present
+      if (messages && Array.isArray(messages) && messages.length > 0) {
+        for (const message of messages) {
+          await dbStorage.createChatMessage({
+            sessionId: chatSession.id,
+            role: message.role,
+            content: message.content
+          });
+        }
+      }
+      
+      return res.status(201).json({
+        success: true,
+        sessionId: chatSession.id,
+        title: chatSession.name
+      });
+    } catch (error) {
+      console.error('Error saving chat session:', error);
+      return res.status(500).json({ 
+        error: 'Failed to save chat session',
+        details: error.message 
+      });
+    }
+  });
+
   return httpServer;
 }
