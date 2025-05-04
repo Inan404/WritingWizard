@@ -316,7 +316,7 @@ export default function DashboardPage() {
                 windowWidth < 768 
                   ? 'fixed left-0 top-[65px] z-30 h-[calc(100vh-65px)]' 
                   : sidebarOpen ? 'block' : 'hidden'
-              } w-64 flex-shrink-0 border-r border-gray-800 bg-[#0a101f] overflow-y-auto`}
+              } w-64 flex-shrink-0 border-r border-gray-800 bg-[#0a101f] overflow-y-auto hover-scrollbar`}
             >
               <div className="flex flex-col h-full py-4">
                 {/* Mobile close button */}
@@ -344,7 +344,7 @@ export default function DashboardPage() {
                   New Chat
                 </Button>
                 
-                <div className="overflow-y-auto flex-1 px-3 pb-4">
+                <div className="overflow-y-auto hover-scrollbar flex-1 px-3 pb-4">
                   {/* FAVORITES section */}
                   <div className="mb-4">
                     <div className="flex items-center mb-2 text-xs font-semibold text-gray-400">
@@ -446,19 +446,19 @@ export default function DashboardPage() {
         </AnimatePresence>
 
         {/* Main content */}
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 p-6 overflow-y-auto hover-scrollbar">
           {/* Tab navigation */}
-          <div className="flex justify-center mb-12">
+          <div className="flex justify-center mb-12 overflow-x-auto hover-scrollbar">
             <div className="bg-[#111827] rounded-full p-1 flex">
               {Object.entries(tabMapping).map(([key, label]) => (
                 <Button
                   key={key}
                   variant="ghost"
-                  className={`px-6 py-2 rounded-full transition-colors ${
+                  className={`px-2 md:px-4 lg:px-6 py-2 rounded-full transition-colors ${
                     activeTab === key
                       ? 'bg-[#1d4ed8] text-white'
                       : 'text-gray-400 hover:text-white'
-                  }`}
+                  } text-xs sm:text-sm`}
                   onClick={() => handleTabChange(key)}
                 >
                   {label}
@@ -477,8 +477,8 @@ export default function DashboardPage() {
             className="max-w-7xl mx-auto"
           >
             <div className={activeTab === 'chat' ? 'block' : 'hidden'}>
-              <h2 className="text-3xl font-bold mb-2">AI Writing Assistant</h2>
-              <p className="text-gray-400 mb-8">Chat with the AI to get help with your writing</p>
+              <h2 className="text-2xl sm:text-3xl font-bold mb-2">AI Writing Assistant</h2>
+              <p className="text-gray-400 mb-4 sm:mb-8">Chat with the AI to get help with your writing</p>
               <AiTool mode="chat" chatId={activeChatId} />
             </div>
             
