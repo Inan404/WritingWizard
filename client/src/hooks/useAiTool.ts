@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
-export type Mode = 'chat' | 'grammar' | 'paraphrase' | 'humanize' | 'ai-check';
+export type Mode = 'chat' | 'grammar' | 'paraphrase' | 'humanize' | 'aicheck';
 export type Style = 'standard' | 'formal' | 'fluency' | 'academic' | 'custom';
 export type MessageRole = 'user' | 'assistant' | 'system';
 
@@ -200,7 +200,7 @@ async function processRequest(params: AiToolParams, cacheKey: string, payload: a
         delivery: Math.floor(Math.random() * 30) + 50
       }
     };
-  } else if (mode === 'ai-check') {
+  } else if (mode === 'aicheck') {
     return {
       aiPercentage: data.aiPercentage || 0,
       metrics: data.metrics || {

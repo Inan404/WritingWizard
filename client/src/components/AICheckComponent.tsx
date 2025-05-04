@@ -48,7 +48,7 @@ export function AICheckComponent({ defaultText = '' }: AICheckProps) {
     }
     
     mutate(
-      { text, mode: 'ai-check' },
+      { text, mode: 'aicheck' },
       {
         onSuccess: (data) => {
           setAiPercentage(data.aiPercentage || 0);
