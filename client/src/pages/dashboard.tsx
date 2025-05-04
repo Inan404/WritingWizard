@@ -379,6 +379,10 @@ export default function Dashboard() {
     if (!chatToDelete) return;
     
     try {
+      console.log(`Deleting chat ${chatToDelete}...`);
+      // Close the delete confirmation dialog
+      setDeleteChatDialogOpen(false);
+      
       // Call the API to delete the chat
       const response = await apiRequest('DELETE', `/api/db/chat-sessions/${chatToDelete}`);
       
@@ -389,13 +393,28 @@ export default function Dashboard() {
           sessionStorage.removeItem('currentChatSessionId');
           sessionStorage.removeItem('forceLoadChat');
           
+          // Force reset of the chat interface
+          const forceNewChatEvent = new CustomEvent('forceNewChatEvent');
+          document.dispatchEvent(forceNewChatEvent);
+          
           // If we're in the chat tab, create a new chat
-          if (window.location.pathname.includes('/chat')) {
-            await handleCreateNewChat();
+          if (activeTool === 'chat') {
+            console.log("Creating new chat after deletion...");
+            // Small delay to ensure UI is reset first
+            setTimeout(() => {
+              handleCreateNewChat();
+            }, 100);
           }
         }
         
-        // Remove the chat from the client-side cache and refetch
+        // First immediately remove the chat from local state for better UX
+        const updatedChats = chats.filter(c => c.id !== chatToDelete);
+        queryClient.setQueryData(['/api/writing-chats'], { 
+          chats: updatedChats,
+          timestamp: Date.now()
+        });
+        
+        // Then invalidate to refetch from server
         await refetch();
         queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
         
