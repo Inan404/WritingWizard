@@ -2,20 +2,12 @@ import React, { useState, useRef } from 'react';
 import { useAiTool } from '@/hooks/useAiTool';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 
 // Type definitions
-interface GrammarSuggestion {
-  id: string;
-  type: string;
-  description: string;
-  originalText: string;
-  suggestedText: string;
-}
-
 interface GrammarError {
   id: string;
   type: string;
@@ -30,7 +22,6 @@ interface GrammarError {
 
 interface GrammarResult {
   errors?: GrammarError[];
-  suggestions?: GrammarSuggestion[];
   metrics?: {
     correctness: number;
     clarity: number;
@@ -38,17 +29,6 @@ interface GrammarResult {
     delivery: number;
   };
 }
-
-// Available language options
-const languageOptions = [
-  { value: 'en-US', label: 'English (US)' },
-  { value: 'en-GB', label: 'English (UK)' },
-  { value: 'fr-FR', label: 'French' },
-  { value: 'de-DE', label: 'German' },
-  { value: 'es-ES', label: 'Spanish' },
-  { value: 'it-IT', label: 'Italian' },
-  { value: 'nl-NL', label: 'Dutch' },
-];
 
 export function GrammarChecker() {
   // State for text input and results
