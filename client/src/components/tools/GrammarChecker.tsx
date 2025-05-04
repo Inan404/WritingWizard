@@ -20,7 +20,8 @@ export default function GrammarChecker() {
     selectedLanguage, 
     setSelectedLanguage,
     selectedStyle,
-    setSelectedStyle
+    setSelectedStyle,
+    scoreMetrics
   } = useWriting();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -198,13 +199,13 @@ export default function GrammarChecker() {
 
   const RightPanel = (
     <div className="h-full flex flex-col">
-      {/* Simplified Style options - removed Document type, Formality, Goals, Domain */}
-      <div className="mb-6">
-        <h3 className="text-sm font-medium mb-2">Style:</h3>
+      {/* Style options - exactly matching the screenshot */}
+      <div className="mb-6 space-y-2">
+        {/* First row of buttons (Standard / Academic) */}
         <div className="grid grid-cols-2 gap-2">
           <button 
             className={`px-4 py-2 rounded-md text-sm font-medium ${
-              selectedStyle === "standard" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+              selectedStyle === "standard" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-200"
             }`}
             onClick={() => setSelectedStyle("standard")}
           >
@@ -212,7 +213,19 @@ export default function GrammarChecker() {
           </button>
           <button 
             className={`px-4 py-2 rounded-md text-sm font-medium ${
-              selectedStyle === "fluency" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+              selectedStyle === "academic" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-200"
+            }`}
+            onClick={() => setSelectedStyle("academic")}
+          >
+            Academic
+          </button>
+        </div>
+        
+        {/* Second row of buttons (Fluency / Custom) */}
+        <div className="grid grid-cols-2 gap-2">
+          <button 
+            className={`px-4 py-2 rounded-md text-sm font-medium ${
+              selectedStyle === "fluency" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-200"
             }`}
             onClick={() => setSelectedStyle("fluency")}
           >
@@ -220,15 +233,7 @@ export default function GrammarChecker() {
           </button>
           <button 
             className={`px-4 py-2 rounded-md text-sm font-medium ${
-              selectedStyle === "academic" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-            }`}
-            onClick={() => setSelectedStyle("academic")}
-          >
-            Academic
-          </button>
-          <button 
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
-              selectedStyle === "custom" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+              selectedStyle === "custom" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-200"
             }`}
             onClick={() => setSelectedStyle("custom")}
           >
@@ -239,9 +244,8 @@ export default function GrammarChecker() {
       
       {/* Language Selector Dropdown */}
       <div className="mb-6">
-        <h3 className="text-sm font-medium mb-2">Language:</h3>
         <select 
-          className="w-full px-3 py-2 rounded-md bg-muted text-foreground border border-border"
+          className="w-full px-3 py-2 rounded-md bg-gray-800 text-gray-200 border border-gray-700"
           value={selectedLanguage}
           onChange={(e) => {
             setSelectedLanguage(e.target.value as SupportedLanguage);
@@ -263,8 +267,44 @@ export default function GrammarChecker() {
         </select>
       </div>
       
-      {/* Progress Bars for metrics */}
-      <ProgressBars />
+      {/* Progress Bars for metrics - Using scoreMetrics from useWriting */}
+      <div className="mb-6 space-y-3">
+        <div className="space-y-1">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-400">Correctness</span>
+          </div>
+          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="bg-red-500 h-full" style={{ width: `${scoreMetrics?.correctness || 0}%` }}></div>
+          </div>
+        </div>
+        
+        <div className="space-y-1">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-400">Clarity</span>
+          </div>
+          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="bg-blue-500 h-full" style={{ width: `${scoreMetrics?.clarity || 0}%` }}></div>
+          </div>
+        </div>
+        
+        <div className="space-y-1">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-400">Engagement</span>
+          </div>
+          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="bg-green-500 h-full" style={{ width: `${scoreMetrics?.engagement || 0}%` }}></div>
+          </div>
+        </div>
+        
+        <div className="space-y-1">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-400">Delivery</span>
+          </div>
+          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="bg-yellow-500 h-full" style={{ width: `${scoreMetrics?.delivery || 0}%` }}></div>
+          </div>
+        </div>
+      </div>
       
       <div className="flex-1 overflow-y-auto">
         <Suggestions 
