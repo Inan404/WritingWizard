@@ -272,8 +272,8 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
   };
 
   return (
-    <div className="flex flex-col h-full max-h-[calc(100vh-240px)]">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 mb-4 show-scrollbar">
+    <div className="flex flex-col h-full max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-240px)]">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 mb-4 hover-scrollbar">
         <AnimatePresence>
           {messages.map((message) => (
             <motion.div
@@ -285,7 +285,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div 
-                className={`max-w-[80%] rounded-lg p-3 ${
+                className={`max-w-[95%] sm:max-w-[85%] md:max-w-[80%] rounded-lg p-2 sm:p-3 ${
                   message.role === 'user' 
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-muted'
