@@ -106,7 +106,10 @@ export async function processAi(req: Request, res: Response) {
         const humanizeStyle = style && validHumanizeStyles.includes(style) ? style : "standard";
         
         try {
-          const humanizeResult = await generateHumanized(text, humanizeStyle);
+          // Pass custom tone to humanize function if style is custom
+          const humanizeResult = humanizeStyle === 'custom' && customTone
+            ? await generateHumanized(text, humanizeStyle, customTone)
+            : await generateHumanized(text, humanizeStyle);
           return res.json(humanizeResult);
         } catch (humanizeError) {
           console.error("Humanize error:", humanizeError);
