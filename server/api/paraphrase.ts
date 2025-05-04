@@ -10,10 +10,12 @@ interface ParaphraseResult {
   };
 }
 
-export async function paraphraseText(text: string, style: string = 'standard'): Promise<ParaphraseResult> {
+export async function paraphraseText(text: string, style: string = 'standard', customTone?: string): Promise<ParaphraseResult> {
   try {
-    // Call the Perplexity service to paraphrase the text
-    const result = await generateParaphrase(text, style);
+    // If it's a custom style with a provided tone, pass that to the service
+    const result = style === 'custom' && customTone 
+      ? await generateParaphrase(text, style, customTone)
+      : await generateParaphrase(text, style);
     
     // Return the result in the expected format
     return {

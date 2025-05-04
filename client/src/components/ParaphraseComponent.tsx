@@ -7,6 +7,7 @@ import { Loader2, Copy, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
 
 export function ParaphraseComponent() {
   const [text, setText] = useState('');
@@ -18,6 +19,7 @@ export function ParaphraseComponent() {
     delivery: number;
   } | null>(null);
   const [style, setStyle] = useState<Style>('standard');
+  const [customStyle, setCustomStyle] = useState('');
   const [copied, setCopied] = useState(false);
   
   const { toast } = useToast();
@@ -32,9 +34,25 @@ export function ParaphraseComponent() {
       });
       return;
     }
+
+    // If custom style is selected, ensure it has a value
+    if (style === 'custom' && !customStyle.trim()) {
+      toast({
+        title: 'Custom style is empty',
+        description: 'Please enter a custom tone for paraphrasing.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     mutate(
-      { text, mode: 'paraphrase', style },
+      { 
+        text, 
+        mode: 'paraphrase', 
+        style,
+        // Add custom style parameter when using custom style
+        ...(style === 'custom' && { customTone: customStyle })
+      },
       {
         onSuccess: (data) => {
           setParaphrasedText(data.paraphrasedText || '');
@@ -110,10 +128,35 @@ export function ParaphraseComponent() {
           />
         </div>
         
+        {/* Custom style input field */}
+        <AnimatePresence>
+          {style === 'custom' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="space-y-2 mt-2">
+                <label htmlFor="custom-style" className="text-sm font-medium">
+                  Custom Tone
+                </label>
+                <Input
+                  id="custom-style"
+                  placeholder="e.g. Professional, Casual, Friendly, Technical, etc."
+                  value={customStyle}
+                  onChange={(e) => setCustomStyle(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
         <Button 
           onClick={handleSubmit} 
-          disabled={isPending || !text.trim()}
-          className="w-full"
+          disabled={isPending || !text.trim() || (style === 'custom' && !customStyle.trim())}
+          className="w-full mt-4"
         >
           {isPending ? (
             <>
