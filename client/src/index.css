@@ -157,38 +157,33 @@
 
 /* Hover-only scrollbars - only show scrollbars when hovering over the container */
 .hover-scrollbar {
-  scrollbar-width: none; /* Hide by default in Firefox */
-  -ms-overflow-style: none; /* Hide by default in IE/Edge */
+  scrollbar-width: thin; /* Use thin scrollbars in Firefox */
+  -ms-overflow-style: auto; /* Always available but styled to be subtle in IE/Edge */
 }
 
 .hover-scrollbar::-webkit-scrollbar {
-  display: none; /* Hide by default in WebKit browsers */
-}
-
-.hover-scrollbar:hover {
-  scrollbar-width: thin; /* Show on hover in Firefox */
-  -ms-overflow-style: auto; /* Show on hover in IE/Edge */
-}
-
-.hover-scrollbar:hover::-webkit-scrollbar {
-  display: block;
   width: 8px;
   height: 8px;
+  background-color: transparent; /* Make scrollbar track transparent by default */
 }
 
-.hover-scrollbar:hover::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
+.hover-scrollbar::-webkit-scrollbar-track {
+  background-color: transparent;
   border-radius: 10px;
+}
+
+.hover-scrollbar::-webkit-scrollbar-thumb {
+  background-color: transparent; /* Make thumb transparent by default */
+  border-radius: 10px;
+  transition: background-color 0.3s ease;
 }
 
 .hover-scrollbar:hover::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.7);
-  border-radius: 10px;
-  transition: all 0.3s ease;
+  background-color: hsl(var(--primary) / 0.7); /* Show scrollbar thumb on hover */
 }
 
 .hover-scrollbar:hover::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary));
+  background-color: hsl(var(--primary)); /* Darker on hover over thumb */
 }
 
 /* Apply smooth scrolling to all scrollable elements */
