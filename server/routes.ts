@@ -483,14 +483,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { sessionId, messages } = req.body;
       
-      if (!sessionId || !messages || !Array.isArray(messages)) {
+      if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: 'Invalid request parameters' });
       }
       
-      // Verify the session belongs to the user
-      const session = await dbStorage.getChatSession(sessionId);
-      if (!session || session.userId !== req.user?.id) {
-        return res.status(403).json({ error: 'Access denied' });
+      // Special case: If sessionId is 0, we don't save to the database
+      // (for simplified chat with no persistence)
+      const skipPersistence = sessionId === 0;
+      
+      if (!skipPersistence) {
+        // Verify the session belongs to the user
+        const session = await dbStorage.getChatSession(sessionId);
+        if (!session || session.userId !== req.user?.id) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
       }
       
       // Format messages for the AI model
@@ -537,21 +543,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const aiGenerationTime = Date.now() - startTime;
       console.log(`AI response generated in ${aiGenerationTime}ms`);
       
-      // Save the AI response to the database (don't block response with this)
-      const dbSavePromise = dbStorage.createChatMessage({
-        sessionId: sessionId,
-        role: 'assistant',
-        content: aiResponse
-      });
-      
       // Return the AI response immediately
       res.json({
         aiResponse,
         responseTime: aiGenerationTime
       });
       
-      // Then wait for database write to complete (non-blocking)
-      const savedMessage = await dbSavePromise;
+      // Only save to database if we're not in skip persistence mode
+      if (!skipPersistence) {
+        try {
+          // Save the AI response to the database (don't block response with this)
+          const savedMessage = await dbStorage.createChatMessage({
+            sessionId: sessionId,
+            role: 'assistant',
+            content: aiResponse
+          });
+          console.log(`AI response saved to database for session ${sessionId}`);
+        } catch (dbError) {
+          console.error(`Error saving AI response to database for session ${sessionId}:`, dbError);
+        }
+      } else {
+        console.log('Skipping database persistence for session ID 0');
+      }
       console.log(`AI response saved to database for session ${sessionId}`);
     } catch (error) {
       console.error('Error generating AI chat response:', error);

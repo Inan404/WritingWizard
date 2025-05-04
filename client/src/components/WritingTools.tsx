@@ -4,7 +4,7 @@ import GrammarChecker from "./tools/GrammarChecker";
 import Paraphraser from "./tools/Paraphraser";
 import AIChecker from "./tools/AIChecker";
 import Humanizer from "./tools/Humanizer";
-import { SimpleChatGenerator } from "./tools/SimpleChatGenerator";
+import SimpleChat from "./tools/SimpleChat";
 import { useWriting, WritingTool } from "@/context/WritingContext";
 import { Mic, Plus, Send } from "lucide-react";
 
@@ -122,7 +122,7 @@ export default function WritingTools() {
       case "humanizer":
         return <Humanizer />;
       case "chat":
-        return <SimpleChatGenerator />;
+        return <SimpleChat />;
       default:
         return <GrammarChecker />;
     }
