@@ -49,16 +49,33 @@ export default function ChatGenerator() {
         timestamp: Date.now()
       };
       
+      // Also create a default user message to ensure the chat is saved
+      const defaultUserMessage = {
+        role: 'user',
+        content: 'Hi, I need help with my writing.'
+      };
+      
       // Clear messages and set new session ID
       setMessages([welcomeMessage]);
       setSessionId(data.session.id);
       
-      // Save the welcome message
+      // First save the default user message to ensure the chat is stored
       if (data.session.id) {
+        // This ensures that even if the user switches tabs before sending a message,
+        // the chat will still be saved in the database with this default message
         saveMessageMutation.mutate({
           sessionId: data.session.id,
-          role: 'assistant',
-          content: welcomeMessage.content
+          role: defaultUserMessage.role,
+          content: defaultUserMessage.content
+        }, {
+          onSuccess: () => {
+            // Then save the assistant welcome message
+            saveMessageMutation.mutate({
+              sessionId: data.session.id,
+              role: 'assistant',
+              content: welcomeMessage.content
+            });
+          }
         });
       }
       
