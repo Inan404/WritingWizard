@@ -96,8 +96,8 @@ export function ParaphraseComponent() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Enter text to paraphrase..."
-          className="min-h-[200px] resize-none"
-          rows={8}
+          className="min-h-[150px] h-[40vh] resize-none"
+          rows={6}
         />
         
         <div className="flex flex-wrap gap-2">

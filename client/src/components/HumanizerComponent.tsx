@@ -77,8 +77,8 @@ export function HumanizerComponent() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Enter AI-generated text to make it sound more human..."
-          className="min-h-[200px] resize-none"
-          rows={8}
+          className="min-h-[150px] h-[40vh] resize-none"
+          rows={6}
         />
         
         <div className="space-y-3">

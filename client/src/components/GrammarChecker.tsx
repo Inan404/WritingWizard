@@ -127,7 +127,7 @@ export function GrammarChecker() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Enter text to check for grammar and style issues..."
-          className="w-full h-[80vh] min-h-[300px] resize-none transition-colors bg-background text-foreground rounded-md border border-border p-4"
+          className="w-full h-[50vh] min-h-[200px] resize-none transition-colors bg-background text-foreground rounded-md border border-border p-4"
         />
         
         <div className="mt-4 flex justify-center">
@@ -171,7 +171,7 @@ export function GrammarChecker() {
         </div>
         
         {/* Errors and suggestions */}
-        <div className="mt-4 overflow-y-auto max-h-[40vh] rounded-md border border-border">
+        <div className="mt-4 overflow-y-auto max-h-[40vh] rounded-md border border-border show-scrollbar">
           <AnimatePresence>
             {result && (
               <motion.div
