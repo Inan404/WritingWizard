@@ -8,13 +8,14 @@ import { AICheckComponent } from './AICheckComponent';
 interface AiToolProps {
   mode: Mode;
   defaultText?: string;
+  chatId?: number | null;
 }
 
-export function AiTool({ mode, defaultText = '' }: AiToolProps) {
+export function AiTool({ mode, defaultText = '', chatId = null }: AiToolProps) {
   // Render different components based on mode
   switch (mode) {
     case 'chat':
-      return <ChatInterface />;
+      return <ChatInterface chatId={chatId} />;
     case 'grammar':
       return <GrammarChecker />;
     case 'paraphrase':

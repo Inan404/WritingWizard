@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAiTool, ApiMessage, MessageRole } from '@/hooks/useAiTool';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
+import { useQuery } from '@tanstack/react-query';
 
 // Local UI message interface
 interface Message {
@@ -15,9 +16,20 @@ interface Message {
   timestamp: number;
 }
 
-export function ChatInterface() {
-  // The first message is always from the assistant (welcome message)
-  // But when we send to the API, we need to make sure we follow the system -> user -> assistant pattern
+interface ChatMessage {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+  sessionId: number;
+}
+
+interface ChatInterfaceProps {
+  chatId?: number | null;
+}
+
+export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
+  // Initial message state with welcome message
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'initial-message',
@@ -29,8 +41,44 @@ export function ChatInterface() {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const messagesLoaded = useRef(false);
   
   const { mutate, isPending } = useAiTool();
+
+  // Fetch chat messages if chatId exists
+  const { data: chatMessages, isLoading: isLoadingMessages } = useQuery<ChatMessage[]>({
+    queryKey: ['/api/chat-messages', chatId],
+    queryFn: async () => {
+      if (!chatId) return [];
+      const res = await fetch(`/api/chat-messages/${chatId}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch chat messages');
+      }
+      return res.json();
+    },
+    enabled: !!chatId, // Only run query if chatId exists
+  });
+
+  // Load chat messages when they change
+  useEffect(() => {
+    if (chatMessages && chatMessages.length > 0 && !messagesLoaded.current) {
+      // Convert API messages to UI messages
+      const uiMessages: Message[] = chatMessages.map(msg => ({
+        id: `msg-${msg.id}`,
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content,
+        timestamp: new Date(msg.createdAt).getTime(),
+      }));
+      
+      setMessages(uiMessages);
+      messagesLoaded.current = true;
+    }
+  }, [chatMessages]);
+
+  // Reset messagesLoaded ref when chatId changes
+  useEffect(() => {
+    messagesLoaded.current = false;
+  }, [chatId]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -79,7 +127,8 @@ export function ChatInterface() {
       { 
         text: '', 
         mode: 'chat', 
-        messages: messagesToSend 
+        messages: messagesToSend,
+        chatId: chatId,
       },
       {
         onSuccess: (response) => {
