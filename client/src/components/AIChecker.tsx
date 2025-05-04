@@ -105,10 +105,10 @@ const AIChecker: React.FC<AICheckerProps> = ({ inputText, onSave }) => {
         <div className="flex justify-center my-8">
           <Button
             onClick={handleDetectAI}
-            disabled={isLoading || !inputText.trim()}
+            disabled={isPending || !inputText.trim()}
             className="w-full max-w-md"
           >
-            {isLoading ? (
+            {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Analyzing...

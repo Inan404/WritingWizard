@@ -22,7 +22,7 @@ export function AiTool({ mode, defaultText = '', chatId = null }: AiToolProps) {
       return <ParaphraseComponent />;
     case 'humanize':
       return <HumanizerComponent />;
-    case 'ai-check':
+    case 'aicheck':
       return <AICheckComponent defaultText={defaultText} />;
     default:
       return <div>Unknown mode: {mode}</div>;

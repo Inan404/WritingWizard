@@ -495,7 +495,7 @@ export default function DashboardPage() {
             </div>
             
             <div className={activeTab === 'ai-check' ? 'block' : 'hidden'}>
-              <AiTool mode="ai-check" />
+              <AiTool mode="aicheck" />
             </div>
           </motion.div>
         </main>
