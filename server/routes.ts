@@ -10,7 +10,7 @@ import {
   generateWriting,
   generateChatResponse 
 } from "./services/aiService";
-// WebSocket removed to improve performance
+// WebSocket removed: migrated to HTTP-only approach for improved performance
 import { checkGrammarWithLanguageTool } from "./services/languageToolService";
 import { processAi } from "./api/processAi";
 import { setupAuth } from "./auth";
@@ -239,7 +239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const result = await checkAIContent(text);
       console.log("AI check result:", { 
-        textLength: result.aiAnalyzed?.length,
+        textLength: text.length,
         highlightsCount: result.highlights?.length,
         suggestionsCount: result.suggestions?.length,
         aiPercentage: result.aiPercentage
