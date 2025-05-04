@@ -295,7 +295,11 @@ export default function DashboardPage() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -300, opacity: 0 }}
               transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-              className={`${windowWidth < 768 ? 'fixed left-0 top-[65px] z-30 h-[calc(100vh-65px)]' : ''} w-64 flex-shrink-0 border-r border-gray-800 bg-[#0a101f] overflow-y-auto`}
+              className={`${
+                windowWidth < 768 
+                  ? 'fixed left-0 top-[65px] z-30 h-[calc(100vh-65px)]' 
+                  : sidebarOpen ? 'block' : 'hidden'
+              } w-64 flex-shrink-0 border-r border-gray-800 bg-[#0a101f] overflow-y-auto`}
             >
               <div className="flex flex-col h-full py-4">
                 {/* Mobile close button */}
