@@ -185,23 +185,30 @@ export function GrammarChecker() {
                 className="p-4"
               >
                 {/* Grammar error cards */}
-                {result.errors && result.errors.filter((error: GrammarError) => !appliedCorrections.has(error.id)).length > 0 ? (
-                  result.errors
-                    .filter((error: GrammarError) => !appliedCorrections.has(error.id))
-                    .map((error: GrammarError) => (
+                {result.suggestions && result.suggestions.filter((suggestion: any) => !appliedCorrections.has(suggestion.id)).length > 0 ? (
+                  result.suggestions
+                    .filter((suggestion: any) => !appliedCorrections.has(suggestion.id))
+                    .map((suggestion: any) => (
                       <Card 
-                        key={error.id} 
+                        key={suggestion.id} 
                         className="mb-2 overflow-hidden border-l-4 border-l-red-500 cursor-pointer hover:bg-secondary/50 transition-colors"
-                        onClick={() => applyCorrection(error)}
+                        onClick={() => applyCorrection({
+                          id: suggestion.id,
+                          type: suggestion.type,
+                          errorText: suggestion.text,
+                          replacementText: suggestion.replacement,
+                          description: suggestion.description
+                        })}
                       >
                         <CardContent className="p-3">
                           <div className="flex gap-2 items-start">
                             <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
                             <div>
                               <p className="text-sm font-medium">Grammar issue</p>
-                              <p className="text-sm mt-1">{error.description}</p>
+                              <p className="text-sm mt-1">{suggestion.description}</p>
                               <div className="mt-2 text-sm">
-                                <p className="font-mono">{error.errorText}</p>
+                                <p className="font-mono">{suggestion.text}</p>
+                                <p className="font-mono text-green-600">→ {suggestion.replacement}</p>
                               </div>
                             </div>
                           </div>
@@ -211,8 +218,10 @@ export function GrammarChecker() {
                 ) : (
                   <div className="text-center p-4 text-muted-foreground">
                     {text.trim() ? 
+                      result.suggestions && result.suggestions.length === 0 ? 
+                      'No grammar issues detected.' :
                       'Enter text on the left and click "Check Grammar" to see the results here.' : 
-                      'No grammar issues detected.'}
+                      'Enter text to check for grammar issues.'}
                   </div>
                 )}
               </motion.div>
