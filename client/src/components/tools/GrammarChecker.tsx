@@ -20,8 +20,7 @@ export default function GrammarChecker() {
     selectedLanguage, 
     setSelectedLanguage,
     selectedStyle,
-    setSelectedStyle,
-    scoreMetrics
+    setSelectedStyle
   } = useWriting();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -79,6 +78,8 @@ export default function GrammarChecker() {
       console.error('Failed to update writing entry:', error);
     }
   });
+
+  // No metrics analysis needed
 
   const grammarCheckMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -199,56 +200,30 @@ export default function GrammarChecker() {
 
   const RightPanel = (
     <div className="h-full flex flex-col">
-      {/* Style options - exactly matching the screenshot */}
-      <div className="mb-6 space-y-2">
-        {/* First row of buttons (Standard / Academic) */}
-        <div className="grid grid-cols-2 gap-2">
-          <button 
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
-              selectedStyle === "standard" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-200"
-            }`}
-            onClick={() => setSelectedStyle("standard")}
-          >
-            Standard
-          </button>
-          <button 
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
-              selectedStyle === "academic" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-200"
-            }`}
-            onClick={() => setSelectedStyle("academic")}
-          >
-            Academic
-          </button>
-        </div>
-        
-        {/* Second row of buttons (Fluency / Custom) */}
-        <div className="grid grid-cols-2 gap-2">
-          <button 
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
-              selectedStyle === "fluency" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-200"
-            }`}
-            onClick={() => setSelectedStyle("fluency")}
-          >
-            Fluency
-          </button>
-          <button 
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
-              selectedStyle === "custom" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-200"
-            }`}
-            onClick={() => setSelectedStyle("custom")}
-          >
-            Custom
-          </button>
-        </div>
+      {/* Document type, Formality, Goals, Domain buttons */}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <button className="px-4 py-2 rounded-md text-sm font-medium bg-gray-800 text-gray-200">
+          Document type
+        </button>
+        <button className="px-4 py-2 rounded-md text-sm font-medium bg-gray-800 text-gray-200">
+          Formality
+        </button>
+        <button className="px-4 py-2 rounded-md text-sm font-medium bg-gray-800 text-gray-200">
+          Goals
+        </button>
+        <button className="px-4 py-2 rounded-md text-sm font-medium bg-gray-800 text-gray-200">
+          Domain
+        </button>
       </div>
       
-      {/* Language Selector Dropdown */}
+      {/* Language Selector Dropdown - simplified */}
       <div className="mb-6">
         <select 
           className="w-full px-3 py-2 rounded-md bg-gray-800 text-gray-200 border border-gray-700"
           value={selectedLanguage}
           onChange={(e) => {
-            setSelectedLanguage(e.target.value as SupportedLanguage);
+            const newLanguage = e.target.value as SupportedLanguage;
+            setSelectedLanguage(newLanguage);
             // Reset suggestions when language changes
             setSuggestions([]);
           }}
@@ -265,45 +240,6 @@ export default function GrammarChecker() {
           <option value="zh-CN">Chinese</option>
           <option value="pl-PL">Polish</option>
         </select>
-      </div>
-      
-      {/* Progress Bars for metrics - Using scoreMetrics from useWriting */}
-      <div className="mb-6 space-y-3">
-        <div className="space-y-1">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-400">Correctness</span>
-          </div>
-          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div className="bg-red-500 h-full" style={{ width: `${scoreMetrics?.correctness || 0}%` }}></div>
-          </div>
-        </div>
-        
-        <div className="space-y-1">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-400">Clarity</span>
-          </div>
-          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div className="bg-blue-500 h-full" style={{ width: `${scoreMetrics?.clarity || 0}%` }}></div>
-          </div>
-        </div>
-        
-        <div className="space-y-1">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-400">Engagement</span>
-          </div>
-          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div className="bg-green-500 h-full" style={{ width: `${scoreMetrics?.engagement || 0}%` }}></div>
-          </div>
-        </div>
-        
-        <div className="space-y-1">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-400">Delivery</span>
-          </div>
-          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div className="bg-yellow-500 h-full" style={{ width: `${scoreMetrics?.delivery || 0}%` }}></div>
-          </div>
-        </div>
       </div>
       
       <div className="flex-1 overflow-y-auto">
