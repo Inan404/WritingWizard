@@ -79,34 +79,62 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
       return;
     }
     
-    if (chatMessages && !messagesLoaded.current) {
-      // Always force reset messages on chat ID change, even if array is empty
-      console.log(`Processing ${chatMessages.length} messages for chat ${chatId}`);
+    // If we have chat messages from the database
+    if (chatMessages) {
+      // Always process messages when:
+      // 1. We haven't loaded messages yet (messagesLoaded.current is false)
+      // 2. OR the number of messages has changed since last load
+      // 3. OR chat ID has changed (this is handled in the dependency array)
+      const shouldProcessMessages = !messagesLoaded.current || 
+                                   (messages.length !== chatMessages.length && chatId !== null);
       
-      // Convert API messages to UI messages
-      const uiMessages: Message[] = chatMessages.map(msg => ({
-        id: `msg-${msg.id}`,
-        role: msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.content,
-        timestamp: new Date(msg.createdAt || Date.now()).getTime(),
-      }));
-      
-      // For debugging
-      if (uiMessages.length > 0) {
-        console.log(`Converted messages for rendering:`, uiMessages);
-      } else {
-        console.log(`No messages found for chat ${chatId}`);
+      if (shouldProcessMessages) {
+        // Always force reset messages on chat ID change, even if array is empty
+        console.log(`Processing ${chatMessages.length} messages for chat ${chatId}`);
+        
+        // Convert API messages to UI messages
+        const uiMessages: Message[] = chatMessages.map(msg => ({
+          id: `msg-${msg.id}`,
+          role: msg.role === 'user' ? 'user' : 'assistant',
+          content: msg.content,
+          timestamp: new Date(msg.createdAt || Date.now()).getTime(),
+        }));
+        
+        // For debugging
+        if (uiMessages.length > 0) {
+          console.log(`Converted ${uiMessages.length} messages for rendering:`, uiMessages);
+        } else {
+          console.log(`No messages found for chat ${chatId}`);
+        }
+        
+        // If we have messages, replace the current state
+        if (uiMessages.length > 0) {
+          setMessages(uiMessages);
+        }
+        // If no messages found but we have a chat ID, set an empty array
+        else if (chatId !== null) {
+          setMessages([]);
+        }
+        // Otherwise (no chat ID, no messages), use the default welcome message
+        
+        messagesLoaded.current = true;
       }
-      
-      // Always set messages (even if empty) to clear previous chat's messages
-      setMessages(uiMessages);
-      messagesLoaded.current = true;
     }
-  }, [chatMessages, user, chatId]);
+  }, [chatMessages, messages.length, user, chatId]);
 
   // Reset messagesLoaded ref when chatId changes
   useEffect(() => {
+    console.log(`Chat ID changed to ${chatId}, resetting messagesLoaded flag`);
     messagesLoaded.current = false;
+    
+    // When chatId changes and we have a new valid chatId, clear the default welcome message
+    if (chatId !== null) {
+      // Only clear initial welcome message if we're going to load actual messages
+      const hasWelcomeMessageOnly = messages.length === 1 && messages[0].id === 'initial-message';
+      if (hasWelcomeMessageOnly) {
+        setMessages([]); // Clear welcome message so it doesn't appear before chat history loads
+      }
+    }
   }, [chatId]);
 
   // Scroll to bottom when messages change
