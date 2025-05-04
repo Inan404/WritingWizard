@@ -107,7 +107,8 @@ export default function WritingTools() {
     // If we have a chat ID and it's set to force load, always render the chat component
     if (currentChatId && forceLoadChat === 'true') {
       console.log("Force rendering chat component due to chat ID selection:", currentChatId);
-      return <BareMinimumChat />;
+      // Pass the chat ID as a prop - this is for an existing chat session
+      return <BareMinimumChat isDefaultChat={false} defaultChatId={Number(currentChatId)} />;
     }
     
     // Normal rendering based on currentTool state
@@ -122,7 +123,7 @@ export default function WritingTools() {
       case "humanizer":
         return <Humanizer />;
       case "chat":
-        return <BareMinimumChat />;
+        return <BareMinimumChat isDefaultChat={true} />;
       default:
         return <GrammarChecker />;
     }
