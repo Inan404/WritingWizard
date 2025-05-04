@@ -405,10 +405,27 @@ export default function Dashboard() {
       // Make sure to clear any cached messages for this chat session
       queryClient.removeQueries({ queryKey: [`/api/db/chat-sessions/${chatToDelete}/messages`] });
       
-      // Call the API to delete the chat
-      const response = await apiRequest('DELETE', `/api/db/chat-sessions/${chatToDelete}`);
+      // Call the API to delete the chat - try the correct endpoint with fallbacks
+      console.log(`Attempting to delete chat ${chatToDelete} with endpoint /api/db/chat-sessions/${chatToDelete}`);
+      let response;
+      try {
+        // Try with the new endpoint first
+        response = await apiRequest('DELETE', `/api/db/chat-sessions/${chatToDelete}`);
+        console.log('Delete response status:', response.status);
+      } catch (deleteError) {
+        console.error('Error with primary delete endpoint:', deleteError);
+        // If that fails, try the old endpoint as fallback
+        try {
+          console.log(`Trying fallback endpoint /api/chat-sessions/${chatToDelete}`);
+          response = await apiRequest('DELETE', `/api/chat-sessions/${chatToDelete}`);
+          console.log('Fallback delete response status:', response.status);
+        } catch (fallbackError) {
+          console.error('Error with fallback delete endpoint:', fallbackError);
+          throw new Error('Both delete endpoints failed');
+        }
+      }
       
-      if (response.ok) {
+      if (response && response.ok) {
         console.log(`Chat ${chatToDelete} successfully deleted from the server`);
         
         // If current chat is being deleted, reset the UI

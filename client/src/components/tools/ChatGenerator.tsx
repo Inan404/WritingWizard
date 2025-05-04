@@ -33,10 +33,20 @@ export default function ChatGenerator() {
   // Create a new chat session mutation
   const createSessionMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/db/chat-sessions', {
-        name: 'New Chat ' + new Date().toLocaleDateString()
-      });
-      return response.json();
+      try {
+        // First try with the db endpoint
+        const response = await apiRequest('POST', '/api/db/chat-sessions', {
+          name: 'New Chat ' + new Date().toLocaleDateString()
+        });
+        return response.json();
+      } catch (error) {
+        console.error('Error creating chat with db endpoint:', error);
+        // Fall back to the non-db endpoint
+        const response = await apiRequest('POST', '/api/chat-sessions', {
+          name: 'New Chat ' + new Date().toLocaleDateString()
+        });
+        return response.json();
+      }
     },
     onSuccess: (data) => {
       console.log('Created new chat session with ID:', data.session.id);
