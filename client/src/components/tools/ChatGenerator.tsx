@@ -105,11 +105,24 @@ export default function ChatGenerator() {
   // Save a chat message mutation
   const saveMessageMutation = useMutation({
     mutationFn: async ({ sessionId, role, content }: { sessionId: number, role: string, content: string }) => {
-      const response = await apiRequest('POST', `/api/db/chat-sessions/${sessionId}/messages`, {
-        role,
-        content
-      });
-      return response.json();
+      try {
+        // First try with the db endpoint
+        console.log(`Saving message to session ${sessionId} with endpoint /api/db/chat-sessions/${sessionId}/messages`);
+        const response = await apiRequest('POST', `/api/db/chat-sessions/${sessionId}/messages`, {
+          role,
+          content
+        });
+        return response.json();
+      } catch (error) {
+        console.error('Error saving message with db endpoint:', error);
+        // Fall back to the non-db endpoint
+        console.log(`Trying fallback endpoint /api/chat-sessions/${sessionId}/messages`);
+        const response = await apiRequest('POST', `/api/chat-sessions/${sessionId}/messages`, {
+          role,
+          content
+        });
+        return response.json();
+      }
     },
     onSuccess: (data) => {
       console.log('Saved chat message:', data.message);
@@ -122,8 +135,18 @@ export default function ChatGenerator() {
   // Load existing chat messages for a session
   const loadChatMessagesMutation = useMutation({
     mutationFn: async (sessionId: number) => {
-      const response = await apiRequest('GET', `/api/db/chat-sessions/${sessionId}/messages`);
-      return response.json();
+      try {
+        // First try with the db endpoint
+        console.log(`Loading messages for session ${sessionId} with endpoint /api/db/chat-sessions/${sessionId}/messages`);
+        const response = await apiRequest('GET', `/api/db/chat-sessions/${sessionId}/messages`);
+        return response.json();
+      } catch (error) {
+        console.error('Error loading messages with db endpoint:', error);
+        // Fall back to the non-db endpoint
+        console.log(`Trying fallback endpoint /api/chat-sessions/${sessionId}/messages`);
+        const response = await apiRequest('GET', `/api/chat-sessions/${sessionId}/messages`);
+        return response.json();
+      }
     },
     onSuccess: (data) => {
       console.log("Loaded messages for session:", data.messages.length);
