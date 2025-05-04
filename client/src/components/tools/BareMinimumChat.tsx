@@ -151,8 +151,48 @@ export default function BareMinimumChat({
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     
-    // Auto-save user message if this is the default chat
-    if (isDefaultChat) {
+    // Create chat session if this is the first message in the default chat
+    if (isDefaultChat && !chatSessionId) {
+      try {
+        console.log('Creating default chat session for first message...');
+        const currentDate = new Date();
+        const formattedDate = `${currentDate.getMonth() + 1}/${currentDate.getDate()}/${currentDate.getFullYear()}`;
+        const title = `Chat - ${formattedDate}`;
+        
+        const response = await fetch('/api/writing-chats', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            title: title,
+            inputText: userMessage.content
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to create session: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Created default chat session with ID:', result.chat.id);
+        setChatSessionId(result.chat.id);
+        setSessionTitle(title);
+        
+        // Store the chat ID in sessionStorage so other components can access it
+        sessionStorage.setItem('currentChatSessionId', result.chat.id.toString());
+        
+        // Trigger refresh of the sidebar immediately
+        const refreshEvent = new CustomEvent('refreshChatSidebar');
+        window.dispatchEvent(refreshEvent);
+        
+        // No need to explicitly save the first message as it was included in the creation
+      } catch (error) {
+        console.error('Error creating default chat session:', error);
+      }
+    } 
+    // Auto-save user message if this is the default chat and we already have a session
+    else if (isDefaultChat && chatSessionId) {
       await saveMessageToSession(userMessage);
     }
 
