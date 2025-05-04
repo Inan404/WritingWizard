@@ -30,6 +30,17 @@ interface GrammarResult {
   };
 }
 
+// Available language options
+const languageOptions = [
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'en-GB', label: 'English (UK)' },
+  { value: 'fr-FR', label: 'French' },
+  { value: 'de-DE', label: 'German' },
+  { value: 'es-ES', label: 'Spanish' },
+  { value: 'it-IT', label: 'Italian' },
+  { value: 'nl-NL', label: 'Dutch' },
+];
+
 export function GrammarChecker() {
   // State for text input and results
   const [text, setText] = useState('Neural networks can recognize various representations of the same digit, such as the number three, despite differences in pixel values across images.');
@@ -67,7 +78,6 @@ export function GrammarChecker() {
           // Update with results
           setResult({
             errors: data.errors || [],
-            suggestions: data.suggestions || [],
             metrics: {
               correctness: data.metrics?.correctness || 70,
               clarity: data.metrics?.clarity || 85,
