@@ -105,13 +105,33 @@ export default function BareMinimumChat({
   
   // Auto-save messages for default chat
   const saveMessageToSession = async (messageToSave: ChatMessage) => {
-    if (!isDefaultChat || !chatSessionId || messageToSave.id === 'welcome-message') {
+    // Skip system messages and welcome message, and don't try to save if we don't have a real session ID
+    if (!isDefaultChat || !chatSessionId || messageToSave.id === 'welcome-message' || 
+        messageToSave.role === 'system' || chatSessionId.toString().startsWith('temp-')) {
       return;
     }
     
     try {
       setIsSaving(true);
       console.log(`Saving message to session ${chatSessionId}`);
+      
+      // First check if still authenticated
+      const authCheckResponse = await fetch('/api/user');
+      if (!authCheckResponse.ok) {
+        console.warn('Not authenticated, cannot save message');
+        // Add notification only once
+        if (!messages.some(msg => msg.id === 'auth-notice')) {
+          setMessages(prev => [
+            ...prev,
+            {
+              id: 'auth-notice',
+              role: 'system',
+              content: "Note: You're not logged in. This chat will work normally but changes won't be saved to your account."
+            }
+          ]);
+        }
+        return;
+      }
       
       const response = await fetch(`/api/db/chat-sessions/${chatSessionId}/messages`, {
         method: 'POST',
@@ -125,6 +145,21 @@ export default function BareMinimumChat({
       });
       
       if (!response.ok) {
+        // If it's an auth error, notify the user
+        if (response.status === 401 || response.status === 403) {
+          // Add notification only once
+          if (!messages.some(msg => msg.id === 'auth-notice')) {
+            setMessages(prev => [
+              ...prev,
+              {
+                id: 'auth-notice',
+                role: 'system',
+                content: "Note: You're not logged in. This chat will work normally but changes won't be saved to your account."
+              }
+            ]);
+          }
+          return;
+        }
         throw new Error(`Failed to save message: ${response.status}`);
       }
       
@@ -173,6 +208,28 @@ export default function BareMinimumChat({
         const formattedDate = `${currentDate.getMonth() + 1}/${currentDate.getDate()}/${currentDate.getFullYear()}`;
         const title = `Chat - ${formattedDate}`;
         
+        // First check if the user is authenticated
+        const authCheckResponse = await fetch('/api/user');
+        if (!authCheckResponse.ok) {
+          console.warn('User not authenticated, continuing in local-only mode');
+          // Continue with local-only chat
+          const tempId = Date.now(); // Use a number for the temporary ID
+          setChatSessionId(tempId);
+          setSessionTitle(title);
+          
+          // Add an informational message about local-only mode
+          setMessages(prev => [
+            ...prev,
+            {
+              id: 'auth-notice',
+              role: 'system',
+              content: "Note: You're not logged in. This chat will work normally but won't be saved to your account."
+            }
+          ]);
+          
+          return; // Skip server-side creation
+        }
+        
         const response = await fetch('/api/writing-chats', {
           method: 'POST',
           headers: {
@@ -187,6 +244,26 @@ export default function BareMinimumChat({
         if (!response.ok) {
           const errorData = await response.text();
           console.error('Server response error:', response.status, errorData);
+          
+          if (response.status === 401) {
+            // Authentication error - fallback to local-only mode
+            const tempId = Date.now(); // Use a number for the temporary ID
+            setChatSessionId(tempId);
+            setSessionTitle(title);
+            
+            // Add an informational message about local-only mode
+            setMessages(prev => [
+              ...prev,
+              {
+                id: 'auth-notice',
+                role: 'system',
+                content: "Note: You're not logged in. This chat will work normally but won't be saved to your account."
+              }
+            ]);
+            
+            return; // Skip further error handling
+          }
+          
           throw new Error(`Failed to create session: ${response.status}. ${errorData}`);
         }
         
@@ -208,6 +285,24 @@ export default function BareMinimumChat({
         // No need to explicitly save the first message as it was included in the creation
       } catch (error) {
         console.error('Error creating default chat session:', error);
+        
+        // Fallback to local-only mode on any error
+        const tempId = Date.now(); // Use a number for the temporary ID
+        setChatSessionId(tempId);
+        // Use the date for the title if it wasn't defined in catch block
+        const currentDate = new Date();
+        const fallbackTitle = `Chat - ${currentDate.getMonth() + 1}/${currentDate.getDate()}/${currentDate.getFullYear()}`;
+        setSessionTitle(fallbackTitle);
+        
+        // Add an informational message about error
+        setMessages(prev => [
+          ...prev,
+          {
+            id: 'error-notice',
+            role: 'system',
+            content: "There was an error saving this chat. You can continue chatting, but this conversation may not be saved."
+          }
+        ]);
       }
     } 
     // Auto-save user message if this is the default chat and we already have a session
