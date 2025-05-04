@@ -397,8 +397,11 @@ export default function Dashboard() {
           const forceNewChatEvent = new CustomEvent('forceNewChatEvent');
           document.dispatchEvent(forceNewChatEvent);
           
+          // Check if we're in the chat tool by reading from WritingContext
+          const currentTool = sessionStorage.getItem('currentTool') || 'chat';
+          
           // If we're in the chat tab, create a new chat
-          if (activeTool === 'chat') {
+          if (currentTool === 'chat') {
             console.log("Creating new chat after deletion...");
             // Small delay to ensure UI is reset first
             setTimeout(() => {

@@ -70,10 +70,16 @@ export default function WritingTools() {
       setCurrentTool('chat'); // Always set to chat if forced
       // Clear the flag to prevent continuous override
       sessionStorage.removeItem('forcedChatTabSwitch');
+      
+      // Save the current tool to session storage so other components can access it
+      sessionStorage.setItem('currentTool', 'chat');
     } else {
       // Normal update from context
       setCurrentTool(activeTool);
       console.log("Active tool updated in useEffect:", activeTool);
+      
+      // Save the current tool to session storage so other components can access it
+      sessionStorage.setItem('currentTool', activeTool);
     }
   }, [activeTool]);
 
@@ -185,13 +191,37 @@ export default function WritingTools() {
               onChange={(e) => setPromptText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && promptText.trim()) {
+                  // Keep a local copy of the message text
+                  const messageText = promptText.trim();
+                  
+                  // Clear input immediately for better UX
+                  setPromptText('');
+                  
                   // Send message via global function
-                  console.log('Sending message:', promptText);
-                  // @ts-ignore
-                  if (window.handleChatMessage) {
+                  console.log('Sending message:', messageText);
+                  
+                  // Ensure we have a valid chat session
+                  if (!sessionStorage.getItem('currentChatSessionId')) {
+                    console.log('No active chat session - creating one first');
+                    // Create a custom event to notify we need a new chat
+                    const forceNewChatEvent = new CustomEvent('forceNewChatEvent');
+                    document.dispatchEvent(forceNewChatEvent);
+                    
+                    // Wait a moment for the chat to be created then send message
+                    setTimeout(() => {
+                      // @ts-ignore
+                      if (window.handleChatMessage) {
+                        // @ts-ignore
+                        window.handleChatMessage(messageText);
+                      }
+                    }, 300);
+                  } else {
+                    // Send message directly if we already have a session
                     // @ts-ignore
-                    window.handleChatMessage(promptText);
-                    setPromptText('');
+                    if (window.handleChatMessage) {
+                      // @ts-ignore
+                      window.handleChatMessage(messageText);
+                    }
                   }
                 }
               }}
@@ -200,13 +230,37 @@ export default function WritingTools() {
               className="absolute right-4 top-1/2 transform -translate-y-1/2 text-primary hover:text-primary/80"
               onClick={() => {
                 if (promptText.trim()) {
+                  // Keep a local copy of the message text
+                  const messageText = promptText.trim();
+                  
+                  // Clear input immediately for better UX
+                  setPromptText('');
+                  
                   // Send message via global function
-                  console.log('Sending message:', promptText);
-                  // @ts-ignore
-                  if (window.handleChatMessage) {
+                  console.log('Sending message:', messageText);
+                  
+                  // Ensure we have a valid chat session
+                  if (!sessionStorage.getItem('currentChatSessionId')) {
+                    console.log('No active chat session - creating one first');
+                    // Create a custom event to notify we need a new chat
+                    const forceNewChatEvent = new CustomEvent('forceNewChatEvent');
+                    document.dispatchEvent(forceNewChatEvent);
+                    
+                    // Wait a moment for the chat to be created then send message
+                    setTimeout(() => {
+                      // @ts-ignore
+                      if (window.handleChatMessage) {
+                        // @ts-ignore
+                        window.handleChatMessage(messageText);
+                      }
+                    }, 300);
+                  } else {
+                    // Send message directly if we already have a session
                     // @ts-ignore
-                    window.handleChatMessage(promptText);
-                    setPromptText('');
+                    if (window.handleChatMessage) {
+                      // @ts-ignore
+                      window.handleChatMessage(messageText);
+                    }
                   }
                 }
               }}

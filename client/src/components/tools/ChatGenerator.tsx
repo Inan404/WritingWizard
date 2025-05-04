@@ -287,6 +287,9 @@ export default function ChatGenerator() {
         throw new Error('No active chat session');
       }
       
+      // Start a timer to track response time
+      const startTime = Date.now();
+      
       // Get all previous messages to maintain conversation context
       const previousMessages = messages.map(msg => ({
         role: msg.role,
@@ -305,23 +308,46 @@ export default function ChatGenerator() {
         messages: chatMessages
       });
       
-      return response.json();
+      const data = await response.json();
+      
+      // Calculate how long the response took
+      const responseTime = Date.now() - startTime;
+      
+      // If response was very fast, add a small artificial delay for better UX
+      // This prevents the typing indicator from flashing too quickly
+      if (responseTime < 500) {
+        console.log(`Response was fast (${responseTime}ms), adding artificial delay`);
+        await new Promise(resolve => setTimeout(resolve, 500 - responseTime));
+      }
+      
+      return data;
     },
     onSuccess: (data) => {
-      setIsLoading(false);
-      const assistantResponse = {
-        id: Date.now().toString(),
-        role: 'assistant' as const,
-        content: data.aiResponse || data.message?.content, // Accept either format
-        timestamp: Date.now()
-      };
-      
-      setMessages(prev => [...prev, assistantResponse as Message]);
-      
-      // No need to save the assistant message as the API already does that
-      
-      // Invalidate the sidebar data to show updated chat list
-      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
+      // Short delay to make typing indicator more natural
+      setTimeout(() => {
+        setIsLoading(false);
+        
+        const assistantResponse = {
+          id: Date.now().toString(),
+          role: 'assistant' as const,
+          content: data.aiResponse || data.message?.content, // Accept either format
+          timestamp: Date.now()
+        };
+        
+        setMessages(prev => [...prev, assistantResponse as Message]);
+        
+        // No need to save the assistant message as the API already does that
+        
+        // Invalidate the sidebar data to show updated chat list
+        queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
+        
+        // Scroll to bottom after message appears
+        setTimeout(() => {
+          if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+          }
+        }, 100);
+      }, 200);
     },
     onError: () => {
       setIsLoading(false);
@@ -344,20 +370,29 @@ export default function ChatGenerator() {
       if (!message.trim()) return;
       
       const userMessageId = Date.now().toString();
+      const timestamp = Date.now();
       
-      // Add user message to chat
+      // Add user message to chat immediately for better UX
       setMessages(prev => [
         ...prev,
         {
           id: userMessageId,
           role: 'user' as const,
           content: message,
-          timestamp: Date.now()
+          timestamp: timestamp
         }
       ]);
       
-      // Save message to database if we have a session
+      // Scroll to bottom immediately
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      }, 50);
+      
+      // Save message to database if we have a session (in background)
       if (sessionId) {
+        // Fire and forget - don't wait for the result
         saveMessageMutation.mutate({
           sessionId,
           role: 'user',
@@ -365,11 +400,18 @@ export default function ChatGenerator() {
         });
       }
       
-      // Show typing indicator
+      // Show typing indicator immediately
       setIsLoading(true);
       
-      // Call API to get response
-      generateMutation.mutate(message);
+      // Start a fake typing timer to ensure the indicator shows for at least a second
+      // This prevents flickering when the AI responds too quickly
+      const minTypingTime = setTimeout(() => {
+        // Call API to get response
+        generateMutation.mutate(message);
+      }, 500); // Short delay helps with perceived responsiveness
+      
+      // Clean up the timer if component unmounts
+      return () => clearTimeout(minTypingTime);
     };
 
     return () => {
