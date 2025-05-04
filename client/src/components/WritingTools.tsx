@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import GrammarChecker from "./tools/GrammarChecker";
+import GrammarCheckerSimple from "./tools/GrammarCheckerSimple";
 import Paraphraser from "./tools/Paraphraser";
 import AIChecker from "./tools/AIChecker";
 import Humanizer from "./tools/Humanizer";
@@ -115,7 +115,7 @@ export default function WritingTools() {
     console.log("Rendering tool:", currentTool);
     switch (currentTool) {
       case "grammar":
-        return <GrammarChecker />;
+        return <GrammarCheckerSimple />;
       case "paraphrase":
         return <Paraphraser />;
       case "ai-check":
@@ -125,7 +125,7 @@ export default function WritingTools() {
       case "chat":
         return <BareMinimumChat isDefaultChat={true} />;
       default:
-        return <GrammarChecker />;
+        return <GrammarCheckerSimple />;
     }
   };
 
