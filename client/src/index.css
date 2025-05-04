@@ -155,7 +155,62 @@
   background: hsl(var(--primary));
 }
 
+/* Hover-only scrollbars - only show scrollbars when hovering over the container */
+.hover-scrollbar {
+  scrollbar-width: none; /* Hide by default in Firefox */
+  -ms-overflow-style: none; /* Hide by default in IE/Edge */
+}
+
+.hover-scrollbar::-webkit-scrollbar {
+  display: none; /* Hide by default in WebKit browsers */
+}
+
+.hover-scrollbar:hover {
+  scrollbar-width: thin; /* Show on hover in Firefox */
+  -ms-overflow-style: auto; /* Show on hover in IE/Edge */
+}
+
+.hover-scrollbar:hover::-webkit-scrollbar {
+  display: block;
+  width: 8px;
+  height: 8px;
+}
+
+.hover-scrollbar:hover::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 10px;
+}
+
+.hover-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.7);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.hover-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+
 /* Apply smooth scrolling to all scrollable elements */
 html, .overflow-auto, .overflow-y-auto, .overflow-x-auto {
   scroll-behavior: smooth;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .content-editable {
+    @apply min-h-[150px]; /* Smaller height on mobile */
+  }
+  
+  /* Make font size slightly smaller on mobile */
+  body {
+    @apply text-sm;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Add some margin adjustment for tablets */
+  .container {
+    @apply px-3;
+  }
 }
