@@ -150,50 +150,7 @@ export function AICheckComponent({ defaultText = '' }: AICheckProps) {
                           : 'Likely human-written content'}
                     </span>
                   </div>
-                  
-                  {metrics && (
-                    <div className="space-y-3 mt-4">
-                      <h4 className="text-sm font-medium">Content Analysis</h4>
-                      <div className="space-y-2">
-                        {metrics.correctness !== undefined && (
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span>Correctness</span>
-                              <span>{metrics.correctness}%</span>
-                            </div>
-                            <Progress value={metrics.correctness} className="h-1.5" />
-                          </div>
-                        )}
-                        {metrics.clarity !== undefined && (
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span>Clarity</span>
-                              <span>{metrics.clarity}%</span>
-                            </div>
-                            <Progress value={metrics.clarity} className="h-1.5" />
-                          </div>
-                        )}
-                        {metrics.engagement !== undefined && (
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span>Engagement</span>
-                              <span>{metrics.engagement}%</span>
-                            </div>
-                            <Progress value={metrics.engagement} className="h-1.5" />
-                          </div>
-                        )}
-                        {metrics.delivery !== undefined && (
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span>Delivery</span>
-                              <span>{metrics.delivery}%</span>
-                            </div>
-                            <Progress value={metrics.delivery} className="h-1.5" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+
                 </CardContent>
               </Card>
             </motion.div>
