@@ -1087,13 +1087,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(201).json({
         success: true,
         sessionId: chatSession.id,
-        title: chatSession.name
+        title: chatSession.name // Use name property which matches the schema
       });
     } catch (error) {
       console.error('Error saving chat session:', error);
+      console.error(error);
       return res.status(500).json({ 
         error: 'Failed to save chat session',
-        details: error.message 
+        details: error instanceof Error ? error.message : String(error)
       });
     }
   });

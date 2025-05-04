@@ -114,6 +114,13 @@ export default function BareMinimumChat() {
 
   const handleSaveChat = async () => {
     try {
+      // Skip if we don't have any user messages
+      const userMessages = messages.filter(m => m.role === 'user');
+      if (userMessages.length === 0) {
+        alert('Please have at least one conversation before saving');
+        return;
+      }
+      
       // Make API call to save the chat session
       const response = await fetch('/api/db/chat-sessions', {
         method: 'POST',
@@ -121,16 +128,24 @@ export default function BareMinimumChat() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          title: sessionTitle,
-          messages: messages.filter(m => m.id !== 'welcome-message') // Skip welcome message
+          title: sessionTitle || `Chat ${new Date().toLocaleString()}`,
+          // Filter out welcome message and format messages for the API
+          messages: messages
+            .filter(m => m.id !== 'welcome-message')
+            .map(m => ({
+              role: m.role,
+              content: m.content
+            }))
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to save chat: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to save chat: ${response.status}`);
       }
 
-      alert('Chat session saved successfully!');
+      const result = await response.json();
+      alert(`Chat session saved successfully! Session ID: ${result.sessionId}`);
     } catch (error) {
       console.error('Error saving chat:', error);
       alert('Failed to save chat session. Please try again.');
@@ -232,5 +247,4 @@ export default function BareMinimumChat() {
       </div>
     </div>
   );
-}
 }
