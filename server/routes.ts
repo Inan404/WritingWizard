@@ -394,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create initial message
       await dbStorage.createChatMessage({
         sessionId: chatSession.id,
-        role: 'assistant',
+        role: 'user',
         content: inputText
       });
       
