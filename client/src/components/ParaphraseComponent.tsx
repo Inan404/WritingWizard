@@ -90,13 +90,13 @@ export function ParaphraseComponent() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
       <div className="space-y-4">
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Enter text to paraphrase..."
-          className="min-h-[150px] h-[40vh] resize-none"
+          className="min-h-[150px] h-[35vh] sm:h-[40vh] resize-none p-2 sm:p-4 hover-scrollbar"
           rows={6}
         />
         
@@ -196,7 +196,7 @@ export function ParaphraseComponent() {
                       )}
                     </Button>
                   </div>
-                  <div className="p-4 text-sm whitespace-pre-wrap">
+                  <div className="p-4 text-sm whitespace-pre-wrap max-h-[35vh] sm:max-h-[40vh] overflow-y-auto hover-scrollbar">
                     {paraphrasedText}
                   </div>
                 </CardContent>
