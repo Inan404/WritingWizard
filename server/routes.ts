@@ -587,7 +587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Delete chat session endpoint
+  // Delete chat session endpoint - non-DB version (legacy)
   app.delete("/api/chat-sessions/:id", isAuthenticated, async (req, res) => {
     try {
       const sessionId = parseInt(req.params.id);
@@ -619,6 +619,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete chat session error:", error);
       res.status(500).json({ success: false, message: "Error deleting chat session" });
+    }
+  });
+  
+  // Delete chat session endpoint - DB version
+  app.delete("/api/db/chat-sessions/:id", isAuthenticated, async (req, res) => {
+    try {
+      console.log("Delete chat session request received for session:", req.params.id);
+      const sessionId = parseInt(req.params.id);
+      
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ error: "Invalid session ID" });
+      }
+      
+      // Verify user owns this session
+      const session = await dbStorage.getChatSession(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Chat session not found" });
+      }
+      
+      // Ensure the user owns this session
+      if (!req.user || session.userId !== req.user.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      console.log(`Deleting chat session ${sessionId} and its messages...`);
+      
+      // First delete all messages for this session
+      await dbStorage.deleteChatMessages(sessionId);
+      
+      // Then delete the session itself
+      const result = await dbStorage.deleteChatSession(sessionId);
+      
+      if (result) {
+        console.log(`Successfully deleted chat session ${sessionId}`);
+        
+        // Clear any cache for this session
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        res.status(200).json({ 
+          success: true, 
+          message: "Chat session deleted successfully",
+          timestamp: Date.now() // Add timestamp for cache busting
+        });
+      } else {
+        console.error(`Failed to delete chat session ${sessionId}`);
+        res.status(500).json({ 
+          success: false, 
+          error: "Failed to delete chat session" 
+        });
+      }
+    } catch (error) {
+      console.error("Delete chat session error:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Error deleting chat session", 
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
   

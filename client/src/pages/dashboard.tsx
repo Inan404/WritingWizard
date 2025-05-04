@@ -383,39 +383,53 @@ export default function Dashboard() {
       // Close the delete confirmation dialog
       setDeleteChatDialogOpen(false);
       
+      // Clear any session storage that might be related to this chat
+      const currentChatId = sessionStorage.getItem('currentChatSessionId');
+      const isCurrentChat = currentChatId === chatToDelete.toString();
+      
+      if (isCurrentChat) {
+        console.log(`This is the currently active chat, clearing session storage...`);
+        sessionStorage.removeItem('currentChatSessionId');
+        sessionStorage.removeItem('forceLoadChat');
+        sessionStorage.removeItem('forceNewChat');
+        sessionStorage.removeItem('disableAutoCreate');
+      }
+      
+      // First immediately remove the chat from local state for better UX
+      const updatedChats = chats.filter(c => c.id !== chatToDelete);
+      queryClient.setQueryData(['/api/writing-chats'], { 
+        chats: updatedChats,
+        timestamp: Date.now()
+      });
+      
+      // Make sure to clear any cached messages for this chat session
+      queryClient.removeQueries({ queryKey: [`/api/db/chat-sessions/${chatToDelete}/messages`] });
+      
       // Call the API to delete the chat
       const response = await apiRequest('DELETE', `/api/db/chat-sessions/${chatToDelete}`);
       
       if (response.ok) {
-        // If current chat is being deleted, clear the session storage
-        const currentChatId = sessionStorage.getItem('currentChatSessionId');
-        if (currentChatId === chatToDelete.toString()) {
-          sessionStorage.removeItem('currentChatSessionId');
-          sessionStorage.removeItem('forceLoadChat');
+        console.log(`Chat ${chatToDelete} successfully deleted from the server`);
+        
+        // If current chat is being deleted, reset the UI
+        if (isCurrentChat) {
+          console.log("Resetting chat UI...");
           
-          // Force reset of the chat interface
+          // Force reset of the chat interface by dispatching custom event
           const forceNewChatEvent = new CustomEvent('forceNewChatEvent');
           document.dispatchEvent(forceNewChatEvent);
           
-          // Check if we're in the chat tool by reading from WritingContext
+          // Check if we're in the chat tool
           const currentTool = sessionStorage.getItem('currentTool') || 'chat';
           
-          // If we're in the chat tab, create a new chat
+          // If we're in the chat tab, create a new chat after a small delay
           if (currentTool === 'chat') {
             console.log("Creating new chat after deletion...");
-            // Small delay to ensure UI is reset first
             setTimeout(() => {
               handleCreateNewChat();
-            }, 100);
+            }, 300);
           }
         }
-        
-        // First immediately remove the chat from local state for better UX
-        const updatedChats = chats.filter(c => c.id !== chatToDelete);
-        queryClient.setQueryData(['/api/writing-chats'], { 
-          chats: updatedChats,
-          timestamp: Date.now()
-        });
         
         // Then invalidate to refetch from server
         await refetch();
