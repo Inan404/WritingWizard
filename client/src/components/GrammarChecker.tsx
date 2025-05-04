@@ -84,6 +84,11 @@ export function GrammarChecker() {
     
     setIsProgressiveCheck(isProgressive);
     
+    // Add visual feedback for progressive checks
+    if (isProgressive && textareaRef.current) {
+      textareaRef.current.classList.add('bg-primary/5', 'border-primary/30');
+    }
+    
     mutate(
       { text: textToCheck, mode: 'grammar' },
       {
@@ -103,11 +108,29 @@ export function GrammarChecker() {
             }
           });
           
-          // Clear progressive check flag
+          // Clear progressive check flag and remove visual feedback
           setIsProgressiveCheck(false);
+          if (textareaRef.current) {
+            textareaRef.current.classList.remove('bg-primary/5', 'border-primary/30');
+          }
+          
+          // Flash success effect
+          if (isProgressive && textareaRef.current) {
+            textareaRef.current.classList.add('bg-green-500/10');
+            setTimeout(() => {
+              if (textareaRef.current) {
+                textareaRef.current.classList.remove('bg-green-500/10');
+              }
+            }, 300);
+          }
         },
         onError: (error) => {
           setIsProgressiveCheck(false);
+          // Remove visual feedback on error
+          if (textareaRef.current) {
+            textareaRef.current.classList.remove('bg-primary/5', 'border-primary/30');
+          }
+          
           toast({
             title: 'Error',
             description: error.message || 'Failed to check grammar',
@@ -199,7 +222,10 @@ export function GrammarChecker() {
     
     // Schedule a recheck to find new issues based on the corrected text
     // Need a small delay to let the text state update first
-    setTimeout(() => recheckGrammar(), 500);
+    setTimeout(() => {
+      // The corrected text is now the current state text
+      performGrammarCheck(text, true);
+    }, 300);
   };
 
   // Handle direct corrections for errors with position data
@@ -240,7 +266,10 @@ export function GrammarChecker() {
       
       // Schedule a recheck to find new issues based on the corrected text
       // Need a small delay to let the text state update first
-      setTimeout(() => recheckGrammar(), 500);
+      setTimeout(() => {
+        // The corrected text is now the current state text
+        performGrammarCheck(text, true);
+      }, 300);
     } else {
       // Fallback to regular text replacement if position data is missing
       applySuggestion(error);
@@ -293,7 +322,7 @@ export function GrammarChecker() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={recheckGrammar}
+                        onClick={() => performGrammarCheck(text, true)}
                         disabled={isPending || isProgressiveCheck}
                         className="flex items-center gap-1 text-xs h-7"
                       >
@@ -402,7 +431,7 @@ export function GrammarChecker() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          onClick={recheckGrammar}
+                          onClick={() => performGrammarCheck(text, true)}
                           disabled={isPending || isProgressiveCheck}
                           className="flex items-center gap-1 text-xs"
                         >
