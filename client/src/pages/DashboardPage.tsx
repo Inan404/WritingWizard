@@ -190,22 +190,22 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#040b14] text-white">
       {/* Top navigation bar */}
-      <header className="py-4 px-6 flex items-center justify-between border-b border-gray-800">
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-medium">{user?.username || 'User'}'s Dashboard</h1>
+      <header className="py-2 sm:py-4 px-3 sm:px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-800 gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          <h1 className="text-base sm:text-lg font-medium truncate">{user?.username || 'User'}'s Dashboard</h1>
           <Button
             onClick={handleCreateNewChat}
-            className="bg-blue-600 hover:bg-blue-700 ml-4"
+            className="bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm"
             size="sm"
           >
-            <PlusCircle className="h-4 w-4 mr-2" />
+            <PlusCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             New Chat
           </Button>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
+              <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
                 <AvatarImage src="/avatar.png" alt={user?.username || 'User'} />
                 <AvatarFallback className="bg-primary text-white">
                   {user?.username?.charAt(0).toUpperCase() || 'U'}
@@ -222,12 +222,12 @@ export default function DashboardPage() {
         </DropdownMenu>
       </header>
 
-      <div className="h-[calc(100vh-65px)]">
+      <div className="h-[calc(100vh-65px)] sm:h-[calc(100vh-72px)]">
         {/* Main content */}
-        <main className="w-full p-6 overflow-y-auto hover-scrollbar">
+        <main className="w-full px-3 py-4 sm:p-6 overflow-y-auto hover-scrollbar">
           {/* Tab navigation */}
-          <div className="flex justify-center mb-12 overflow-x-auto hover-scrollbar">
-            <div className="bg-[#111827] rounded-full p-1 flex">
+          <div className="flex justify-center mb-8 sm:mb-12 overflow-x-auto hover-scrollbar">
+            <div className="bg-[#111827] rounded-full p-1 flex flex-nowrap">
               {Object.entries(tabMapping).map(([key, label]) => (
                 <Button
                   key={key}
@@ -235,7 +235,7 @@ export default function DashboardPage() {
                   size="sm"
                   onClick={() => handleTabChange(key)}
                   className={`
-                    rounded-full px-4
+                    rounded-full px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap
                     ${activeTab === key ? "bg-primary text-primary-foreground" : "text-gray-400 hover:text-white"}
                   `}
                 >
