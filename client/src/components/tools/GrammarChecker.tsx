@@ -200,82 +200,30 @@ export default function GrammarChecker() {
 
   const RightPanel = (
     <div className="h-full flex flex-col">
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="flex items-center justify-center p-4 bg-gray-800 rounded-md">
-          <span className="text-sm text-gray-200">Document type</span>
-        </div>
-        <div className="flex items-center justify-center p-4 bg-gray-800 rounded-md">
-          <span className="text-sm text-gray-200">Formality</span>
-        </div>
-        <div className="flex items-center justify-center p-4 bg-gray-800 rounded-md">
-          <span className="text-sm text-gray-200">Goals</span>
-        </div>
-        <div className="flex items-center justify-center p-4 bg-gray-800 rounded-md">
-          <span className="text-sm text-gray-200">Domain</span>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div 
-          className={`flex items-center justify-center p-4 rounded-md cursor-pointer ${selectedStyle === 'standard' ? 'bg-blue-600' : 'bg-gray-800'}`}
-          onClick={() => setSelectedStyle('standard')}
+      {/* Language Selector Dropdown - simple version */}
+      <div className="mb-6">
+        <select 
+          className="w-full px-3 py-2 rounded-md bg-gray-800 text-gray-200 border border-gray-700"
+          value={selectedLanguage}
+          onChange={(e) => {
+            const newLanguage = e.target.value as SupportedLanguage;
+            setSelectedLanguage(newLanguage);
+            // Reset suggestions when language changes
+            setSuggestions([]);
+          }}
         >
-          <span className="text-sm text-white">Standard</span>
-        </div>
-        <div 
-          className={`flex items-center justify-center p-4 rounded-md cursor-pointer ${selectedStyle === 'fluency' ? 'bg-blue-600' : 'bg-gray-800'}`}
-          onClick={() => setSelectedStyle('fluency')}
-        >
-          <span className="text-sm text-white">Fluency</span>
-        </div>
-        <div 
-          className={`flex items-center justify-center p-4 rounded-md cursor-pointer ${selectedStyle === 'academic' ? 'bg-blue-600' : 'bg-gray-800'}`}
-          onClick={() => setSelectedStyle('academic')}
-        >
-          <span className="text-sm text-white">Academic</span>
-        </div>
-        <div 
-          className={`flex items-center justify-center p-4 rounded-md cursor-pointer ${selectedStyle === 'custom' ? 'bg-blue-600' : 'bg-gray-800'}`}
-          onClick={() => setSelectedStyle('custom')}
-        >
-          <span className="text-sm text-white">Custom</span>
-        </div>
-      </div>
-      
-      <div className="space-y-2 mb-4">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-400">Correctness</span>
-        </div>
-        <div className="h-2 bg-gray-700 rounded-full">
-          <div className="bg-red-500 h-full rounded-full" style={{ width: '75%' }}></div>
-        </div>
-      </div>
-      
-      <div className="space-y-2 mb-4">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-400">Clarity</span>
-        </div>
-        <div className="h-2 bg-gray-700 rounded-full">
-          <div className="bg-blue-500 h-full rounded-full" style={{ width: '85%' }}></div>
-        </div>
-      </div>
-      
-      <div className="space-y-2 mb-4">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-400">Engagement</span>
-        </div>
-        <div className="h-2 bg-gray-700 rounded-full">
-          <div className="bg-green-500 h-full rounded-full" style={{ width: '90%' }}></div>
-        </div>
-      </div>
-      
-      <div className="space-y-2 mb-4">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-400">Delivery</span>
-        </div>
-        <div className="h-2 bg-gray-700 rounded-full">
-          <div className="bg-yellow-500 h-full rounded-full" style={{ width: '80%' }}></div>
-        </div>
+          <option value="en-US">English (US)</option>
+          <option value="en-GB">English (UK)</option>
+          <option value="fr-FR">French</option>
+          <option value="de-DE">German</option>
+          <option value="es-ES">Spanish</option>
+          <option value="it-IT">Italian</option>
+          <option value="nl-NL">Dutch</option>
+          <option value="pt-PT">Portuguese</option>
+          <option value="ru-RU">Russian</option>
+          <option value="zh-CN">Chinese</option>
+          <option value="pl-PL">Polish</option>
+        </select>
       </div>
       
       <div className="flex-1 overflow-y-auto">
