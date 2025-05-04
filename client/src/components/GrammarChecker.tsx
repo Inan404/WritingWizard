@@ -28,9 +28,25 @@ interface GrammarError {
   };
 }
 
+// Available language options for LanguageTool API
+const languageOptions = [
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'en-GB', label: 'English (UK)' },
+  { value: 'de-DE', label: 'German' },
+  { value: 'fr-FR', label: 'French' },
+  { value: 'es-ES', label: 'Spanish' },
+  { value: 'it-IT', label: 'Italian' },
+  { value: 'pt-PT', label: 'Portuguese' },
+  { value: 'nl-NL', label: 'Dutch' },
+  { value: 'pl-PL', label: 'Polish' },
+  { value: 'ru-RU', label: 'Russian' },
+  { value: 'auto', label: 'Auto-detect' },
+];
+
 export function GrammarChecker() {
   // State hooks must be declared at the top level and always in the same order
   const [text, setText] = useState('');
+  const [language, setLanguage] = useState('en-US');
   const [result, setResult] = useState<{
     correctedText?: string;
     errors?: GrammarError[];
@@ -90,7 +106,7 @@ export function GrammarChecker() {
     }
     
     mutate(
-      { text: textToCheck, mode: 'grammar' },
+      { text: textToCheck, mode: 'grammar', language },
       {
         onSuccess: (data) => {
           console.log("Grammar check response:", data);
@@ -288,20 +304,42 @@ export function GrammarChecker() {
           rows={8}
         />
         
-        <Button 
-          onClick={handleSubmit} 
-          disabled={isPending || !text.trim()}
-          className="w-full"
-        >
-          {isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Checking...
-            </>
-          ) : (
-            'Check Grammar'
-          )}
-        </Button>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="col-span-1">
+            <Select 
+              value={language} 
+              onValueChange={setLanguage}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Language" />
+              </SelectTrigger>
+              <SelectContent>
+                {languageOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="col-span-2">
+            <Button 
+              onClick={handleSubmit} 
+              disabled={isPending || !text.trim()}
+              className="w-full"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Checking...
+                </>
+              ) : (
+                'Check Grammar'
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
       
       <div>

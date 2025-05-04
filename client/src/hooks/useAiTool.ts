@@ -15,6 +15,7 @@ interface AiToolParams {
   mode: Mode;
   style?: Style;
   messages?: ApiMessage[];
+  language?: string; // Added for LanguageTool API
 }
 
 // Define types for our cache results
@@ -27,14 +28,16 @@ const responseCache = new Map<string, CachedResult>();
 
 // Helper to create a cache key
 function createCacheKey(params: AiToolParams): string {
-  const { text, mode, style, messages } = params;
+  const { text, mode, style, messages, language } = params;
   if (mode === 'chat' && messages) {
     // For chat, we only cache based on the last message
     const lastMsg = messages[messages.length - 1];
     return `${mode}-${lastMsg?.role}-${lastMsg?.content.substring(0, 100)}`;
   } else {
-    // For other modes, cache based on the first 100 chars of text
-    return `${mode}-${style || 'default'}-${text.substring(0, 100)}`;
+    // For other modes, cache based on the first 100 chars of text and parameters
+    const langPart = language ? `-${language}` : '';
+    const stylePart = style ? `-${style}` : '-default';
+    return `${mode}${stylePart}${langPart}-${text.substring(0, 100)}`;
   }
 }
 
@@ -117,7 +120,7 @@ export function useAiTool() {
 
 // Extract the actual API request to a separate function
 async function processRequest(params: AiToolParams, cacheKey: string, payload: any) {
-  const { text, mode, style, messages } = params;
+  const { text, mode, style, messages, language } = params;
   
   // For chat mode, use messages array if provided
   if (mode === 'chat' && messages && messages.length > 0) {
@@ -130,6 +133,11 @@ async function processRequest(params: AiToolParams, cacheKey: string, payload: a
   // Add style if provided
   if (style) {
     payload.style = style;
+  }
+  
+  // Add language if provided (for LanguageTool API)
+  if (language) {
+    payload.language = language;
   }
   
   const res = await fetch('/api/ai/process', {
