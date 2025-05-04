@@ -50,15 +50,17 @@ export default function BareMinimumChat({
         try {
           const currentDate = new Date();
           const formattedDate = `${currentDate.getMonth() + 1}/${currentDate.getDate()}/${currentDate.getFullYear()}`;
+          const sessionTitle = `Chat - ${formattedDate}`;
           
-          const response = await fetch('/api/db/chat-sessions', {
+          // Use the correct endpoint and format that the sidebar expects
+          const response = await fetch('/api/writing-chats', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              title: `Default Chat ${formattedDate}`,
-              messages: []
+              title: sessionTitle,
+              inputText: 'Hi, I need help with my writing.'
             })
           });
           
@@ -67,18 +69,22 @@ export default function BareMinimumChat({
           }
           
           const result = await response.json();
-          console.log('Created default chat session with ID:', result.sessionId);
-          setChatSessionId(result.sessionId);
+          console.log('Created default chat session with ID:', result.chat.id);
           
-          // Also set the session title for display
-          setSessionTitle(`Default Chat ${formattedDate}`);
+          // Set proper session ID from response
+          setChatSessionId(result.chat.id);
+          
+          // Set the session title for display
+          setSessionTitle(sessionTitle);
           
           // Store the chat ID in sessionStorage so other components can access it
-          sessionStorage.setItem('currentChatSessionId', result.sessionId.toString());
+          sessionStorage.setItem('currentChatSessionId', result.chat.id.toString());
           
           // Trigger refresh of the sidebar
           const refreshEvent = new CustomEvent('refreshChatSidebar');
           window.dispatchEvent(refreshEvent);
+          
+          console.log('Created new chat session and dispatched refresh event');
         } catch (error) {
           console.error('Error creating default chat session:', error);
         }
@@ -281,21 +287,19 @@ export default function BareMinimumChat({
         return;
       }
       
-      // Make API call to save the chat session
-      const response = await fetch('/api/db/chat-sessions', {
+      // Use first user message as input text for the writing chat
+      const firstUserMessage = userMessages[0].content;
+      
+      // Make API call to save the chat session using the writing-chats endpoint
+      // which is what the sidebar expects and displays
+      const response = await fetch('/api/writing-chats', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           title: sessionTitle || `Chat ${new Date().toLocaleString()}`,
-          // Filter out welcome message and format messages for the API
-          messages: messages
-            .filter(m => m.id !== 'welcome-message')
-            .map(m => ({
-              role: m.role,
-              content: m.content
-            }))
+          inputText: firstUserMessage
         })
       });
 
@@ -305,8 +309,34 @@ export default function BareMinimumChat({
       }
 
       const result = await response.json();
-      setChatSessionId(result.sessionId);
-      alert(`Chat session saved successfully! Session ID: ${result.sessionId}`);
+      console.log('Chat saved successfully:', result);
+      
+      // Set the chat session ID from the result
+      setChatSessionId(result.chat.id);
+      
+      // Save all other messages to the session
+      const remainingMessages = messages
+        .filter(m => m.id !== 'welcome-message')
+        .slice(1); // Skip the first message as it was already saved
+        
+      for (const msg of remainingMessages) {
+        await fetch(`/api/db/chat-sessions/${result.chat.id}/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            role: msg.role,
+            content: msg.content
+          })
+        });
+      }
+      
+      // Trigger refresh of the sidebar
+      const refreshEvent = new CustomEvent('refreshChatSidebar');
+      window.dispatchEvent(refreshEvent);
+      
+      alert(`Chat session saved successfully! Session ID: ${result.chat.id}`);
     } catch (error) {
       console.error('Error saving chat:', error);
       alert('Failed to save chat session. Please try again.');

@@ -364,7 +364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Comment: The writing chats endpoint is defined more completely below
   
   // Create new writing chat entry
-  app.post("/api/db/writing-chats", isAuthenticated, async (req, res) => {
+  app.post("/api/writing-chats", isAuthenticated, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ error: 'Not authenticated' });
@@ -394,7 +394,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: inputText
       });
       
-      return res.status(201).json({ success: true, chat: chatSession });
+      // Use standardized response format matching other session endpoints
+      return res.status(201).json({ 
+        success: true, 
+        chat: {
+          id: chatSession.id,
+          title: chatSession.name,
+          inputText: inputText,
+          grammarResult: null,
+          paraphraseResult: null,
+          aiCheckResult: null,
+          humanizeResult: null,
+          isFavorite: chatSession.isFavorite,
+          userId: chatSession.userId,
+          createdAt: chatSession.createdAt.toISOString(),
+          updatedAt: chatSession.updatedAt.toISOString()
+        }
+      });
     } catch (error) {
       console.error('Error creating writing chat:', error);
       return res.status(500).json({ error: 'Failed to create writing chat' });
@@ -901,29 +917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post('/api/db/chat-sessions', isAuthenticated, async (req, res) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-      
-      // Handle potential string ID
-      const numericUserId = typeof userId === 'string' ? parseInt(userId) : userId;
-      
-      const { name } = req.body;
-      
-      const session = await dbStorage.createChatSession({
-        userId: numericUserId,
-        name: name || 'New Chat'
-      });
-      
-      res.status(201).json({ session });
-    } catch (error) {
-      console.error('Error creating chat session:', error);
-      res.status(500).json({ error: 'Failed to create chat session' });
-    }
-  });
+  // This endpoint is now handled by the unified implementation at the end of the file
   
   // Chat messages direct API by ID
   app.get('/api/chat-messages/:chatId', isAuthenticated, async (req, res) => {
@@ -1056,7 +1050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Save chat sessions with messages from the BareMinimumChat component
   app.post("/api/db/chat-sessions", isAuthenticated, async (req, res) => {
     try {
-      const { title, messages } = req.body;
+      const { title, messages, name } = req.body;
       
       if (!req.user || !req.user.id) {
         return res.status(401).json({ error: 'Not authenticated' });
@@ -1065,7 +1059,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create chat session
       const chatSession = await dbStorage.createChatSession({
         userId: req.user.id,
-        name: title || `Chat ${new Date().toLocaleString()}`,
+        name: name || title || `Chat ${new Date().toLocaleString()}`,
         isFavorite: false
       });
       
@@ -1084,10 +1078,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Standardized response format
       return res.status(201).json({
         success: true,
-        sessionId: chatSession.id,
-        title: chatSession.name // Use name property which matches the schema
+        session: {
+          id: chatSession.id,
+          name: chatSession.name,
+          createdAt: chatSession.createdAt,
+          updatedAt: chatSession.updatedAt,
+          userId: chatSession.userId,
+          isFavorite: chatSession.isFavorite
+        }
       });
     } catch (error) {
       console.error('Error saving chat session:', error);
