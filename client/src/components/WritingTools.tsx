@@ -4,7 +4,7 @@ import GrammarChecker from "./tools/GrammarChecker";
 import Paraphraser from "./tools/Paraphraser";
 import AIChecker from "./tools/AIChecker";
 import Humanizer from "./tools/Humanizer";
-import SimpleChat from "./tools/SimpleChat";
+import BareMinimumChat from "./tools/BareMinimumChat";
 import { useWriting, WritingTool } from "@/context/WritingContext";
 import { Mic, Plus, Send } from "lucide-react";
 
@@ -107,7 +107,7 @@ export default function WritingTools() {
     // If we have a chat ID and it's set to force load, always render the chat component
     if (currentChatId && forceLoadChat === 'true') {
       console.log("Force rendering chat component due to chat ID selection:", currentChatId);
-      return <SimpleChat />;
+      return <BareMinimumChat />;
     }
     
     // Normal rendering based on currentTool state
@@ -122,7 +122,7 @@ export default function WritingTools() {
       case "humanizer":
         return <Humanizer />;
       case "chat":
-        return <SimpleChat />;
+        return <BareMinimumChat />;
       default:
         return <GrammarChecker />;
     }
