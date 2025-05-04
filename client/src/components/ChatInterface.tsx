@@ -9,7 +9,6 @@ import { Card } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { queryClient } from '@/lib/queryClient';
-import { useWebSocket } from '@/hooks/useWebSocket';
 
 // Local UI message interface
 interface Message {
@@ -47,28 +46,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
   const { toast } = useToast();
   const messagesLoaded = useRef(false);
   const { user } = useAuth();
-  const pendingMessageIdRef = useRef<string | null>(null);
-  
-  // Set up WebSocket
-  const { isConnected, sendMessage, addMessageHandler } = useWebSocket({
-    onOpen: () => {
-      console.log('WebSocket connected, ready for chat');
-    },
-    onError: (error) => {
-      console.error('WebSocket error:', error);
-      toast({
-        title: 'Connection Info',
-        description: 'Using standard chat mode. Real-time mode unavailable.',
-        duration: 3000,
-      });
-    },
-    // Increase max reconnection attempts and use longer delay for chat
-    maxReconnectAttempts: 3,
-    reconnectDelay: 2000,
-    pingInterval: 20000 // Longer ping interval
-  });
-  
-  // Legacy REST API approach as fallback
+  // Using HTTP API for chat
   const { mutate } = useAiTool();
 
   // Fetch chat messages if chatId exists AND user is authenticated
