@@ -7,6 +7,7 @@ import { useAiTool, ApiMessage, MessageRole } from '@/hooks/useAiTool';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/use-auth';
 
 // Local UI message interface
 interface Message {
@@ -42,14 +43,15 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const messagesLoaded = useRef(false);
+  const { user } = useAuth();
   
   const { mutate, isPending } = useAiTool();
 
-  // Fetch chat messages if chatId exists
+  // Fetch chat messages if chatId exists AND user is authenticated
   const { data: chatMessages, isLoading: isLoadingMessages } = useQuery<ChatMessage[]>({
     queryKey: ['/api/chat-messages', chatId],
     queryFn: async () => {
-      if (!chatId) return [];
+      if (!chatId || !user) return [];
       console.log(`Fetching messages for chat ${chatId}`);
       try {
         const res = await fetch(`/api/chat-messages/${chatId}`);
@@ -65,7 +67,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
         throw error;
       }
     },
-    enabled: !!chatId, // Only run query if chatId exists
+    enabled: !!chatId && !!user, // Only run query if chatId exists AND user is authenticated
   });
 
   // Load chat messages when they change
@@ -95,7 +97,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
   }, [messages]);
 
   const handleSubmit = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !user) return;
     
     // Add user message
     const userMessage: Message = {
@@ -242,7 +244,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
           />
           <Button 
             onClick={handleSubmit} 
-            disabled={isPending || !input.trim()}
+            disabled={isPending || !input.trim() || !user}
             size="icon"
           >
             {isPending ? (

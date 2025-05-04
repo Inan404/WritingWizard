@@ -1,20 +1,6 @@
 import { Redirect, Route } from "wouter";
 import { Loader2 } from "lucide-react";
-
-// This is a placeholder mock version for now.
-// In a full app, this would use proper authentication.
-interface AuthState {
-  isAuthenticated: boolean;
-  isLoading: boolean;
-}
-
-// Mock auth state for development - always authenticated
-const useAuth = (): AuthState => {
-  return {
-    isAuthenticated: true,
-    isLoading: false,
-  };
-};
+import { useAuth } from "@/hooks/use-auth";
 
 interface ProtectedRouteProps {
   path: string;
@@ -22,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ path, component: Component }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
 
   return (
     <Route path={path}>
@@ -35,7 +21,7 @@ export function ProtectedRoute({ path, component: Component }: ProtectedRoutePro
           );
         }
 
-        if (!isAuthenticated) {
+        if (!user) {
           return <Redirect to="/auth" />;
         }
 
