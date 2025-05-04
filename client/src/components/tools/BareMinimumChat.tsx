@@ -10,11 +10,20 @@ type ChatMessage = {
   content: string;
 };
 
+// Props for our auto-saving chat component
+interface BareMinimumChatProps {
+  isDefaultChat?: boolean;
+  defaultChatId?: number;
+}
+
 /**
  * A completely standalone chat component that doesn't rely on any external state management
  * or persistence. This is a last-resort solution to bypass the issues with chat persistence.
  */
-export default function BareMinimumChat() {
+export default function BareMinimumChat({ 
+  isDefaultChat = false, 
+  defaultChatId 
+}: BareMinimumChatProps = {}) {
   // Create state for messages and input text
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -26,9 +35,78 @@ export default function BareMinimumChat() {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionTitle, setSessionTitle] = useState('Chat Session');
+  const [chatSessionId, setChatSessionId] = useState<number | undefined>(defaultChatId);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Ref to auto-scroll the chat to bottom
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // If this is the default chat and we don't have a session ID yet, create one
+  useEffect(() => {
+    if (isDefaultChat && !chatSessionId) {
+      console.log('Creating default chat session...');
+      // Create a new chat session for the default chat
+      const createDefaultSession = async () => {
+        try {
+          const response = await fetch('/api/db/chat-sessions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              title: 'Default Chat',
+              messages: []
+            })
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to create session: ${response.status}`);
+          }
+          
+          const result = await response.json();
+          console.log('Created default chat session with ID:', result.sessionId);
+          setChatSessionId(result.sessionId);
+        } catch (error) {
+          console.error('Error creating default chat session:', error);
+        }
+      };
+      
+      createDefaultSession();
+    }
+  }, [isDefaultChat, chatSessionId]);
+  
+  // Auto-save messages for default chat
+  const saveMessageToSession = async (messageToSave: ChatMessage) => {
+    if (!isDefaultChat || !chatSessionId || messageToSave.id === 'welcome-message') {
+      return;
+    }
+    
+    try {
+      setIsSaving(true);
+      console.log(`Saving message to session ${chatSessionId}`);
+      
+      const response = await fetch(`/api/db/chat-sessions/${chatSessionId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          role: messageToSave.role,
+          content: messageToSave.content
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to save message: ${response.status}`);
+      }
+      
+      console.log(`Message saved successfully to session ${chatSessionId}`);
+    } catch (error) {
+      console.error('Error saving message to session:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Handle auto-scrolling
   useEffect(() => {
@@ -54,6 +132,11 @@ export default function BareMinimumChat() {
     // Add user message to UI and set loading state
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+    
+    // Auto-save user message if this is the default chat
+    if (isDefaultChat) {
+      await saveMessageToSession(userMessage);
+    }
 
     try {
       // Create a properly formatted message history for the API
@@ -92,21 +175,34 @@ export default function BareMinimumChat() {
 
       const data = await response.json();
       
-      // Add AI response to chat
-      setMessages(prev => [...prev, {
+      // Create AI response object
+      const aiMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
         content: data.response || "I apologize, but I couldn't generate a proper response."
-      }]);
+      };
+      
+      // Add AI response to chat
+      setMessages(prev => [...prev, aiMessage]);
+      
+      // Auto-save AI response if this is the default chat
+      if (isDefaultChat) {
+        await saveMessageToSession(aiMessage);
+      }
     } catch (error) {
       console.error('Error in chat:', error);
       
-      // Add error message to chat
-      setMessages(prev => [...prev, {
+      // Create error message object
+      const errorMessage: ChatMessage = {
         id: `error-${Date.now()}`,
         role: 'assistant',
         content: "I'm sorry, there was an error processing your request. Please try again."
-      }]);
+      };
+      
+      // Add error message to chat
+      setMessages(prev => [...prev, errorMessage]);
+      
+      // We don't save error messages to the database
     } finally {
       setIsLoading(false);
     }
@@ -118,6 +214,12 @@ export default function BareMinimumChat() {
       const userMessages = messages.filter(m => m.role === 'user');
       if (userMessages.length === 0) {
         alert('Please have at least one conversation before saving');
+        return;
+      }
+      
+      // If this is the default chat, it's already being saved automatically
+      if (isDefaultChat && chatSessionId) {
+        alert('This chat is already being saved automatically as the default chat.');
         return;
       }
       
@@ -145,6 +247,7 @@ export default function BareMinimumChat() {
       }
 
       const result = await response.json();
+      setChatSessionId(result.sessionId);
       alert(`Chat session saved successfully! Session ID: ${result.sessionId}`);
     } catch (error) {
       console.error('Error saving chat:', error);
@@ -169,14 +272,29 @@ export default function BareMinimumChat() {
     <div className="flex flex-col h-[calc(100vh-240px)] border rounded-lg overflow-hidden">
       {/* Chat Header */}
       <div className="p-4 border-b bg-muted/30 flex justify-between items-center">
-        <h3 className="font-medium">AI Writing Assistant</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-medium">AI Writing Assistant</h3>
+          {isDefaultChat && chatSessionId && (
+            <div className="flex items-center text-xs text-muted-foreground gap-1">
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              Auto-saving
+            </div>
+          )}
+          {isSaving && (
+            <div className="flex items-center text-xs text-muted-foreground gap-1">
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+              Saving...
+            </div>
+          )}
+        </div>
         <Button 
           variant="outline" 
           size="sm" 
           onClick={handleSaveChat}
           className="flex items-center gap-1"
         >
-          <Save className="h-4 w-4" /> Save Session
+          <Save className="h-4 w-4" /> 
+          {isDefaultChat && chatSessionId ? 'Already Saved' : 'Save Session'}
         </Button>
       </div>
       
