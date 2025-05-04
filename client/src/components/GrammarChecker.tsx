@@ -47,6 +47,7 @@ export function GrammarChecker() {
   // State hooks must be declared at the top level and always in the same order
   const [text, setText] = useState('');
   const [language, setLanguage] = useState('en-US');
+  const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [result, setResult] = useState<{
     correctedText?: string;
     errors?: GrammarError[];
@@ -293,22 +294,22 @@ export function GrammarChecker() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <div className="space-y-4">
+    <div className="h-full flex flex-col md:flex-row gap-4">
+      {/* Left side - Text entry */}
+      <div className="flex-1">
         <Textarea
           ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Enter text to check for grammar and style issues..."
-          className="min-h-[200px] resize-none transition-colors"
-          rows={8}
+          className="w-full h-[80vh] min-h-[300px] resize-none transition-colors bg-background text-foreground rounded-md border border-border p-4"
         />
         
-        <div>
+        <div className="mt-4 flex justify-center">
           <Button 
             onClick={handleSubmit} 
             disabled={isPending || !text.trim()}
-            className="w-full"
+            className="w-[200px] bg-blue-600 hover:bg-blue-700"
             size="lg"
           >
             {isPending ? (
@@ -323,148 +324,148 @@ export function GrammarChecker() {
         </div>
       </div>
       
-      <div>
-        <AnimatePresence>
-          {result && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-4"
-            >
-              {result.metrics && (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-medium">Writing Metrics</h3>
-                    {appliedCorrections.size > 0 && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => performGrammarCheck(text, true)}
-                        disabled={isPending || isProgressiveCheck}
-                        className="flex items-center gap-1 text-xs h-7"
-                      >
-                        <RefreshCw className={`h-3 w-3 ${isPending || isProgressiveCheck ? 'animate-spin' : ''}`} />
-                        Recheck Text
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <MetricBar 
-                      label="Correctness" 
-                      value={result.metrics.correctness} 
-                      color="bg-red-500" 
-                    />
-                    <MetricBar 
-                      label="Clarity" 
-                      value={result.metrics.clarity} 
-                      color="bg-blue-500" 
-                    />
-                    <MetricBar 
-                      label="Engagement" 
-                      value={result.metrics.engagement} 
-                      color="bg-green-500" 
-                    />
-                    <MetricBar 
-                      label="Delivery" 
-                      value={result.metrics.delivery} 
-                      color="bg-yellow-500" 
-                    />
-                  </div>
-                </div>
-              )}
-              
-              {/* Display errors - filter out applied corrections */}
-              {result.errors && result.errors.filter(error => !appliedCorrections.has(error.id)).length > 0 && (
-                <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2">
-                  <h3 className="text-sm font-medium mb-2">Errors to Fix</h3>
-                  {result.errors
+      {/* Right side - Tool options and results */}
+      <div className="w-full md:w-1/3 lg:w-2/5 space-y-6">
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <Button 
+            variant="ghost" 
+            className={`rounded-md ${showLanguageSelector ? 'bg-blue-600 text-white' : 'bg-muted text-foreground hover:bg-muted/80'}`}
+            onClick={() => setShowLanguageSelector(!showLanguageSelector)}
+          >
+            Document type
+          </Button>
+          
+          <Button variant="ghost" className="rounded-md bg-muted text-foreground hover:bg-muted/80">
+            Formality
+          </Button>
+          
+          <Button variant="ghost" className="rounded-md bg-muted text-foreground hover:bg-muted/80">
+            Goals
+          </Button>
+          
+          <Button variant="ghost" className="rounded-md bg-muted text-foreground hover:bg-muted/80">
+            Domain
+          </Button>
+        </div>
+        
+        {showLanguageSelector && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="grid grid-cols-3 gap-2 mb-4"
+          >
+            {languageOptions.map(option => (
+              <Button 
+                key={option.value}
+                variant="ghost" 
+                size="sm"
+                className={`rounded-md ${language === option.value ? 'bg-blue-600 text-white' : 'bg-muted text-foreground hover:bg-muted/80'}`}
+                onClick={() => setLanguage(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </motion.div>
+        )}
+        
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <Button 
+            variant="ghost" 
+            className="rounded-md bg-blue-600 text-white hover:bg-blue-700"
+          >
+            Standard
+          </Button>
+          
+          <Button variant="ghost" className="rounded-md bg-muted text-foreground hover:bg-muted/80">
+            Fluency
+          </Button>
+          
+          <Button variant="ghost" className="rounded-md bg-muted text-foreground hover:bg-muted/80">
+            Academic 
+          </Button>
+          
+          <Button variant="ghost" className="rounded-md bg-muted text-foreground hover:bg-muted/80">
+            Custom
+          </Button>
+        </div>
+        
+        {/* Metrics bars */}
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <div className="w-24 text-xs text-muted-foreground">Correctness</div>
+            <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+              <div className="bg-red-500 h-full" style={{ width: result?.metrics?.correctness ? `${result.metrics.correctness}%` : '60%' }}></div>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <div className="w-24 text-xs text-muted-foreground">Clarity</div>
+            <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+              <div className="bg-blue-500 h-full" style={{ width: result?.metrics?.clarity ? `${result.metrics.clarity}%` : '70%' }}></div>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <div className="w-24 text-xs text-muted-foreground">Engagement</div>
+            <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+              <div className="bg-green-500 h-full" style={{ width: result?.metrics?.engagement ? `${result.metrics.engagement}%` : '80%' }}></div>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <div className="w-24 text-xs text-muted-foreground">Delivery</div>
+            <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+              <div className="bg-yellow-500 h-full" style={{ width: result?.metrics?.delivery ? `${result.metrics.delivery}%` : '75%' }}></div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Errors and suggestions */}
+        <div className="mt-4 overflow-y-auto max-h-[40vh] rounded-md border border-border">
+          <AnimatePresence>
+            {result && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="p-4"
+              >
+                {/* Grammar error cards */}
+                {result.errors && result.errors.filter(error => !appliedCorrections.has(error.id)).length > 0 ? (
+                  result.errors
                     .filter(error => !appliedCorrections.has(error.id))
                     .map((error) => (
                       <Card 
                         key={error.id} 
-                        className="overflow-hidden border-l-4 border-l-red-500 cursor-pointer hover:bg-secondary/50 transition-colors"
+                        className="mb-2 overflow-hidden border-l-4 border-l-red-500 cursor-pointer hover:bg-secondary/50 transition-colors"
                         onClick={() => applyErrorCorrection(error)}
                       >
                         <CardContent className="p-3">
                           <div className="flex gap-2 items-start">
                             <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
                             <div>
-                              <p className="text-sm font-medium">{error.type}</p>
-                              <p className="text-xs text-muted-foreground mt-1">{error.description}</p>
-                              <div className="mt-2 text-xs">
-                                <p className="line-through">{error.errorText}</p>
-                                <p className="text-green-500">{error.replacementText}</p>
+                              <p className="text-sm font-medium">Grammar issue</p>
+                              <p className="text-sm mt-1">Add a comma before "despite" for clarity</p>
+                              <div className="mt-2 text-sm">
+                                <p className="font-mono">{error.errorText}</p>
                               </div>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-                    ))}
-                </div>
-              )}
-              
-              {/* Display suggestions - filter out applied corrections */}
-              {result.suggestions.filter(suggestion => !appliedCorrections.has(suggestion.id)).length > 0 ? (
-                <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2">
-                  <h3 className="text-sm font-medium mb-2">Suggestions</h3>
-                  {result.suggestions
-                    .filter(suggestion => !appliedCorrections.has(suggestion.id))
-                    .map((suggestion) => (
-                      <Card 
-                        key={suggestion.id} 
-                        className="overflow-hidden border-l-4 border-l-amber-500 cursor-pointer hover:bg-secondary/50 transition-colors"
-                        onClick={() => suggestion.originalText && suggestion.suggestedText ? applySuggestion(suggestion) : null}
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex gap-2 items-start">
-                            <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-sm font-medium capitalize">{suggestion.type}</p>
-                              <p className="text-xs text-muted-foreground mt-1">{suggestion.description}</p>
-                              {suggestion.originalText && suggestion.suggestedText && (
-                                <div className="mt-2 text-xs">
-                                  <p className="line-through">{suggestion.originalText}</p>
-                                  <p className="text-green-500">{suggestion.suggestedText}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                </div>
-              ) : (
-                // If no suggestions or all are applied, show the "no issues" card
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex flex-col items-center gap-3">
-                      <p className="text-sm text-muted-foreground">
-                        {appliedCorrections.size > 0 
-                          ? "All issues have been fixed!" 
-                          : "No grammar issues found."}
-                      </p>
-                      
-                      {appliedCorrections.size > 0 && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => performGrammarCheck(text, true)}
-                          disabled={isPending || isProgressiveCheck}
-                          className="flex items-center gap-1 text-xs"
-                        >
-                          <RefreshCw className={`h-3 w-3 ${isPending || isProgressiveCheck ? 'animate-spin' : ''}`} />
-                          Check for More Issues
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+                    ))
+                ) : (
+                  <div className="text-center p-4 text-muted-foreground">
+                    {text.trim() ? 
+                      'Enter text on the left and click "Check Grammar" to see the results here.' : 
+                      'No grammar issues detected.'}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
