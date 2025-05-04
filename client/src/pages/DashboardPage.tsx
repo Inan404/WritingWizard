@@ -89,11 +89,14 @@ export default function DashboardPage() {
   };
 
   const handleCreateNewChat = async () => {
+    console.log("Creating new chat...");
     try {
       const now = new Date();
       const formattedDate = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
       
-      const res = await fetch('/api/db/writing-chats', {
+      console.log("Sending request to create new chat with date:", formattedDate);
+      
+      const res = await fetch('/api/writing-chats', { // Corrected endpoint URL - removed "db" prefix
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,11 +108,14 @@ export default function DashboardPage() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to create new chat');
+        console.error("Failed to create new chat. Status:", res.status);
+        const errorText = await res.text();
+        console.error("Error response:", errorText);
+        throw new Error(`Failed to create new chat: ${res.status} ${errorText}`);
       }
 
       const data = await res.json();
-      console.log("Created new chat:", data);
+      console.log("Created new chat successfully:", data);
       const newChat = data.chat;
       
       // Refetch the chat list
@@ -137,7 +143,10 @@ export default function DashboardPage() {
       const chatToUpdate = chats.find((c: any) => c.id === chatId);
       if (!chatToUpdate) return;
 
-      const res = await fetch(`/api/db/chat-sessions/${chatId}/favorite`, {
+      console.log("Attempting to toggle favorite for chat:", chatId, "Current state:", chatToUpdate.isFavorite);
+
+      // First try with /api/db prefix
+      let res = await fetch(`/api/db/chat-sessions/${chatId}/favorite`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
