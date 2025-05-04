@@ -48,13 +48,16 @@ export default function BareMinimumChat({
       // Create a new chat session for the default chat
       const createDefaultSession = async () => {
         try {
+          const currentDate = new Date();
+          const formattedDate = `${currentDate.getMonth() + 1}/${currentDate.getDate()}/${currentDate.getFullYear()}`;
+          
           const response = await fetch('/api/db/chat-sessions', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              title: 'Default Chat',
+              title: `Default Chat ${formattedDate}`,
               messages: []
             })
           });
@@ -66,6 +69,16 @@ export default function BareMinimumChat({
           const result = await response.json();
           console.log('Created default chat session with ID:', result.sessionId);
           setChatSessionId(result.sessionId);
+          
+          // Also set the session title for display
+          setSessionTitle(`Default Chat ${formattedDate}`);
+          
+          // Store the chat ID in sessionStorage so other components can access it
+          sessionStorage.setItem('currentChatSessionId', result.sessionId.toString());
+          
+          // Trigger refresh of the sidebar
+          const refreshEvent = new CustomEvent('refreshChatSidebar');
+          window.dispatchEvent(refreshEvent);
         } catch (error) {
           console.error('Error creating default chat session:', error);
         }
@@ -101,6 +114,11 @@ export default function BareMinimumChat({
       }
       
       console.log(`Message saved successfully to session ${chatSessionId}`);
+      
+      // After successfully saving a message, trigger a refresh of the sidebar
+      // This ensures the chat appears in the sidebar immediately
+      const refreshEvent = new CustomEvent('refreshChatSidebar');
+      window.dispatchEvent(refreshEvent);
     } catch (error) {
       console.error('Error saving message to session:', error);
     } finally {

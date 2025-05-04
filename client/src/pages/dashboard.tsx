@@ -47,15 +47,6 @@ export default function Dashboard() {
   const [deleteChatDialogOpen, setDeleteChatDialogOpen] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<number | null>(null);
 
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   // Fetch writing chats from authenticated endpoint with refetch on focus
   const { data: writingChatsData, isLoading, refetch } = useQuery<{ chats: WritingChat[] }>({
     queryKey: ['/api/writing-chats'],
@@ -66,6 +57,25 @@ export default function Dashboard() {
     refetchInterval: 5000, // Refetch every 5 seconds
     enabled: !!user, // Only fetch data if user is authenticated
   });
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    const handleRefreshSidebar = () => {
+      console.log('Refresh chat sidebar event received, triggering refetch');
+      refetch();
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('refreshChatSidebar', handleRefreshSidebar);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('refreshChatSidebar', handleRefreshSidebar);
+    };
+  }, [refetch]);
   
   // Safely handle the chat data
   const chats = writingChatsData?.chats || [];
