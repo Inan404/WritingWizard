@@ -499,7 +499,7 @@ export default function BareMinimumChat({
       </div>
       
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-card">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-card show-scrollbar">
         {messages.map((message) => (
           <div 
             key={message.id}
