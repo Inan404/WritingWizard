@@ -14,6 +14,7 @@ interface UseWebSocketOptions {
   onMessage?: (data: any) => void;
   reconnectDelay?: number;
   maxReconnectAttempts?: number;
+  pingInterval?: number; // Time between pings in ms, default: 15000 (15 seconds)
 }
 
 export function useWebSocket(options: UseWebSocketOptions = {}) {
@@ -31,8 +32,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     onError,
     onMessage,
     reconnectDelay = 1500,
-    maxReconnectAttempts = 5
+    maxReconnectAttempts = 5,
+    pingInterval = 15000 // Ping every 15 seconds by default
   } = options;
+  
+  // Ref for the ping interval
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Initialize WebSocket connection
   const connect = useCallback(() => {
@@ -65,6 +70,22 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         setIsConnected(true);
         setIsConnecting(false);
         reconnectAttemptsRef.current = 0;
+        hasShownErrorRef.current = false;
+        
+        // Start ping interval to keep the connection alive
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+        }
+        
+        pingIntervalRef.current = setInterval(() => {
+          if (socketRef.current?.readyState === WebSocket.OPEN) {
+            try {
+              socketRef.current.send(JSON.stringify({ type: 'ping', time: Date.now() }));
+            } catch (error) {
+              console.error('Error sending ping:', error);
+            }
+          }
+        }, pingInterval);
         
         if (onOpen) {
           onOpen();
@@ -75,6 +96,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         console.log(`WebSocket closed with code ${e.code}. Reason: ${e.reason}`);
         setIsConnected(false);
         setIsConnecting(false);
+        
+        // Clear ping interval
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = null;
+        }
         
         if (onClose) {
           onClose();
@@ -103,6 +130,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         // Mark the connection as not connected on error
         // This will let components know to use the HTTP fallback
         setIsConnected(false);
+        
+        // Clear ping interval on error
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = null;
+        }
         
         if (onError && !hasShownErrorRef.current) {
           onError(e);
@@ -138,7 +171,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       console.error('Error creating WebSocket connection:', error);
       setIsConnecting(false);
     }
-  }, [isConnecting, onOpen, onClose, onError, onMessage, reconnectDelay, maxReconnectAttempts]);
+  }, [isConnecting, onOpen, onClose, onError, onMessage, reconnectDelay, maxReconnectAttempts, pingInterval]);
   
   // Disconnect WebSocket
   const disconnect = useCallback(() => {
@@ -152,9 +185,15 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       reconnectTimeoutRef.current = null;
     }
     
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
+    
     setIsConnected(false);
     setIsConnecting(false);
     reconnectAttemptsRef.current = 0;
+    hasShownErrorRef.current = false;
   }, []);
   
   // Send message through WebSocket
