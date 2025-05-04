@@ -124,14 +124,28 @@ export function useAiWebSocket(options: WebSocketAiToolOptions) {
       // Send via WebSocket
       const messageId = `${toolType}-${Date.now()}`;
       
-      const sent = sendMessage({
-        type: toolType,
-        text: text,
-        messageId: messageId,
-        ...options
-      });
-      
-      return sent;
+      try {
+        const sent = sendMessage({
+          type: toolType,
+          text: text,
+          messageId: messageId,
+          ...options
+        });
+        
+        if (sent) {
+          console.log(`Successfully sent ${toolType} request via WebSocket`);
+          // If message was successfully sent via WebSocket, set processing state
+          setIsProcessing(true);
+        } else {
+          console.warn(`Failed to send ${toolType} request via WebSocket, will try HTTP fallback`);
+          return false;
+        }
+        
+        return sent;
+      } catch (error) {
+        console.error(`Error sending ${toolType} request via WebSocket:`, error);
+        return false;
+      }
     } else {
       // WebSocket not connected - no need for toast here as we'll use HTTP fallback
       console.log('WebSocket not connected, should try HTTP fallback');

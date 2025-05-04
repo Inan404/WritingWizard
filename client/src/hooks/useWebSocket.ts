@@ -107,24 +107,31 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           onClose();
         }
         
-        // Attempt to reconnect with exponential backoff
-        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-          reconnectAttemptsRef.current++;
-          
-          // Exponential backoff: base delay × 2^attempts (with max of 30 seconds)
-          const delay = Math.min(reconnectDelay * Math.pow(2, reconnectAttemptsRef.current - 1), 30000);
-          console.log(`Attempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts}) in ${delay}ms...`);
-          
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-          }
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, delay);
-        } else {
-          console.error(`Failed to reconnect after ${maxReconnectAttempts} attempts`);
+        // Don't attempt to reconnect for normal closure (1000) or if max attempts reached
+        if (e.code === 1000 || reconnectAttemptsRef.current >= maxReconnectAttempts) {
+          console.log(e.code === 1000 
+            ? "WebSocket closed normally, not attempting to reconnect" 
+            : `Failed to reconnect after ${maxReconnectAttempts} attempts`);
+          return;
         }
+        
+        // Attempt to reconnect with exponential backoff
+        reconnectAttemptsRef.current++;
+        
+        // Exponential backoff: base delay × 2^attempts (with max of 30 seconds)
+        const delay = Math.min(reconnectDelay * Math.pow(2, reconnectAttemptsRef.current - 1), 30000);
+        console.log(`Attempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts}) in ${delay}ms...`);
+        
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
+        
+        reconnectTimeoutRef.current = setTimeout(() => {
+          // Only reconnect if we're still not connected
+          if (!isConnected) {
+            connect();
+          }
+        }, delay);
       };
       
       socket.onerror = (e) => {
@@ -133,6 +140,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         // Mark the connection as not connected on error
         // This will let components know to use the HTTP fallback
         setIsConnected(false);
+        setIsConnecting(false);
         
         // Clear ping interval on error
         if (pingIntervalRef.current) {
@@ -140,10 +148,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           pingIntervalRef.current = null;
         }
         
+        // Only show error once and only call onError once
         if (onError && !hasShownErrorRef.current) {
           onError(e);
           hasShownErrorRef.current = true;
         }
+        
+        // Don't automatically reconnect on error - let onclose handle it
+        // This prevents double reconnection attempts
       };
       
       socket.onmessage = (e) => {

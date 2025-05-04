@@ -1,10 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAiTool } from '@/hooks/useAiTool';
-import { useAiWebSocket } from '@/hooks/useAiWebSocket';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertCircle, Loader2, WifiOff } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 
@@ -55,34 +54,11 @@ export function GrammarChecker() {
   // Toast hook
   const { toast } = useToast();
   
-  // WebSocket hook for real-time grammar checking
-  const { 
-    processText, 
-    isProcessing, 
-    result, 
-    isConnected 
-  } = useAiWebSocket({
-    toolType: 'grammar-check',
-    resultMessageType: 'grammar-result',
-    onSuccess: (data: any) => {
-      console.log('Grammar check result received:', data);
-      // Reset applied corrections when we get new results
-      setAppliedCorrections(new Set());
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Error checking grammar',
-        description: error.message || 'An error occurred while checking grammar',
-        variant: 'destructive'
-      });
-    }
-  });
+  // State for storing results
+  const [result, setResult] = useState<any>(null);
   
-  // Fallback to HTTP API
-  const { mutate, isPending: isHttpPending } = useAiTool();
-  
-  // Flag for tracking if we're loading from either WebSocket or HTTP
-  const isPending = isProcessing || isHttpPending;
+  // Using HTTP API for grammar checking
+  const { mutate, isPending } = useAiTool();
   
   // Function to handle grammar check
   const handleCheckGrammar = () => {
@@ -98,33 +74,29 @@ export function GrammarChecker() {
     // Reset any previously applied corrections
     setAppliedCorrections(new Set());
     
-    // Try to use WebSocket first
-    if (isConnected) {
-      const sent = processText(text, { language });
-      if (sent) {
-        // WebSocket message sent successfully
-        return;
+    // Use direct API endpoint for grammar checking
+    fetch('/api/grammar-check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, language })
+    })
+    .then(res => {
+      if (!res.ok) {
+        throw new Error('Failed to check grammar');
       }
-    }
-    
-    // Fall back to HTTP API if WebSocket fails
-    console.log('Using HTTP fallback for grammar check');
-    mutate(
-      { text, mode: 'grammar', language },
-      {
-        onSuccess: (data: any) => {
-          // The result will be set by our WebSocket hook
-          console.log('Grammar check completed via HTTP API');
-        },
-        onError: (error: any) => {
-          toast({
-            title: 'Error checking grammar',
-            description: error.message || 'An error occurred while checking grammar',
-            variant: 'destructive'
-          });
-        }
-      }
-    );
+      return res.json();
+    })
+    .then(data => {
+      console.log('Grammar check completed via direct HTTP API');
+      setResult(data);
+    })
+    .catch(error => {
+      toast({
+        title: 'Error checking grammar',
+        description: error.message || 'An error occurred while checking grammar',
+        variant: 'destructive'
+      });
+    });
   };
   
   // Function to apply a grammar correction
@@ -176,21 +148,7 @@ export function GrammarChecker() {
               'Check Grammar'
             )}
           </Button>
-          
-          {/* WebSocket connection indicator */}
-          <div className="flex items-center text-xs text-muted-foreground">
-            {isConnected ? (
-              <span className="inline-flex items-center">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></span>
-                Real-time mode active
-              </span>
-            ) : (
-              <span className="inline-flex items-center">
-                <WifiOff className="h-3 w-3 mr-1 text-yellow-500" />
-                Using standard mode
-              </span>
-            )}
-          </div>
+
         </div>
       </div>
       
