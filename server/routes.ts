@@ -286,7 +286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Writing entries endpoints
-  app.post("/api/writing-entries", async (req, res) => {
+  app.post("/api/writing-entries", isAuthenticated, async (req, res) => {
     try {
       const { title, inputText, grammarResult, paraphraseResult, aiCheckResult, humanizerResult } = req.body;
       
@@ -321,7 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/writing-entries", async (req, res) => {
+  app.get("/api/writing-entries", isAuthenticated, async (req, res) => {
     try {
       const user = await storage.getCurrentUser();
       
@@ -337,7 +337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/writing-entries/:id", async (req, res) => {
+  app.get("/api/writing-entries/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       
@@ -406,7 +406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Chat sessions endpoints 
-  app.post("/api/chat-sessions", async (req, res) => {
+  app.post("/api/chat-sessions", isAuthenticated, async (req, res) => {
     try {
       const { name } = req.body;
       
@@ -431,7 +431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/chat-sessions", async (req, res) => {
+  app.get("/api/chat-sessions", isAuthenticated, async (req, res) => {
     try {
       const user = await storage.getCurrentUser();
       

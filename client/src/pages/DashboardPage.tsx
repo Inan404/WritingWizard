@@ -285,6 +285,23 @@ export default function DashboardPage() {
               className={`${windowWidth < 768 ? 'fixed left-0 top-[65px] z-30 h-[calc(100vh-65px)]' : ''} w-64 flex-shrink-0 border-r border-gray-800 bg-[#0a101f] overflow-y-auto`}
             >
               <div className="flex flex-col h-full py-4">
+                {/* Mobile close button */}
+                {windowWidth < 768 && (
+                  <div className="flex justify-end px-3 mb-2">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="text-gray-400 hover:text-white"
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </Button>
+                  </div>
+                )}
+                
                 <Button
                   onClick={handleCreateNewChat}
                   className="mx-3 mb-4 bg-blue-600 hover:bg-blue-700"
