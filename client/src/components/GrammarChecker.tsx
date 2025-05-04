@@ -149,101 +149,25 @@ export function GrammarChecker() {
         </div>
       </div>
       
-      {/* Right side - Tool options and results */}
+      {/* Right side - Language Selector and Results */}
       <div className="w-full md:w-1/3 lg:w-2/5 space-y-6">
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <Button 
-            variant="ghost" 
-            className={`rounded-md ${showLanguageSelector ? 'bg-blue-600 text-white' : 'bg-muted text-foreground hover:bg-muted/80'}`}
-            onClick={() => setShowLanguageSelector(!showLanguageSelector)}
-          >
-            Document type
-          </Button>
-          
-          <Button variant="ghost" className="rounded-md bg-muted text-foreground hover:bg-muted/80">
-            Formality
-          </Button>
-          
-          <Button variant="ghost" className="rounded-md bg-muted text-foreground hover:bg-muted/80">
-            Goals
-          </Button>
-          
-          <Button variant="ghost" className="rounded-md bg-muted text-foreground hover:bg-muted/80">
-            Domain
-          </Button>
-        </div>
-        
-        {showLanguageSelector && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="grid grid-cols-3 gap-2 mb-4"
+        {/* Simple Language Dropdown */}
+        <div className="mb-6">
+          <label htmlFor="language-select" className="block text-sm font-medium text-foreground mb-2">
+            Select Language
+          </label>
+          <select 
+            id="language-select"
+            className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
           >
             {languageOptions.map(option => (
-              <Button 
-                key={option.value}
-                variant="ghost" 
-                size="sm"
-                className={`rounded-md ${language === option.value ? 'bg-blue-600 text-white' : 'bg-muted text-foreground hover:bg-muted/80'}`}
-                onClick={() => setLanguage(option.value)}
-              >
+              <option key={option.value} value={option.value}>
                 {option.label}
-              </Button>
+              </option>
             ))}
-          </motion.div>
-        )}
-        
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <Button 
-            variant="ghost" 
-            className="rounded-md bg-blue-600 text-white hover:bg-blue-700"
-          >
-            Standard
-          </Button>
-          
-          <Button variant="ghost" className="rounded-md bg-muted text-foreground hover:bg-muted/80">
-            Fluency
-          </Button>
-          
-          <Button variant="ghost" className="rounded-md bg-muted text-foreground hover:bg-muted/80">
-            Academic 
-          </Button>
-          
-          <Button variant="ghost" className="rounded-md bg-muted text-foreground hover:bg-muted/80">
-            Custom
-          </Button>
-        </div>
-        
-        {/* Metrics bars */}
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <div className="w-24 text-xs text-muted-foreground">Correctness</div>
-            <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
-              <div className="bg-red-500 h-full" style={{ width: result?.metrics?.correctness ? `${result.metrics.correctness}%` : '60%' }}></div>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <div className="w-24 text-xs text-muted-foreground">Clarity</div>
-            <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
-              <div className="bg-blue-500 h-full" style={{ width: result?.metrics?.clarity ? `${result.metrics.clarity}%` : '70%' }}></div>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <div className="w-24 text-xs text-muted-foreground">Engagement</div>
-            <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
-              <div className="bg-green-500 h-full" style={{ width: result?.metrics?.engagement ? `${result.metrics.engagement}%` : '80%' }}></div>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <div className="w-24 text-xs text-muted-foreground">Delivery</div>
-            <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
-              <div className="bg-yellow-500 h-full" style={{ width: result?.metrics?.delivery ? `${result.metrics.delivery}%` : '75%' }}></div>
-            </div>
-          </div>
+          </select>
         </div>
         
         {/* Errors and suggestions */}
