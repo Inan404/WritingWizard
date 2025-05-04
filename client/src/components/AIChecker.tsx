@@ -15,16 +15,13 @@ interface AICheckerProps {
 const AIChecker: React.FC<AICheckerProps> = ({ inputText, onSave }) => {
   const { toast } = useToast();
   const [showUI, setShowUI] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   
-  const {
-    processText,
-    result,
-    isLoading,
-    error
-  } = useAiTool('aicheck');
+  const { mutate, isPending } = useAiTool();
 
   // Run the AI detection when the component first shows
-  const handleDetectAI = async () => {
+  const handleDetectAI = () => {
     if (!inputText.trim()) {
       toast({
         title: 'No text provided',
@@ -34,16 +31,29 @@ const AIChecker: React.FC<AICheckerProps> = ({ inputText, onSave }) => {
       return;
     }
 
-    try {
-      await processText(inputText);
-      setShowUI(true);
-    } catch (err) {
-      toast({
-        title: 'Error detecting AI content',
-        description: 'There was a problem analyzing the text.',
-        variant: 'destructive',
-      });
-    }
+    // Reset previous results and errors
+    setError(null);
+    
+    mutate(
+      { 
+        text: inputText, 
+        mode: 'aicheck'
+      },
+      {
+        onSuccess: (data) => {
+          setResult(data);
+          setShowUI(true);
+        },
+        onError: (err) => {
+          setError(err.message);
+          toast({
+            title: 'Error detecting AI content',
+            description: 'There was a problem analyzing the text.',
+            variant: 'destructive',
+          });
+        }
+      }
+    );
   };
 
   const handleSave = () => {
