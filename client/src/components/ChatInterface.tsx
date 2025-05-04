@@ -6,9 +6,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAiTool, ApiMessage, MessageRole } from '@/hooks/useAiTool';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
-import { useQuery, QueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { queryClient } from '@/lib/queryClient';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 // Local UI message interface
 interface Message {
