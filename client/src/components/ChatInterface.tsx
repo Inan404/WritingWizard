@@ -6,8 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAiTool, ApiMessage, MessageRole } from '@/hooks/useAiTool';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, QueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
+import { queryClient } from '@/lib/queryClient';
 
 // Local UI message interface
 interface Message {
@@ -48,7 +49,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
   const { mutate, isPending } = useAiTool();
 
   // Fetch chat messages if chatId exists AND user is authenticated
-  const { data: chatMessages, isLoading: isLoadingMessages } = useQuery<ChatMessage[]>({
+  const { data: chatMessages, isLoading: isLoadingMessages, refetch } = useQuery<ChatMessage[]>({
     queryKey: ['/api/chat-messages', chatId],
     queryFn: async () => {
       if (!chatId || !user) return [];
@@ -68,6 +69,10 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
       }
     },
     enabled: !!chatId && !!user, // Only run query if chatId exists AND user is authenticated
+    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0, // Consider data always stale
+    gcTime: 0, // Don't cache data
   });
 
   // Load chat messages when they change or when authentication state changes
@@ -134,8 +139,14 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
       if (hasWelcomeMessageOnly) {
         setMessages([]); // Clear welcome message so it doesn't appear before chat history loads
       }
+      
+      // Force refetch chat messages when chat ID changes
+      setTimeout(() => {
+        refetch();
+        console.log(`Forced refetch for chat ID ${chatId}`);
+      }, 100); // Small delay to allow React to process state updates first
     }
-  }, [chatId]);
+  }, [chatId, refetch, messages]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -234,6 +245,13 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
           };
           
           setMessages(prev => [...prev, aiMessage]);
+          
+          // Invalidate the chat messages query to ensure we have the latest data next time
+          // This is particularly important when we have multiple devices or tabs accessing the chat
+          if (chatId) {
+            queryClient.invalidateQueries({ queryKey: ['/api/chat-messages', chatId] });
+            console.log(`Invalidated cache for chat ${chatId} after new message`);
+          }
         },
         onError: (error) => {
           toast({

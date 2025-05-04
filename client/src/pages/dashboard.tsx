@@ -93,6 +93,10 @@ export default function Dashboard() {
       // Override the tool parameter to "chat" when a chat entry is selected
       tool = "chat";
       
+      // Force invalidate the chat messages query so it will refetch when loaded
+      queryClient.invalidateQueries({ queryKey: ['/api/chat-messages', chatId] });
+      console.log(`Invalidated query cache for chat ${chatId}`);
+      
       // Create and dispatch a custom event to force the tab change
       const chatTabChangeEvent = new CustomEvent('forceChatTabChange', { detail: chatId });
       window.dispatchEvent(chatTabChangeEvent);
