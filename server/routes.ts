@@ -367,14 +367,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/writing-chats", isAuthenticated, async (req, res) => {
     try {
       if (!req.user) {
+        console.log("API writing-chats: User not authenticated");
         return res.status(401).json({ error: 'Not authenticated' });
       }
       
       const { title, inputText } = req.body;
       
       if (!title || !inputText) {
+        console.log("API writing-chats: Missing required fields:", { title, inputText });
         return res.status(400).json({ error: 'Missing required fields' });
       }
+      
+      console.log(`API writing-chats: Creating chat for user ${req.user.id} with title "${title}"`);
       
       // Create chat session 
       const chatSession = await dbStorage.createChatSession({
