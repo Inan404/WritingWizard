@@ -1,11 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAiTool } from '@/hooks/useAiTool';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 
 interface GrammarSuggestion {
@@ -44,32 +42,19 @@ const languageOptions = [
 ];
 
 export function GrammarChecker() {
-  // State hooks must be declared at the top level and always in the same order
-  const [text, setText] = useState('');
+  // State hooks
+  const [text, setText] = useState('Neural networks can recognize various representations of the same digit, such as the number three, despite differences in pixel values across images.');
   const [language, setLanguage] = useState('en-US');
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
-  const [result, setResult] = useState<{
-    correctedText?: string;
-    errors?: GrammarError[];
-    suggestions: GrammarSuggestion[];
-    metrics?: {
-      correctness: number;
-      clarity: number;
-      engagement: number;
-      delivery: number;
-    };
-  } | null>(null);
+  const [activeTab, setActiveTab] = useState('grammar');
   
-  // Track which errors/suggestions have been applied
-  const [appliedCorrections, setAppliedCorrections] = useState<Set<string>>(new Set());
-  // Track whether we're performing a progressive check
-  const [isProgressiveCheck, setIsProgressiveCheck] = useState(false);
+  // UI state
+  const [showSuggestion, setShowSuggestion] = useState(true);
   
-  // Refs must come after all state declarations
+  // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const textRef = useRef(text); // Store the current text to track changes
   
-  // Hooks from context also need to be consistent
+  // Hooks
   const { toast } = useToast();
   const { mutate, isPending } = useAiTool();
   

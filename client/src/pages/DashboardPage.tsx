@@ -1,29 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AiTool } from '@/components/AiTool';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import WritingSidebar from '@/components/WritingSidebar';
+import { AiTool } from '@/components/AiTool';
 import { Button } from '@/components/ui/button';
-import { 
-  MessageSquare, 
-  Check, 
-  Repeat, 
-  Bot, 
-  ScrollText,
-  Menu
-} from 'lucide-react';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Menu } from 'lucide-react';
 
+// New dark theme styling
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('chat');
   const [location] = useLocation();
-  const isMobile = useMediaQuery('(max-width: 768px)');
+  const username = 'inan404'; // This would normally come from an auth hook
 
   // Check for hash in URL to set active tab
   useEffect(() => {
@@ -38,85 +24,85 @@ export default function DashboardPage() {
     window.history.pushState(null, '', `#${value}`);
   };
 
+  const tabMapping = {
+    'chat': 'Chat',
+    'grammar': 'Grammar check',
+    'paraphrase': 'Paraphrase',
+    'humanize': 'Humanizer',
+    'ai-check': 'AI check'
+  };
+
+  // Map tabs to their display names
+  const getTabName = (tabKey: string) => {
+    return tabMapping[tabKey as keyof typeof tabMapping] || tabKey;
+  };
+
   return (
-    <div className="container py-6 px-4 md:py-10 md:px-6">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold">AI Writing Assistant</h1>
-        
-        {isMobile ? (
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left">
-              <div className="py-4">
-                <WritingSidebar activeTab={activeTab} />
-              </div>
-            </SheetContent>
-          </Sheet>
-        ) : null}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {!isMobile && (
-          <div className="hidden md:block">
-            <WritingSidebar activeTab={activeTab} />
-          </div>
-        )}
-
-        <div className="md:col-span-3">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full mb-8">
-              <TabsTrigger value="chat" className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                <span className="hidden md:inline">Chat</span>
-              </TabsTrigger>
-              <TabsTrigger value="grammar" className="flex items-center gap-2">
-                <Check className="h-4 w-4" />
-                <span className="hidden md:inline">Grammar</span>
-              </TabsTrigger>
-              <TabsTrigger value="paraphrase" className="flex items-center gap-2">
-                <Repeat className="h-4 w-4" />
-                <span className="hidden md:inline">Paraphrase</span>
-              </TabsTrigger>
-              <TabsTrigger value="humanize" className="flex items-center gap-2">
-                <Bot className="h-4 w-4" />
-                <span className="hidden md:inline">Humanize</span>
-              </TabsTrigger>
-              <TabsTrigger value="ai-check" className="flex items-center gap-2">
-                <ScrollText className="h-4 w-4" />
-                <span className="hidden md:inline">AI Check</span>
-              </TabsTrigger>
-            </TabsList>
-
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <TabsContent value="chat" className="mt-0">
-                <AiTool mode="chat" />
-              </TabsContent>
-              <TabsContent value="grammar" className="mt-0">
-                <AiTool mode="grammar" />
-              </TabsContent>
-              <TabsContent value="paraphrase" className="mt-0">
-                <AiTool mode="paraphrase" />
-              </TabsContent>
-              <TabsContent value="humanize" className="mt-0">
-                <AiTool mode="humanize" />
-              </TabsContent>
-              <TabsContent value="ai-check" className="mt-0">
-                <AiTool mode="ai-check" />
-              </TabsContent>
-            </motion.div>
-          </Tabs>
+    <div className="min-h-screen bg-[#040b14] text-white">
+      {/* Top navigation bar */}
+      <header className="py-4 px-6 flex items-center justify-between border-b border-gray-800">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" className="text-white">
+            <Menu className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-medium">{username}'s Dashboard</h1>
         </div>
-      </div>
+      </header>
+
+      {/* Main content */}
+      <main className="p-6">
+        {/* Tab navigation */}
+        <div className="flex justify-center mb-12">
+          <div className="bg-[#111827] rounded-full p-1 flex">
+            {Object.entries(tabMapping).map(([key, label]) => (
+              <Button
+                key={key}
+                variant="ghost"
+                className={`px-6 py-2 rounded-full transition-colors ${
+                  activeTab === key
+                    ? 'bg-[#1d4ed8] text-white'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+                onClick={() => handleTabChange(key)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content area with animation */}
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="max-w-7xl mx-auto"
+        >
+          <div className={activeTab === 'chat' ? 'block' : 'hidden'}>
+            <h2 className="text-3xl font-bold mb-2">AI Writing Assistant</h2>
+            <p className="text-gray-400 mb-8">Chat with the AI to get help with your writing</p>
+            <AiTool mode="chat" />
+          </div>
+          
+          <div className={activeTab === 'grammar' ? 'block' : 'hidden'}>
+            <AiTool mode="grammar" />
+          </div>
+          
+          <div className={activeTab === 'paraphrase' ? 'block' : 'hidden'}>
+            <AiTool mode="paraphrase" />
+          </div>
+          
+          <div className={activeTab === 'humanize' ? 'block' : 'hidden'}>
+            <AiTool mode="humanize" />
+          </div>
+          
+          <div className={activeTab === 'ai-check' ? 'block' : 'hidden'}>
+            <AiTool mode="ai-check" />
+          </div>
+        </motion.div>
+      </main>
     </div>
   );
 }
