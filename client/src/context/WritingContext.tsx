@@ -16,11 +16,17 @@ export interface TextContent {
   }>;
 }
 
+export type SupportedLanguage = 
+  'en-US' | 'en-GB' | 'fr-FR' | 'de-DE' | 'es-ES' | 
+  'it-IT' | 'nl-NL' | 'pt-PT' | 'ru-RU' | 'zh-CN' | 'pl-PL';
+
 interface WritingContextType {
   activeTool: WritingTool;
   setActiveTool: (tool: WritingTool) => void;
   selectedStyle: WritingStyle;
   setSelectedStyle: (style: WritingStyle) => void;
+  selectedLanguage: SupportedLanguage;
+  setSelectedLanguage: (language: SupportedLanguage) => void;
   grammarText: TextContent;
   setGrammarText: (text: TextContent) => void;
   paraphraseText: {
@@ -88,6 +94,8 @@ const defaultWritingContext: WritingContextType = {
   setActiveTool: () => {},
   selectedStyle: "standard",
   setSelectedStyle: () => {},
+  selectedLanguage: "en-US",
+  setSelectedLanguage: () => {},
   grammarText: {
     original: defaultText,
     modified: defaultText,
@@ -158,12 +166,20 @@ const WritingContext = createContext<WritingContextType>(defaultWritingContext);
 export function WritingProvider({ children }: { children: ReactNode }) {
   const [activeTool, setActiveTool] = useState<WritingTool>(defaultWritingContext.activeTool);
   const [selectedStyle, setSelectedStyleInternal] = useState<WritingStyle>(defaultWritingContext.selectedStyle);
+  const [selectedLanguage, setSelectedLanguageInternal] = useState<SupportedLanguage>("en-US");
   
   // Wrap setSelectedStyle to log changes
   const setSelectedStyle = (style: WritingStyle) => {
     console.log(`WritingContext: Setting style from ${selectedStyle} to ${style}`);
     setSelectedStyleInternal(style);
   };
+  
+  // Wrap setSelectedLanguage to log changes
+  const setSelectedLanguage = (language: SupportedLanguage) => {
+    console.log(`WritingContext: Setting language from ${selectedLanguage} to ${language}`);
+    setSelectedLanguageInternal(language);
+  };
+  
   const [grammarText, setGrammarText] = useState<TextContent>(defaultWritingContext.grammarText);
   const [paraphraseText, setParaphraseText] = useState(defaultWritingContext.paraphraseText);
   const [aiCheckText, setAiCheckText] = useState<TextContent>(defaultWritingContext.aiCheckText);
@@ -179,6 +195,8 @@ export function WritingProvider({ children }: { children: ReactNode }) {
         setActiveTool,
         selectedStyle,
         setSelectedStyle,
+        selectedLanguage,
+        setSelectedLanguage,
         grammarText,
         setGrammarText,
         paraphraseText,
