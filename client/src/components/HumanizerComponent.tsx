@@ -5,19 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Copy, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
 export function HumanizerComponent() {
   const [text, setText] = useState('');
   const [humanizedText, setHumanizedText] = useState('');
-  const [metrics, setMetrics] = useState<{
-    correctness: number;
-    clarity: number;
-    engagement: number;
-    delivery: number;
-  } | null>(null);
   const [style, setStyle] = useState<Style>('standard');
+  const [customTone, setCustomTone] = useState('');
   const [copied, setCopied] = useState(false);
   
   const { toast } = useToast();
@@ -34,11 +29,15 @@ export function HumanizerComponent() {
     }
     
     mutate(
-      { text, mode: 'humanize', style },
+      { 
+        text, 
+        mode: 'humanize', 
+        style,
+        customTone: style === 'custom' ? customTone : undefined 
+      },
       {
         onSuccess: (data) => {
           setHumanizedText(data.humanizedText || '');
-          setMetrics(data.metrics || null);
         },
         onError: (error) => {
           toast({
@@ -82,32 +81,43 @@ export function HumanizerComponent() {
           rows={8}
         />
         
-        <div className="flex flex-wrap gap-2">
-          <StyleButton 
-            active={style === 'standard'} 
-            onClick={() => setStyle('standard')}
-            label="Standard"
-          />
-          <StyleButton 
-            active={style === 'fluency'} 
-            onClick={() => setStyle('fluency')}
-            label="Fluency"
-          />
-          <StyleButton 
-            active={style === 'formal'} 
-            onClick={() => setStyle('formal')}
-            label="Formal"
-          />
-          <StyleButton 
-            active={style === 'academic'} 
-            onClick={() => setStyle('academic')}
-            label="Academic"
-          />
-          <StyleButton 
-            active={style === 'custom'} 
-            onClick={() => setStyle('custom')}
-            label="Custom"
-          />
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <StyleButton 
+              active={style === 'standard'} 
+              onClick={() => setStyle('standard')}
+              label="Standard"
+            />
+            <StyleButton 
+              active={style === 'fluency'} 
+              onClick={() => setStyle('fluency')}
+              label="Fluency"
+            />
+            <StyleButton 
+              active={style === 'formal'} 
+              onClick={() => setStyle('formal')}
+              label="Formal"
+            />
+            <StyleButton 
+              active={style === 'academic'} 
+              onClick={() => setStyle('academic')}
+              label="Academic"
+            />
+            <StyleButton 
+              active={style === 'custom'} 
+              onClick={() => setStyle('custom')}
+              label="Custom"
+            />
+          </div>
+          
+          {style === 'custom' && (
+            <Input
+              value={customTone}
+              onChange={(e) => setCustomTone(e.target.value)}
+              placeholder="Enter custom tone (e.g., Professional, Casual, Friendly)"
+              className="w-full"
+            />
+          )}
         </div>
         
         <Button 
@@ -158,34 +168,6 @@ export function HumanizerComponent() {
                   </div>
                 </CardContent>
               </Card>
-              
-              {metrics && (
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium">Quality Metrics</h3>
-                  <div className="space-y-2">
-                    <MetricBar 
-                      label="Correctness" 
-                      value={metrics.correctness} 
-                      color="bg-red-500" 
-                    />
-                    <MetricBar 
-                      label="Clarity" 
-                      value={metrics.clarity} 
-                      color="bg-blue-500" 
-                    />
-                    <MetricBar 
-                      label="Engagement" 
-                      value={metrics.engagement} 
-                      color="bg-green-500" 
-                    />
-                    <MetricBar 
-                      label="Delivery" 
-                      value={metrics.delivery} 
-                      color="bg-yellow-500" 
-                    />
-                  </div>
-                </div>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -207,14 +189,3 @@ function StyleButton({ active, onClick, label }: { active: boolean; onClick: () 
   );
 }
 
-function MetricBar({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs">
-        <span>{label}</span>
-        <span>{value}%</span>
-      </div>
-      <Progress value={value} className={`h-1.5 ${color}`} />
-    </div>
-  );
-}

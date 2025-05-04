@@ -369,7 +369,7 @@ METRICS SCORING GUIDELINES:
 /**
  * Generate a humanized version of AI-generated text
  */
-export async function generateHumanized(text: string, style: string = 'standard') {
+export async function generateHumanized(text: string, style: string = 'standard', customTone?: string) {
   const styleDescriptions: Record<string, string> = {
     'standard': 'Make the text sound more human by adding natural variations and flow.',
     'formal': 'Humanize while maintaining formal tone suitable for professional contexts.',
@@ -378,9 +378,14 @@ export async function generateHumanized(text: string, style: string = 'standard'
     'custom': 'Be creative with humanizing the text while making it sound authentic.'
   };
 
+  // For custom style, use the provided tone description if available
+  const styleDescription = style === 'custom' && customTone 
+    ? `Use a ${customTone} tone while humanizing the text to sound authentic.` 
+    : styleDescriptions[style] || styleDescriptions.standard;
+
   const systemPrompt = `You are an expert writing assistant specializing in making AI-generated text sound more human.
 Rewrite the provided text to sound more natural and human-written.
-Style: ${styleDescriptions[style] || styleDescriptions.standard}
+Style: ${styleDescription}
 IMPORTANT: Provide your response as a raw, valid JSON object with no markdown formatting, no extra text, and no explanation outside the JSON object.
 Respond with ONLY the following JSON format:
 {
