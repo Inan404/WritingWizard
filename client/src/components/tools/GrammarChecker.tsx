@@ -18,7 +18,9 @@ export default function GrammarChecker() {
     suggestions, 
     setSuggestions,
     selectedLanguage, 
-    setSelectedLanguage
+    setSelectedLanguage,
+    selectedStyle,
+    setSelectedStyle
   } = useWriting();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -196,14 +198,74 @@ export default function GrammarChecker() {
 
   const RightPanel = (
     <div className="h-full flex flex-col">
-      <StyleOptions showDocTypes={true} />
-      <LanguageSelector 
-        onSelectLanguage={(language) => {
-          // Reset suggestions when language changes
-          setSuggestions([]);
-        }}
-      />
+      {/* Simplified Style options - removed Document type, Formality, Goals, Domain */}
+      <div className="mb-6">
+        <h3 className="text-sm font-medium mb-2">Style:</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <button 
+            className={`px-4 py-2 rounded-md text-sm font-medium ${
+              selectedStyle === "standard" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+            }`}
+            onClick={() => setSelectedStyle("standard")}
+          >
+            Standard
+          </button>
+          <button 
+            className={`px-4 py-2 rounded-md text-sm font-medium ${
+              selectedStyle === "fluency" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+            }`}
+            onClick={() => setSelectedStyle("fluency")}
+          >
+            Fluency
+          </button>
+          <button 
+            className={`px-4 py-2 rounded-md text-sm font-medium ${
+              selectedStyle === "academic" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+            }`}
+            onClick={() => setSelectedStyle("academic")}
+          >
+            Academic
+          </button>
+          <button 
+            className={`px-4 py-2 rounded-md text-sm font-medium ${
+              selectedStyle === "custom" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+            }`}
+            onClick={() => setSelectedStyle("custom")}
+          >
+            Custom
+          </button>
+        </div>
+      </div>
+      
+      {/* Language Selector Dropdown */}
+      <div className="mb-6">
+        <h3 className="text-sm font-medium mb-2">Language:</h3>
+        <select 
+          className="w-full px-3 py-2 rounded-md bg-muted text-foreground border border-border"
+          value={selectedLanguage}
+          onChange={(e) => {
+            setSelectedLanguage(e.target.value as SupportedLanguage);
+            // Reset suggestions when language changes
+            setSuggestions([]);
+          }}
+        >
+          <option value="en-US">English (US)</option>
+          <option value="en-GB">English (UK)</option>
+          <option value="fr-FR">French</option>
+          <option value="de-DE">German</option>
+          <option value="es-ES">Spanish</option>
+          <option value="it-IT">Italian</option>
+          <option value="nl-NL">Dutch</option>
+          <option value="pt-PT">Portuguese</option>
+          <option value="ru-RU">Russian</option>
+          <option value="zh-CN">Chinese</option>
+          <option value="pl-PL">Polish</option>
+        </select>
+      </div>
+      
+      {/* Progress Bars for metrics */}
       <ProgressBars />
+      
       <div className="flex-1 overflow-y-auto">
         <Suggestions 
           onAccept={handleAcceptSuggestion} 
