@@ -42,12 +42,30 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     },
   ]);
   const [input, setInput] = useState('');
+  const [isPending, setIsPending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const messagesLoaded = useRef(false);
   const { user } = useAuth();
+  const pendingMessageIdRef = useRef<string | null>(null);
   
-  const { mutate, isPending } = useAiTool();
+  // Set up WebSocket
+  const { isConnected, sendMessage, addMessageHandler } = useWebSocket({
+    onOpen: () => {
+      console.log('WebSocket connected, ready for chat');
+    },
+    onError: (error) => {
+      console.error('WebSocket error:', error);
+      toast({
+        title: 'Connection Error',
+        description: 'Failed to connect to chat server. Some features may be unavailable.',
+        variant: 'destructive',
+      });
+    }
+  });
+  
+  // Legacy REST API approach as fallback
+  const { mutate } = useAiTool();
 
   // Fetch chat messages if chatId exists AND user is authenticated
   const { data: chatMessagesResponse, isLoading: isLoadingMessages, refetch } = useQuery<{ messages: ChatMessage[] }>({
@@ -158,11 +176,84 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+  
+  // Set up WebSocket message handlers
+  useEffect(() => {
+    // Handler for processing message
+    const processingHandler = (data: any) => {
+      console.log('AI is processing your request...');
+      setIsPending(true);
+      
+      // Store the message ID so we can match the response later
+      pendingMessageIdRef.current = data.messageId;
+    };
+    
+    // Handler for chat response
+    const chatResponseHandler = (data: any) => {
+      if (data.messageId !== pendingMessageIdRef.current) return;
+      
+      console.log('Received AI response via WebSocket');
+      setIsPending(false);
+      pendingMessageIdRef.current = null;
+      
+      // Create AI message
+      const aiMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: data.content,
+        timestamp: Date.now(),
+      };
+      
+      // Add to messages
+      setMessages(prev => [...prev, aiMessage]);
+      
+      // Invalidate queries to refresh sidebar
+      if (chatId) {
+        // Invalidate chat messages query
+        queryClient.invalidateQueries({ queryKey: ['/api/db/chat-sessions/messages', chatId] });
+        // Invalidate writing chats list
+        queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
+      }
+    };
+    
+    // Handler for error message
+    const errorHandler = (data: any) => {
+      console.error('WebSocket error:', data.error);
+      setIsPending(false);
+      
+      toast({
+        title: 'Error',
+        description: data.error || 'Failed to get AI response',
+        variant: 'destructive',
+      });
+      
+      const errorMessage: Message = {
+        id: `assistant-error-${Date.now()}`,
+        role: 'assistant',
+        content: 'I apologize, but I encountered an error processing your request. Please try again.',
+        timestamp: Date.now(),
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    };
+    
+    // Register handlers
+    const removeProcessingHandler = addMessageHandler('processing', processingHandler);
+    const removeChatResponseHandler = addMessageHandler('chat-response', chatResponseHandler);
+    const removeErrorHandler = addMessageHandler('error', errorHandler);
+    
+    // Clean up handlers when component unmounts
+    return () => {
+      removeProcessingHandler();
+      removeChatResponseHandler();
+      removeErrorHandler();
+    };
+  }, [addMessageHandler, chatId, toast]);
 
   const handleSubmit = async () => {
     if (!input.trim() || !user) return;
     
-    // Add user message
+    // Add user message to UI
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -172,33 +263,6 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     
     setMessages(prev => [...prev, userMessage]);
     setInput('');
-    
-    // Save user message to database if we have a chatId
-    if (chatId) {
-      try {
-        // Save message to database - using the correct endpoint
-        const response = await fetch(`/api/db/chat-sessions/${chatId}/messages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            role: 'user',
-            content: input,
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to save message');
-        }
-        
-        console.log(`Saved user message to chat session ${chatId}`);
-      } catch (error) {
-        console.error('Failed to save user message to database:', error);
-        // Continue even if save fails
-      }
-    }
     
     // IMPORTANT: For Perplexity API, we must maintain strict message order:
     // 1. First message must be system (optional)
@@ -237,9 +301,39 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
       content: input
     });
     
-    console.log('Prepared messages for Perplexity API:', messagesToSend);
+    console.log('Prepared messages for WebSocket chat:', messagesToSend);
     
-    // Send to AI API
+    // Check if WebSocket is connected
+    if (isConnected) {
+      // Send via WebSocket
+      const messageId = `msg-${Date.now()}`;
+      
+      const sent = sendMessage({
+        type: 'chat',
+        content: input,
+        sessionId: chatId || undefined,
+        history: chatId ? undefined : messagesToSend, // Only send history if no chatId (non-persistent chat)
+        messageId: messageId,
+        persist: !!chatId, // Only persist if we have a chatId
+      });
+      
+      if (!sent) {
+        // WebSocket failed, fall back to HTTP
+        console.log('WebSocket send failed, falling back to HTTP');
+        fallbackToHttp(input, messagesToSend);
+      }
+    } else {
+      // WebSocket not connected, use HTTP fallback
+      console.log('WebSocket not connected, using HTTP fallback');
+      fallbackToHttp(input, messagesToSend);
+    }
+  };
+  
+  // Fallback to HTTP API if WebSocket is not available
+  const fallbackToHttp = (userInput: string, messagesToSend: ApiMessage[]) => {
+    console.log('Using HTTP fallback for chat');
+    
+    // Send via HTTP REST API
     mutate(
       { 
         text: '', 
@@ -258,15 +352,9 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
           
           setMessages(prev => [...prev, aiMessage]);
           
-          // Invalidate the chat messages query to ensure we have the latest data next time
-          // This is particularly important when we have multiple devices or tabs accessing the chat
+          // Invalidate queries
           if (chatId) {
-            // Use the correct query key that matches our endpoint
             queryClient.invalidateQueries({ queryKey: ['/api/db/chat-sessions/messages', chatId] });
-            console.log(`Invalidated cache for chat ${chatId} after new message`);
-            
-            // Also invalidate any chat data in the writing-chats list to ensure
-            // the most recent messages appear in chat previews in the sidebar
             queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
           }
         },
@@ -285,7 +373,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
           };
           
           setMessages(prev => [...prev, errorMessage]);
-        },
+        }
       }
     );
   };

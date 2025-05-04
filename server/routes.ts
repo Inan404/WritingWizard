@@ -118,13 +118,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (data.type === 'chat') {
           handleChatMessage(ws, data);
-        } else if (data.type === 'grammar') {
+        } else if (data.type === 'grammar-check') {
           handleGrammarCheck(ws, data);
         } else if (data.type === 'paraphrase') {
           handleParaphrase(ws, data);
         } else if (data.type === 'humanize') {
           handleHumanize(ws, data);
-        } else if (data.type === 'aicheck') {
+        } else if (data.type === 'ai-check') {
           handleAiCheck(ws, data);
         }
       } catch (error) {
