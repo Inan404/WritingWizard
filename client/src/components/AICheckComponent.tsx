@@ -26,7 +26,7 @@ export function AICheckComponent({ defaultText = '' }: AICheckProps) {
   const { mutate, isPending } = useAiTool();
 
   // For ZEROGPT API key
-  const hasZeroGptApi = false; // We'll implement this check later
+  const hasZeroGptApi = true; // ZeroGPT API is available now
 
   const handleSubmit = () => {
     if (!text.trim()) {
