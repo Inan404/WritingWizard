@@ -145,8 +145,8 @@ export default function DashboardPage() {
 
       console.log("Attempting to toggle favorite for chat:", chatId, "Current state:", chatToUpdate.isFavorite);
 
-      // First try with /api/db prefix
-      let res = await fetch(`/api/db/chat-sessions/${chatId}/favorite`, {
+      // Use correct API endpoint path
+      let res = await fetch(`/api/chat-sessions/${chatId}/favorite`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -183,7 +183,8 @@ export default function DashboardPage() {
     if (!chatToDelete) return;
     
     try {
-      const res = await fetch(`/api/db/chat-sessions/${chatToDelete}`, {
+      console.log("Attempting to delete chat:", chatToDelete);
+      const res = await fetch(`/api/chat-sessions/${chatToDelete}`, {
         method: 'DELETE',
       });
 
