@@ -79,19 +79,30 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
       return;
     }
     
-    if (chatMessages && chatMessages.length > 0 && !messagesLoaded.current) {
+    if (chatMessages && !messagesLoaded.current) {
+      // Always force reset messages on chat ID change, even if array is empty
+      console.log(`Processing ${chatMessages.length} messages for chat ${chatId}`);
+      
       // Convert API messages to UI messages
       const uiMessages: Message[] = chatMessages.map(msg => ({
         id: `msg-${msg.id}`,
         role: msg.role === 'user' ? 'user' : 'assistant',
         content: msg.content,
-        timestamp: new Date(msg.createdAt).getTime(),
+        timestamp: new Date(msg.createdAt || Date.now()).getTime(),
       }));
       
+      // For debugging
+      if (uiMessages.length > 0) {
+        console.log(`Converted messages for rendering:`, uiMessages);
+      } else {
+        console.log(`No messages found for chat ${chatId}`);
+      }
+      
+      // Always set messages (even if empty) to clear previous chat's messages
       setMessages(uiMessages);
       messagesLoaded.current = true;
     }
-  }, [chatMessages, user]);
+  }, [chatMessages, user, chatId]);
 
   // Reset messagesLoaded ref when chatId changes
   useEffect(() => {
