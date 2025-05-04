@@ -201,34 +201,6 @@ export function ParaphraseComponent() {
                   </div>
                 </CardContent>
               </Card>
-              
-              {metrics && (
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium">Quality Metrics</h3>
-                  <div className="space-y-2">
-                    <MetricBar 
-                      label="Correctness" 
-                      value={metrics.correctness} 
-                      color="bg-red-500" 
-                    />
-                    <MetricBar 
-                      label="Clarity" 
-                      value={metrics.clarity} 
-                      color="bg-blue-500" 
-                    />
-                    <MetricBar 
-                      label="Engagement" 
-                      value={metrics.engagement} 
-                      color="bg-green-500" 
-                    />
-                    <MetricBar 
-                      label="Delivery" 
-                      value={metrics.delivery} 
-                      color="bg-yellow-500" 
-                    />
-                  </div>
-                </div>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
