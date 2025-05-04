@@ -524,7 +524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/chat-sessions/:id/messages", async (req, res) => {
+  app.get("/api/chat-sessions/:id/messages", isAuthenticated, async (req, res) => {
     try {
       const sessionId = parseInt(req.params.id);
       

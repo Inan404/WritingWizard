@@ -70,8 +70,15 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     enabled: !!chatId && !!user, // Only run query if chatId exists AND user is authenticated
   });
 
-  // Load chat messages when they change
+  // Load chat messages when they change or when authentication state changes
   useEffect(() => {
+    // If user is not authenticated, clear messages and reset the loaded flag
+    if (!user) {
+      setMessages([]);
+      messagesLoaded.current = false;
+      return;
+    }
+    
     if (chatMessages && chatMessages.length > 0 && !messagesLoaded.current) {
       // Convert API messages to UI messages
       const uiMessages: Message[] = chatMessages.map(msg => ({
@@ -84,7 +91,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
       setMessages(uiMessages);
       messagesLoaded.current = true;
     }
-  }, [chatMessages]);
+  }, [chatMessages, user]);
 
   // Reset messagesLoaded ref when chatId changes
   useEffect(() => {
