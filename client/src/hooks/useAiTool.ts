@@ -16,6 +16,7 @@ interface AiToolParams {
   style?: Style;
   messages?: ApiMessage[];
   language?: string; // Added for LanguageTool API
+  chatId?: number | null; // Added to support chat sessions
 }
 
 // Define types for our cache results
@@ -28,11 +29,12 @@ const responseCache = new Map<string, CachedResult>();
 
 // Helper to create a cache key
 function createCacheKey(params: AiToolParams): string {
-  const { text, mode, style, messages, language } = params;
+  const { text, mode, style, messages, language, chatId } = params;
   if (mode === 'chat' && messages) {
-    // For chat, we only cache based on the last message
+    // For chat, we only cache based on the last message and chatId if available
     const lastMsg = messages[messages.length - 1];
-    return `${mode}-${lastMsg?.role}-${lastMsg?.content.substring(0, 100)}`;
+    const chatPart = chatId !== undefined && chatId !== null ? `-chat${chatId}` : '';
+    return `${mode}${chatPart}-${lastMsg?.role}-${lastMsg?.content.substring(0, 100)}`;
   } else {
     // For other modes, cache based on the first 100 chars of text and parameters
     const langPart = language ? `-${language}` : '';
@@ -62,7 +64,7 @@ export function useAiTool() {
   
   return useMutation({
     mutationFn: async (params: AiToolParams) => {
-      const { text, mode, style, messages } = params;
+      const { text, mode, style, messages, chatId } = params;
       const payload: any = { mode };
       
       // Create a cache key for this request
@@ -120,11 +122,16 @@ export function useAiTool() {
 
 // Extract the actual API request to a separate function
 async function processRequest(params: AiToolParams, cacheKey: string, payload: any) {
-  const { text, mode, style, messages, language } = params;
+  const { text, mode, style, messages, language, chatId } = params;
   
   // For chat mode, use messages array if provided
   if (mode === 'chat' && messages && messages.length > 0) {
     payload.messages = messages;
+    
+    // Include chatId for chat mode if available
+    if (chatId !== undefined && chatId !== null) {
+      payload.chatId = chatId;
+    }
   } else {
     // For all other modes, use text
     payload.text = text;
