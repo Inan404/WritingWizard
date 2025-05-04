@@ -113,21 +113,37 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     // 2. Messages must alternate strictly between user and assistant roles
     // 3. Must end with a user message
     
-    // Strip the conversation down to just system and current user message
-    // This is guaranteed to work since it follows the format: system → user
-    const messagesToSend: ApiMessage[] = [
+    // First, add system message
+    let messagesToSend: ApiMessage[] = [
       {
         role: 'system',
         content: 'You are a helpful, friendly AI writing assistant. Provide detailed and thoughtful responses to help users with their writing needs.'
-      },
-      {
-        role: 'user',
-        content: input
       }
     ];
     
-    // This simplification may lose conversation history,
-    // but it ensures we follow the exact pattern Perplexity requires: system → user
+    // Then, build conversation history from previous messages, ensuring alternating pattern
+    if (messages.length > 0) {
+      // Start with the most recent 10 messages to keep context but stay within token limits
+      const recentMessages = [...messages].slice(-10);
+      
+      // Ensure we have alternating user/assistant pattern
+      for (let i = 0; i < recentMessages.length; i++) {
+        const msg = recentMessages[i];
+        // Skip any assistant messages that would violate the alternating pattern
+        if (i > 0 && recentMessages[i-1].role === msg.role) continue;
+        
+        messagesToSend.push({
+          role: msg.role,
+          content: msg.content
+        });
+      }
+    }
+    
+    // Finally, add the current user message to ensure we end with a user message
+    messagesToSend.push({
+      role: 'user',
+      content: input
+    });
     
     console.log('Prepared messages for Perplexity API:', messagesToSend);
     
