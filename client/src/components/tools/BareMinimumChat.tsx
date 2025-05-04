@@ -69,10 +69,16 @@ export default function BareMinimumChat({
           });
           
           if (!response.ok) {
-            throw new Error(`Failed to create session: ${response.status}`);
+            const errorData = await response.text();
+            console.error('Server response error:', response.status, errorData);
+            throw new Error(`Failed to create session: ${response.status}. ${errorData}`);
           }
           
           const result = await response.json();
+          if (!result || !result.chat || !result.chat.id) {
+            console.error('Invalid response format:', result);
+            throw new Error('Server returned invalid response format');
+          }
           console.log('Created default chat session with ID:', result.chat.id);
           
           // Set proper session ID from response
@@ -179,10 +185,16 @@ export default function BareMinimumChat({
         });
         
         if (!response.ok) {
-          throw new Error(`Failed to create session: ${response.status}`);
+          const errorData = await response.text();
+          console.error('Server response error:', response.status, errorData);
+          throw new Error(`Failed to create session: ${response.status}. ${errorData}`);
         }
         
         const result = await response.json();
+        if (!result || !result.chat || !result.chat.id) {
+          console.error('Invalid response format:', result);
+          throw new Error('Server returned invalid response format');
+        }
         console.log('Created default chat session with ID:', result.chat.id);
         setChatSessionId(result.chat.id);
         setSessionTitle(title);
@@ -305,11 +317,16 @@ export default function BareMinimumChat({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to save chat: ${response.status}`);
+        const errorData = await response.text();
+        console.error('Server response error:', response.status, errorData);
+        throw new Error(`Failed to save chat: ${response.status}. ${errorData}`);
       }
 
       const result = await response.json();
+      if (!result || !result.chat || !result.chat.id) {
+        console.error('Invalid response format:', result);
+        throw new Error('Server returned invalid response format');
+      }
       console.log('Chat saved successfully:', result);
       
       // Set the chat session ID from the result
