@@ -103,18 +103,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up WebSocket server on the same HTTP server but with distinct path
   const wss = new WebSocketServer({ 
     server: httpServer, 
-    path: '/ws' 
+    path: '/ws',
+    // Handle ping timeouts
+    clientTracking: true,
+  });
+  
+  // Set up heartbeat interval for WebSocket server
+  const pingInterval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      if ((ws as any).isAlive === false) {
+        console.log('Terminating inactive WebSocket connection');
+        return ws.terminate();
+      }
+      
+      (ws as any).isAlive = false;
+      try {
+        ws.ping();
+      } catch (error) {
+        console.error('Error sending ping:', error);
+      }
+    });
+  }, 30000); // Ping every 30 seconds
+  
+  // Clear interval when server closes
+  wss.on('close', () => {
+    clearInterval(pingInterval);
   });
   
   // Handle WebSocket connections
   wss.on('connection', (ws) => {
     console.log('WebSocket client connected');
     
+    // Mark WebSocket as alive
+    (ws as any).isAlive = true;
+    
+    // Send a welcome message right away
+    ws.send(JSON.stringify({ 
+      type: 'connected',
+      message: 'Connected to WebSocket server'
+    }));
+    
+    // Handle pings to keep connection alive
+    ws.on('pong', () => {
+      (ws as any).isAlive = true;
+    });
+    
     // Handle messages from client
     ws.on('message', async (message) => {
       try {
         const data = JSON.parse(message.toString());
-        console.log('Received message:', data.type);
+        console.log('Received message type:', data.type);
+        
+        if (data.type === 'ping') {
+          // Respond to client pings
+          ws.send(JSON.stringify({
+            type: 'pong',
+            time: Date.now()
+          }));
+          return;
+        }
         
         if (data.type === 'chat') {
           handleChatMessage(ws, data);
@@ -140,11 +187,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('WebSocket client disconnected');
     });
     
-    // Send a welcome message
-    ws.send(JSON.stringify({ 
-      type: 'connected',
-      message: 'Connected to WebSocket server'
-    }));
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+    });
   });
   
   // Ensure database tables exist
