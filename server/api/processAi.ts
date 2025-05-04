@@ -176,7 +176,29 @@ export async function processAi(req: Request, res: Response) {
         }));
         
         try {
+          // Extract chatId if it exists to save the AI response to the database
+          const chatId = req.body.chatId;
           const chatResponse = await generateChatResponse(formattedMessages);
+          
+          // If a chatId is provided, save the AI response to the database
+          if (chatId && typeof chatId === 'number' && req.user?.id) {
+            try {
+              const dbStorage = (await import('../dbStorage')).dbStorage;
+              
+              // Save the AI's response to the database
+              await dbStorage.createChatMessage({
+                sessionId: chatId,
+                role: 'assistant',
+                content: chatResponse
+              });
+              
+              console.log(`Saved AI response to chat session ${chatId}`);
+            } catch (dbError) {
+              console.error('Failed to save AI response to database:', dbError);
+              // Continue even if database save fails - don't block the response
+            }
+          }
+          
           return res.json({ response: chatResponse });
         } catch (chatError) {
           console.error("Chat response error:", chatError);

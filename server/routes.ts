@@ -105,7 +105,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
   
   // Unified AI processing endpoint (follows the guideline design)
-  app.post("/api/ai/process", processAi);
+  // AI Processing endpoint - protected by authentication
+  app.post("/api/ai/process", isAuthenticated, processAi);
 
   // Individual endpoints (legacy support)
   // Grammar check endpoint
@@ -254,12 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Unified AI processing endpoint for all writing tools (alternative implementation)
-  // This doesn't change the UI but offers a more streamlined API for future use
-  app.post('/api/ai/process', async (req, res) => {
-    // Just forward to the processAi handler
-    await processAi(req, res);
-  });
+  // Duplicate endpoint removed
 
   // Generate writing endpoint
   app.post("/api/generate-writing", async (req, res) => {
@@ -448,7 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Chat messages endpoints
-  app.post("/api/chat-sessions/:id/messages", async (req, res) => {
+  app.post("/api/chat-sessions/:id/messages", isAuthenticated, async (req, res) => {
     try {
       const { role, content } = req.body;
       const sessionId = parseInt(req.params.id);

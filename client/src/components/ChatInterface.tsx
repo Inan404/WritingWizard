@@ -96,7 +96,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!input.trim() || !user) return;
     
     // Add user message
@@ -109,6 +109,27 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    
+    // Save user message to database if we have a chatId
+    if (chatId) {
+      try {
+        // Save message to database
+        await fetch(`/api/chat-sessions/${chatId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            role: 'user',
+            content: input,
+          }),
+        });
+        console.log(`Saved user message to chat session ${chatId}`);
+      } catch (error) {
+        console.error('Failed to save user message to database:', error);
+        // Continue even if save fails
+      }
+    }
     
     // IMPORTANT: For Perplexity API, we must maintain strict message order:
     // 1. First message must be system (optional)
