@@ -50,11 +50,20 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     queryKey: ['/api/chat-messages', chatId],
     queryFn: async () => {
       if (!chatId) return [];
-      const res = await fetch(`/api/chat-messages/${chatId}`);
-      if (!res.ok) {
-        throw new Error('Failed to fetch chat messages');
+      console.log(`Fetching messages for chat ${chatId}`);
+      try {
+        const res = await fetch(`/api/chat-messages/${chatId}`);
+        if (!res.ok) {
+          console.error(`Error fetching chat messages: ${res.status} ${res.statusText}`);
+          throw new Error('Failed to fetch chat messages');
+        }
+        const data = await res.json();
+        console.log(`Got ${data.length} messages for chat ${chatId}:`, data);
+        return data;
+      } catch (error) {
+        console.error('Chat messages fetch error:', error);
+        throw error;
       }
-      return res.json();
     },
     enabled: !!chatId, // Only run query if chatId exists
   });
