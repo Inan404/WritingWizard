@@ -50,13 +50,14 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
 
   // Fetch chat messages if chatId exists AND user is authenticated
   const { data: chatMessagesResponse, isLoading: isLoadingMessages, refetch } = useQuery<{ messages: ChatMessage[] }>({
-    queryKey: ['/api/chat-messages', chatId],
+    queryKey: ['/api/db/chat-sessions/messages', chatId],
     queryFn: async () => {
       if (!chatId || !user) return { messages: [] };
       console.log(`Fetching messages for chat ${chatId}`);
       try {
-        // Use the correct endpoint with proper format
-        const res = await fetch(`/api/chat-sessions/${chatId}/messages`);
+        // Use the correct endpoint with proper format - using the /api/db/ endpoint
+        // which has the correct authentication checks
+        const res = await fetch(`/api/db/chat-sessions/${chatId}/messages`);
         if (!res.ok) {
           console.error(`Error fetching chat messages: ${res.status} ${res.statusText}`);
           throw new Error('Failed to fetch chat messages');
@@ -259,7 +260,8 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
           // Invalidate the chat messages query to ensure we have the latest data next time
           // This is particularly important when we have multiple devices or tabs accessing the chat
           if (chatId) {
-            queryClient.invalidateQueries({ queryKey: ['/api/chat-messages', chatId] });
+            // Use the correct query key that matches our endpoint
+            queryClient.invalidateQueries({ queryKey: ['/api/db/chat-sessions/messages', chatId] });
             console.log(`Invalidated cache for chat ${chatId} after new message`);
             
             // Also invalidate any chat data in the writing-chats list to ensure
