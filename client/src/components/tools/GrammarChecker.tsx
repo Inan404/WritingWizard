@@ -3,15 +3,23 @@ import ResizablePanels from '../common/ResizablePanels';
 import TextEditor from '../common/TextEditor';
 import Suggestions from '../common/Suggestions';
 import StyleOptions from '../common/StyleOptions';
+import LanguageSelector from '../common/LanguageSelector';
 import ProgressBars from '../common/ProgressBars';
-import { useWriting } from '@/context/WritingContext';
+import { useWriting, SupportedLanguage } from '@/context/WritingContext';
 import { apiRequest } from '@/lib/queryClient';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 
 export default function GrammarChecker() {
-  const { grammarText, setGrammarText, suggestions, setSuggestions } = useWriting();
+  const { 
+    grammarText, 
+    setGrammarText, 
+    suggestions, 
+    setSuggestions,
+    selectedLanguage, 
+    setSelectedLanguage
+  } = useWriting();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -71,7 +79,10 @@ export default function GrammarChecker() {
 
   const grammarCheckMutation = useMutation({
     mutationFn: async (text: string) => {
-      const response = await apiRequest('POST', '/api/grammar-check', { text });
+      const response = await apiRequest('POST', '/api/grammar-check', { 
+        text,
+        language: selectedLanguage 
+      });
       return response.json();
     },
     onSuccess: (data) => {
@@ -92,7 +103,7 @@ export default function GrammarChecker() {
       
       toast({
         title: "Grammar check complete",
-        description: "We've analyzed your text and provided suggestions.",
+        description: `We've analyzed your text using ${selectedLanguage} language rules and provided suggestions.`,
       });
     },
     onError: () => {
@@ -186,6 +197,12 @@ export default function GrammarChecker() {
   const RightPanel = (
     <div className="h-full flex flex-col">
       <StyleOptions showDocTypes={true} />
+      <LanguageSelector 
+        onSelectLanguage={(language) => {
+          // Reset suggestions when language changes
+          setSuggestions([]);
+        }}
+      />
       <ProgressBars />
       <div className="flex-1 overflow-y-auto">
         <Suggestions 
