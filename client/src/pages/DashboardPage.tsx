@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AiTool } from '@/components/AiTool';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, User, LogOut } from 'lucide-react';
+import { User, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -193,14 +193,6 @@ export default function DashboardPage() {
       <header className="py-2 sm:py-4 px-3 sm:px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-800 gap-2">
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <h1 className="text-base sm:text-lg font-medium truncate">{user?.username || 'User'}'s Dashboard</h1>
-          <Button
-            onClick={handleCreateNewChat}
-            className="bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm"
-            size="sm"
-          >
-            <PlusCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            New Chat
-          </Button>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
