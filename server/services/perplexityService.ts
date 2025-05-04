@@ -284,21 +284,28 @@ Include corrected full text in the response to reflect all applied fixes.`;
  */
 export async function generateParaphrase(text: string, style: string = 'standard', customTone?: string) {
   const styleDescriptions: Record<string, string> = {
-    'standard': 'Maintain the original tone while rewording for clarity.',
-    'formal': 'Use more formal language with academic vocabulary and structure.',
-    'fluency': 'Optimize for smooth, natural-sounding flow.',
-    'academic': 'Use academic terminology and structures appropriate for scholarly work.',
-    'custom': 'Be more creative with rephrasing while preserving meaning.'
+    'standard': 'Maintain the original tone while rewording for clarity. Example: "This is important" → "This matter is significant"',
+    'formal': 'Use more formal language with academic vocabulary and structure. Example: "I think" → "It is proposed that", "We did this" → "This action was undertaken"',
+    'fluency': 'Optimize for smooth, natural-sounding flow. Example: "The system processes data" → "Data flows smoothly through the system"',
+    'academic': 'Use academic terminology and structures appropriate for scholarly work. Example: "This shows" → "This evidence demonstrates", "We found" → "The findings indicate"',
+    'custom': 'Be more creative with rephrasing while preserving meaning. Follow the specified tone exactly.'
   };
 
   // For custom style, use the provided tone description if available
   const styleDescription = style === 'custom' && customTone 
     ? `Use a ${customTone} tone while preserving the meaning.` 
     : styleDescriptions[style] || styleDescriptions.standard;
+  
+  // Make the style more prominent in the prompt
+  const stylePrefix = style === 'custom' && customTone 
+    ? `[CUSTOM TONE: ${customTone.toUpperCase()}]` 
+    : `[STYLE: ${style.toUpperCase()}]`;
 
   const systemPrompt = `You are an expert writing assistant specializing in paraphrasing.
+${stylePrefix} 
 Rewrite the provided text in a different way while preserving its original meaning.
-Style: ${styleDescription}
+VERY IMPORTANT: Use the ${style === 'custom' ? customTone : style} style for paraphrasing.
+Style description: ${styleDescription}
 IMPORTANT: Provide your response as a raw, valid JSON object with no markdown formatting, no extra text, and no explanation outside the JSON object.
 Respond with ONLY the following JSON format:
 {
@@ -319,12 +326,19 @@ METRICS SCORING GUIDELINES:
 - NEVER return scores of 0 for any category - minimum value should be 50`;
 
   try {
+    // Adjust temperature based on style - higher for creative styles
+    let temperature = 0.7; // Default
+    if (style === 'fluency') temperature = 0.8;
+    if (style === 'academic') temperature = 0.5; // More controlled for academic
+    if (style === 'formal') temperature = 0.6;
+    if (style === 'custom') temperature = 0.9; // Most creative for custom
+    
     const response = await callPerplexityAPI({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: text }
       ],
-      temperature: 0.7, // Higher temperature for more creative paraphrasing
+      temperature, // Adjusted temperature based on style
     });
 
     // Get raw content from the API response
@@ -371,21 +385,28 @@ METRICS SCORING GUIDELINES:
  */
 export async function generateHumanized(text: string, style: string = 'standard', customTone?: string) {
   const styleDescriptions: Record<string, string> = {
-    'standard': 'Make the text sound more human by adding natural variations and flow.',
-    'formal': 'Humanize while maintaining formal tone suitable for professional contexts.',
-    'fluency': 'Optimize for conversational flow and natural rhythm.',
-    'academic': 'Humanize while preserving academic integrity and appropriate terminology.',
-    'custom': 'Be creative with humanizing the text while making it sound authentic.'
+    'standard': 'Make the text sound more human by adding natural variations and flow. Example: "The data is analyzed" → "I\'ve gone through the data"',
+    'formal': 'Humanize while maintaining formal tone suitable for professional contexts. Example: "This shows results" → "The analysis reveals these findings"',
+    'fluency': 'Optimize for conversational flow and natural rhythm. Example: "It was determined that" → "We figured out that" or "I discovered that"',
+    'academic': 'Humanize while preserving academic integrity and appropriate terminology. Example: "The study shows" → "Our research indicates" or "The evidence suggests"',
+    'custom': 'Be creative with humanizing the text while making it sound authentic. Follow the specified tone exactly.'
   };
 
   // For custom style, use the provided tone description if available
   const styleDescription = style === 'custom' && customTone 
     ? `Use a ${customTone} tone while humanizing the text to sound authentic.` 
     : styleDescriptions[style] || styleDescriptions.standard;
+    
+  // Make the style more prominent in the prompt
+  const stylePrefix = style === 'custom' && customTone 
+    ? `[CUSTOM TONE: ${customTone.toUpperCase()}]` 
+    : `[STYLE: ${style.toUpperCase()}]`;
 
   const systemPrompt = `You are an expert writing assistant specializing in making AI-generated text sound more human.
+${stylePrefix}
 Rewrite the provided text to sound more natural and human-written.
-Style: ${styleDescription}
+VERY IMPORTANT: Use the ${style === 'custom' ? customTone : style} style for humanizing.
+Style description: ${styleDescription}
 IMPORTANT: Provide your response as a raw, valid JSON object with no markdown formatting, no extra text, and no explanation outside the JSON object.
 Respond with ONLY the following JSON format:
 {
@@ -406,12 +427,19 @@ METRICS SCORING GUIDELINES:
 - NEVER return scores of 0 for any category - minimum value should be 50`;
 
   try {
+    // Adjust temperature based on style - higher for creative styles
+    let temperature = 0.7; // Default
+    if (style === 'fluency') temperature = 0.8;
+    if (style === 'academic') temperature = 0.5; // More controlled for academic
+    if (style === 'formal') temperature = 0.6;
+    if (style === 'custom') temperature = 0.9; // Most creative for custom
+    
     const response = await callPerplexityAPI({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: text }
       ],
-      temperature: 0.7, // Higher temperature for more human-like variations
+      temperature, // Adjusted temperature based on style
     });
 
     // Get raw content from the API response
