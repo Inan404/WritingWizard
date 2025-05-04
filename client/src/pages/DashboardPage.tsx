@@ -13,14 +13,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 interface WritingChat {
   id: number;
-  title?: string;
-  inputText?: string;
+  title: string;
+  inputText: string | null;
   grammarResult: string | null;
   paraphraseResult: string | null;
   aiCheckResult: string | null;
   humanizeResult: string | null;
-  isFavorite?: boolean;
-  userId?: number;
+  isFavorite: boolean;
+  userId: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -93,14 +93,14 @@ export default function DashboardPage() {
       const now = new Date();
       const formattedDate = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
       
-      const res = await fetch('/api/writing-entries', {
+      const res = await fetch('/api/db/writing-chats', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           title: `New Chat ${formattedDate}`,
-          isFavorite: false,
+          inputText: "Hi, I need help with my writing.",
         }),
       });
 
@@ -108,10 +108,12 @@ export default function DashboardPage() {
         throw new Error('Failed to create new chat');
       }
 
-      const newChat = await res.json();
+      const data = await res.json();
+      console.log("Created new chat:", data);
+      const newChat = data.chat;
       
       // Refetch the chat list
-      queryClient.invalidateQueries({ queryKey: ['/api/writing-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
       
       // Set active tab to chat and navigate to it
       handleToolSelect('chat', newChat.id);
@@ -121,6 +123,7 @@ export default function DashboardPage() {
         description: 'New chat created!',
       });
     } catch (error) {
+      console.error("Error creating new chat:", error);
       toast({
         title: 'Error',
         description: 'Failed to create new chat',
@@ -131,10 +134,10 @@ export default function DashboardPage() {
 
   const handleToggleFavorite = async (chatId: number) => {
     try {
-      const chatToUpdate = chats.find(c => c.id === chatId);
+      const chatToUpdate = chats.find((c: any) => c.id === chatId);
       if (!chatToUpdate) return;
 
-      const res = await fetch(`/api/writing-entries/${chatId}`, {
+      const res = await fetch(`/api/chat-sessions/${chatId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -149,7 +152,7 @@ export default function DashboardPage() {
       }
 
       // Refetch the chat list
-      queryClient.invalidateQueries({ queryKey: ['/api/writing-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
       
       toast({
         title: 'Success',
@@ -158,6 +161,7 @@ export default function DashboardPage() {
           : 'Added to favorites',
       });
     } catch (error) {
+      console.error("Error toggling favorite:", error);
       toast({
         title: 'Error',
         description: 'Failed to update favorite status',
@@ -170,7 +174,7 @@ export default function DashboardPage() {
     if (!chatToDelete) return;
     
     try {
-      const res = await fetch(`/api/writing-entries/${chatToDelete}`, {
+      const res = await fetch(`/api/chat-sessions/${chatToDelete}`, {
         method: 'DELETE',
       });
 
@@ -179,7 +183,7 @@ export default function DashboardPage() {
       }
 
       // Refetch the chat list
-      queryClient.invalidateQueries({ queryKey: ['/api/writing-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
       
       toast({
         title: 'Success',
@@ -191,6 +195,7 @@ export default function DashboardPage() {
         setActiveChatId(null);
       }
     } catch (error) {
+      console.error("Error deleting chat:", error);
       toast({
         title: 'Error',
         description: 'Failed to delete chat',
@@ -328,11 +333,11 @@ export default function DashboardPage() {
                     
                     {isLoading ? (
                       <div className="text-xs italic text-gray-500 px-2">Loading...</div>
-                    ) : chats.filter(chat => chat.isFavorite)?.length > 0 ? (
+                    ) : chats.filter((chat: WritingChat) => chat.isFavorite)?.length > 0 ? (
                       <ul>
                         {chats
-                          .filter(chat => chat.isFavorite)
-                          .map(chat => (
+                          .filter((chat: WritingChat) => chat.isFavorite)
+                          .map((chat: WritingChat) => (
                             <li 
                               key={`fav-${chat.id}`}
                               onClick={() => handleToolSelect("chat", chat.id)}
@@ -361,8 +366,8 @@ export default function DashboardPage() {
                     ) : chats.length > 0 ? (
                       <ul>
                         {chats
-                          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-                          .map(chat => (
+                          .sort((a: WritingChat, b: WritingChat) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                          .map((chat: WritingChat) => (
                             <li 
                               key={`chat-${chat.id}`}
                               className="text-sm hover:bg-gray-800 p-2 rounded-md mb-1 transition-colors group"
