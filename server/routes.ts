@@ -10,8 +10,7 @@ import {
   generateWriting,
   generateChatResponse 
 } from "./services/aiService";
-import { WebSocketServer } from 'ws';
-import WebSocket from 'ws';
+// WebSocket removed to improve performance
 import { checkGrammarWithLanguageTool } from "./services/languageToolService";
 import { processAi } from "./api/processAi";
 import { setupAuth } from "./auth";
