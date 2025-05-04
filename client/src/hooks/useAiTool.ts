@@ -14,6 +14,7 @@ interface AiToolParams {
   text: string;
   mode: Mode;
   style?: Style;
+  customTone?: string; // Added for custom paraphrasing style
   messages?: ApiMessage[];
   language?: string; // Added for LanguageTool API
   chatId?: number | null; // Added to support chat sessions
@@ -122,7 +123,7 @@ export function useAiTool() {
 
 // Extract the actual API request to a separate function
 async function processRequest(params: AiToolParams, cacheKey: string, payload: any) {
-  const { text, mode, style, messages, language, chatId } = params;
+  const { text, mode, style, customTone, messages, language, chatId } = params;
   
   // For chat mode, use messages array if provided
   if (mode === 'chat' && messages && messages.length > 0) {
@@ -140,6 +141,11 @@ async function processRequest(params: AiToolParams, cacheKey: string, payload: a
   // Add style if provided
   if (style) {
     payload.style = style;
+  }
+  
+  // Add customTone if provided and style is custom
+  if (style === 'custom' && customTone) {
+    payload.customTone = customTone;
   }
   
   // Add language if provided (for LanguageTool API)

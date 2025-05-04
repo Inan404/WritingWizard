@@ -282,7 +282,7 @@ Include corrected full text in the response to reflect all applied fixes.`;
 /**
  * Generate a paraphrased version of the text
  */
-export async function generateParaphrase(text: string, style: string = 'standard') {
+export async function generateParaphrase(text: string, style: string = 'standard', customTone?: string) {
   const styleDescriptions: Record<string, string> = {
     'standard': 'Maintain the original tone while rewording for clarity.',
     'formal': 'Use more formal language with academic vocabulary and structure.',
@@ -291,9 +291,14 @@ export async function generateParaphrase(text: string, style: string = 'standard
     'custom': 'Be more creative with rephrasing while preserving meaning.'
   };
 
+  // For custom style, use the provided tone description if available
+  const styleDescription = style === 'custom' && customTone 
+    ? `Use a ${customTone} tone while preserving the meaning.` 
+    : styleDescriptions[style] || styleDescriptions.standard;
+
   const systemPrompt = `You are an expert writing assistant specializing in paraphrasing.
 Rewrite the provided text in a different way while preserving its original meaning.
-Style: ${styleDescriptions[style] || styleDescriptions.standard}
+Style: ${styleDescription}
 IMPORTANT: Provide your response as a raw, valid JSON object with no markdown formatting, no extra text, and no explanation outside the JSON object.
 Respond with ONLY the following JSON format:
 {

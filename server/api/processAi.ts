@@ -18,7 +18,7 @@ import { checkGrammarWithLanguageTool } from "../services/languageToolService";
  */
 export async function processAi(req: Request, res: Response) {
   try {
-    const { mode, text, style, messages } = req.body;
+    const { mode, text, style, customTone, messages } = req.body;
 
     if (!mode) {
       return res.status(400).json({ error: "Mode parameter is required" });
@@ -83,7 +83,10 @@ export async function processAi(req: Request, res: Response) {
         const paraphraseStyle = style && validParaphraseStyles.includes(style) ? style : "standard";
         
         try {
-          const paraphraseResult = await generateParaphrase(text, paraphraseStyle);
+          // Pass custom tone to paraphrase function if style is custom
+          const paraphraseResult = paraphraseStyle === 'custom' && customTone
+            ? await generateParaphrase(text, paraphraseStyle, customTone)
+            : await generateParaphrase(text, paraphraseStyle);
           return res.json(paraphraseResult);
         } catch (paraphraseError) {
           console.error("Paraphrase error:", paraphraseError);
