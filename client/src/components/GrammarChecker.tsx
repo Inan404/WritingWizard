@@ -3,13 +3,6 @@ import { useAiTool } from '@/hooks/useAiTool';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue 
-} from '@/components/ui/select';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
@@ -311,41 +304,22 @@ export function GrammarChecker() {
           rows={8}
         />
         
-        <div className="grid grid-cols-3 gap-2">
-          <div className="col-span-1">
-            <Select 
-              value={language} 
-              onValueChange={setLanguage}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Language" />
-              </SelectTrigger>
-              <SelectContent>
-                {languageOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="col-span-2">
-            <Button 
-              onClick={handleSubmit} 
-              disabled={isPending || !text.trim()}
-              className="w-full"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Checking...
-                </>
-              ) : (
-                'Check Grammar'
-              )}
-            </Button>
-          </div>
+        <div>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isPending || !text.trim()}
+            className="w-full"
+            size="lg"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              'Check Grammar'
+            )}
+          </Button>
         </div>
       </div>
       

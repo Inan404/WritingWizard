@@ -1,0 +1,126 @@
+To integrate LanguageTool API into your Grammar Check tab UI, as shown in your screenshot, follow this step-by-step plan:
+
+🧩 1. Set Up the Backend Route (/api/grammar-check)
+Install a fetch-like package (if not already):
+
+bash
+Copy
+Edit
+npm install node-fetch
+Then create the route (in routes/grammar.ts or similar):
+
+ts
+Copy
+Edit
+// routes/grammar.ts
+import express from 'express';
+import fetch from 'node-fetch';
+
+const router = express.Router();
+
+router.post('/', async (req, res) => {
+  const { text } = req.body;
+
+  const params = new URLSearchParams();
+  params.append('text', text);
+  params.append('language', 'en-US');
+
+  try {
+    const response = await fetch('https://api.languagetool.org/v2/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+
+    const result = await response.json();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Grammar check failed' });
+  }
+});
+
+export default router;
+Register it in your main app.ts:
+
+ts
+Copy
+Edit
+import grammarRoutes from './routes/grammar';
+app.use('/api/grammar-check', grammarRoutes);
+💬 2. Frontend API Call (React Query or Fetch)
+If using React Query:
+tsx
+Copy
+Edit
+import { useMutation } from '@tanstack/react-query';
+
+export const useGrammarCheck = () => {
+  return useMutation({
+    mutationFn: async (text: string) => {
+      const res = await fetch('/api/grammar-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error('Grammar check failed');
+      return res.json();
+    }
+  });
+};
+🎨 3. Show Errors in the UI
+Each issue returned by LanguageTool looks like this:
+
+json
+Copy
+Edit
+{
+  "matches": [
+    {
+      "message": "Possible spelling mistake found.",
+      "shortMessage": "",
+      "offset": 10,
+      "length": 5,
+      "replacements": [
+        { "value": "school" }
+      ],
+      "rule": {
+        "id": "MORFOLOGIK_RULE_EN_US",
+        "description": "Possible spelling mistake",
+        "issueType": "misspelling",
+        "category": {
+          "id": "TYPOS",
+          "name": "Possible Typo"
+        }
+      }
+    }
+  ]
+}
+Render it like this:
+tsx
+Copy
+Edit
+{data?.matches.map((match, i) => (
+  <div key={i} className="bg-destructive text-white p-2 rounded mb-2">
+    <strong>{match.rule.issueType}: </strong>
+    {match.message}
+    <br />
+    <span className="text-sm">Suggestion: {match.replacements.map(r => r.value).join(', ')}</span>
+  </div>
+))}
+✅ Add Labels (Correctness / Clarity / Engagement)
+Map issueType or rule.category.name to your color-coded metrics:
+
+LanguageTool Category	Your UI Category
+TYPOS, GRAMMAR	Correctness
+STYLE, CLARITY	Clarity
+COLLOQUIALISM, CATEGORIES	Engagement (loosely)
+
+🧠 BONUS: Grammarly-style Highlights (Optional)
+To highlight the original text, you can:
+
+Use offset and length from each match
+
+Wrap it in a span with color or underline
+
+Let me know if you want a highlighting component too.
+
