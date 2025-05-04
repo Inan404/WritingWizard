@@ -2,12 +2,9 @@ import { useEffect, useState } from 'react';
 import ResizablePanels from '../common/ResizablePanels';
 import TextEditor from '../common/TextEditor';
 import Suggestions from '../common/Suggestions';
-import StyleOptions from '../common/StyleOptions';
-import LanguageSelector from '../common/LanguageSelector';
-import ProgressBars from '../common/ProgressBars';
 import { useWriting, SupportedLanguage } from '@/context/WritingContext';
 import { apiRequest } from '@/lib/queryClient';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -18,69 +15,13 @@ export default function GrammarChecker() {
     suggestions, 
     setSuggestions,
     selectedLanguage, 
-    setSelectedLanguage,
-    selectedStyle,
-    setSelectedStyle
+    setSelectedLanguage
   } = useWriting();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [entryId, setEntryId] = useState<number | null>(null);
 
-  // Save writing entry to database
-  const saveEntryMutation = useMutation({
-    mutationFn: async (data: {
-      userId: number;
-      title: string;
-      inputText: string;
-      grammarResult: string | null;
-    }) => {
-      const response = await apiRequest('POST', '/api/db/writing-entries', data);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      console.log('Saved writing entry:', data.entry);
-      if (data.entry && data.entry.id) {
-        setEntryId(data.entry.id);
-      }
-      // Invalidate the writing chats query to update the sidebar
-      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
-    },
-    onError: (error) => {
-      console.error('Failed to save writing entry:', error);
-      toast({
-        title: "Error saving",
-        description: "Could not save your work. Please try again later.",
-        variant: "destructive"
-      });
-    }
-  });
-  
-  // Update writing entry
-  const updateEntryMutation = useMutation({
-    mutationFn: async ({ id, data }: {
-      id: number;
-      data: {
-        title?: string;
-        inputText?: string;
-        grammarResult?: string | null;
-      }
-    }) => {
-      const response = await apiRequest('PATCH', `/api/db/writing-entries/${id}`, data);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      console.log('Updated writing entry:', data.entry);
-      // Invalidate the writing chats query to update the sidebar
-      queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
-    },
-    onError: (error) => {
-      console.error('Failed to update writing entry:', error);
-    }
-  });
-
-  // No metrics analysis needed
-
+  // Grammar check request
   const grammarCheckMutation = useMutation({
     mutationFn: async (text: string) => {
       const response = await apiRequest('POST', '/api/grammar-check', { 
@@ -103,8 +44,6 @@ export default function GrammarChecker() {
         setSuggestions(data.suggestions);
       }
       
-      // No database storage for grammar checks per user requirements
-      
       toast({
         title: "Grammar check complete",
         description: `We've analyzed your text using ${selectedLanguage} language rules and provided suggestions.`,
@@ -120,7 +59,6 @@ export default function GrammarChecker() {
     }
   });
 
-  // Remove auto-checking to prevent random popups
   const checkGrammar = () => {
     if (grammarText.original.trim().length > 10) {
       setIsProcessing(true);
@@ -133,27 +71,12 @@ export default function GrammarChecker() {
       });
     }
   };
-
-  // Simplified version - no database storage for grammar checks
-  
-  // Just use a temporary ID if needed for the UI state
-  useEffect(() => {
-    // Just set a fake ID for UI state purposes if needed
-    if (!entryId) {
-      setEntryId(-1); // Use a negative ID to indicate it's not a real database ID
-    }
-  }, [entryId]);
-  
-  // Save changes to database with debounce
-  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   
   const handleTextChange = (text: string) => {
     setGrammarText({
       ...grammarText,
       original: text
     });
-    
-    // No database saving needed
   };
 
   const handleAcceptSuggestion = (id: string) => {
@@ -200,16 +123,19 @@ export default function GrammarChecker() {
 
   const RightPanel = (
     <div className="h-full flex flex-col">
-      {/* Language Selector Dropdown - simple version */}
+      {/* Just a single language selector dropdown */}
       <div className="mb-6">
+        <label htmlFor="language-select" className="block text-sm font-medium text-gray-400 mb-2">
+          Select Language
+        </label>
         <select 
+          id="language-select"
           className="w-full px-3 py-2 rounded-md bg-gray-800 text-gray-200 border border-gray-700"
           value={selectedLanguage}
           onChange={(e) => {
             const newLanguage = e.target.value as SupportedLanguage;
             setSelectedLanguage(newLanguage);
-            // Reset suggestions when language changes
-            setSuggestions([]);
+            setSuggestions([]); // Reset suggestions when language changes
           }}
         >
           <option value="en-US">English (US)</option>
@@ -226,7 +152,9 @@ export default function GrammarChecker() {
         </select>
       </div>
       
-      <div className="flex-1 overflow-y-auto">
+      {/* Suggestions section */}
+      <div className="flex-1 overflow-y-auto mt-4">
+        <h3 className="text-lg font-medium text-gray-200 mb-3">Suggestions</h3>
         <Suggestions 
           onAccept={handleAcceptSuggestion} 
           onDismiss={handleDismissSuggestion}
