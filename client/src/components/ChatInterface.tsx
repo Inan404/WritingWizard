@@ -49,19 +49,20 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
   const { mutate, isPending } = useAiTool();
 
   // Fetch chat messages if chatId exists AND user is authenticated
-  const { data: chatMessages, isLoading: isLoadingMessages, refetch } = useQuery<ChatMessage[]>({
+  const { data: chatMessagesResponse, isLoading: isLoadingMessages, refetch } = useQuery<{ messages: ChatMessage[] }>({
     queryKey: ['/api/chat-messages', chatId],
     queryFn: async () => {
-      if (!chatId || !user) return [];
+      if (!chatId || !user) return { messages: [] };
       console.log(`Fetching messages for chat ${chatId}`);
       try {
-        const res = await fetch(`/api/chat-messages/${chatId}`);
+        // Use the correct endpoint with proper format
+        const res = await fetch(`/api/chat-sessions/${chatId}/messages`);
         if (!res.ok) {
           console.error(`Error fetching chat messages: ${res.status} ${res.statusText}`);
           throw new Error('Failed to fetch chat messages');
         }
         const data = await res.json();
-        console.log(`Got ${data.length} messages for chat ${chatId}:`, data);
+        console.log(`Got ${data.messages?.length || 0} messages for chat ${chatId}:`, data);
         return data;
       } catch (error) {
         console.error('Chat messages fetch error:', error);
@@ -74,6 +75,9 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     staleTime: 0, // Consider data always stale
     gcTime: 0, // Don't cache data
   });
+  
+  // Extract actual messages array from response
+  const chatMessages = chatMessagesResponse?.messages || [];
 
   // Load chat messages when they change or when authentication state changes
   useEffect(() => {
@@ -170,8 +174,8 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     // Save user message to database if we have a chatId
     if (chatId) {
       try {
-        // Save message to database
-        await fetch(`/api/chat-sessions/${chatId}/messages`, {
+        // Save message to database - using the correct endpoint
+        const response = await fetch(`/api/db/chat-sessions/${chatId}/messages`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -181,6 +185,12 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
             content: input,
           }),
         });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to save message');
+        }
+        
         console.log(`Saved user message to chat session ${chatId}`);
       } catch (error) {
         console.error('Failed to save user message to database:', error);
@@ -251,6 +261,10 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
           if (chatId) {
             queryClient.invalidateQueries({ queryKey: ['/api/chat-messages', chatId] });
             console.log(`Invalidated cache for chat ${chatId} after new message`);
+            
+            // Also invalidate any chat data in the writing-chats list to ensure
+            // the most recent messages appear in chat previews in the sidebar
+            queryClient.invalidateQueries({ queryKey: ['/api/writing-chats'] });
           }
         },
         onError: (error) => {

@@ -248,7 +248,18 @@ export default function Dashboard() {
     try {
       console.log("handleCreateNewChat called - direct switch to chat tab");
       
-      // First, clear all session storage flags to avoid conflicts
+      // Check if we're currently in a chat that needs to be saved
+      const currentChatId = sessionStorage.getItem('currentChatSessionId');
+      
+      // If we have current content that should be saved before creating a new chat
+      if (currentChatId) {
+        console.log(`Saving current chat (${currentChatId}) before creating a new one`);
+        
+        // Just make sure the chat ID is invalidated in query cache to force a refresh on next load
+        queryClient.invalidateQueries({ queryKey: ['/api/chat-messages', parseInt(currentChatId)] });
+      }
+      
+      // Clear all session storage flags to avoid conflicts
       sessionStorage.removeItem('currentChatSessionId');
       sessionStorage.removeItem('forceLoadChat');
       sessionStorage.removeItem('forceNewChat');
