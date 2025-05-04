@@ -39,16 +39,21 @@ export default function DashboardPage() {
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
 
   // Fetch all chats
-  const { data: chats = [], isLoading } = useQuery<WritingChat[]>({
-    queryKey: ['/api/writing-entries'],
+  const { data: chatData = { chats: [] }, isLoading } = useQuery({
+    queryKey: ['/api/writing-chats'],
     queryFn: async () => {
-      const res = await fetch('/api/writing-entries');
+      const res = await fetch('/api/writing-chats');
       if (!res.ok) {
-        throw new Error('Failed to fetch writing entries');
+        throw new Error('Failed to fetch writing chats');
       }
-      return res.json();
+      const data = await res.json();
+      console.log("Fetched writing chats:", data);
+      return data;
     }
   });
+  
+  // Extract chats from response
+  const chats = chatData.chats || [];
 
   useEffect(() => {
     const handleResize = () => {
@@ -233,7 +238,10 @@ export default function DashboardPage() {
             variant="ghost" 
             size="icon" 
             className="text-white" 
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={() => {
+              console.log("Toggle sidebar from", sidebarOpen, "to", !sidebarOpen);
+              setSidebarOpen(!sidebarOpen);
+            }}
           >
             <Menu className="h-5 w-5" />
           </Button>
