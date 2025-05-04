@@ -499,21 +499,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: msg.content
       }));
       
-      // Generate AI response using the Llama model
-      const aiResponse = await generateChatResponse(aiMessages);
+      // Validate message sequence - Perplexity requires user/assistant alternation ending with user
+      let lastRole = '';
+      let invalidSequence = false;
+      let correctedMessages = [...aiMessages];
       
-      // Save the AI response to the database
-      const savedMessage = await dbStorage.createChatMessage({
+      // Check for consecutive user messages and properly format them
+      for (let i = 0; i < correctedMessages.length; i++) {
+        if (i > 0 && correctedMessages[i].role === 'user' && correctedMessages[i-1].role === 'user') {
+          console.log('Fixing invalid message sequence: consecutive user messages');
+          // Combine consecutive user messages
+          correctedMessages[i-1].content += "\n\n" + correctedMessages[i].content;
+          // Mark for removal
+          invalidSequence = true;
+          correctedMessages[i].role = '_remove_';
+        }
+        lastRole = correctedMessages[i].role;
+      }
+      
+      // Remove marked messages
+      if (invalidSequence) {
+        correctedMessages = correctedMessages.filter(msg => msg.role !== '_remove_');
+      }
+      
+      // Ensure the last message is from the user
+      if (correctedMessages.length > 0 && correctedMessages[correctedMessages.length - 1].role !== 'user') {
+        console.log('Warning: Last message is not from the user, this may cause issues with the Perplexity API');
+      }
+      
+      // Record start time for performance tracking
+      const startTime = Date.now();
+      
+      // Generate AI response using the Llama model
+      const aiResponse = await generateChatResponse(correctedMessages);
+      
+      // Record completion time
+      const aiGenerationTime = Date.now() - startTime;
+      console.log(`AI response generated in ${aiGenerationTime}ms`);
+      
+      // Save the AI response to the database (don't block response with this)
+      const dbSavePromise = dbStorage.createChatMessage({
         sessionId: sessionId,
         role: 'assistant',
         content: aiResponse
       });
       
-      // Return the AI response and the saved message
+      // Return the AI response immediately
       res.json({
-        message: savedMessage,
-        aiResponse
+        aiResponse,
+        responseTime: aiGenerationTime
       });
+      
+      // Then wait for database write to complete (non-blocking)
+      const savedMessage = await dbSavePromise;
+      console.log(`AI response saved to database for session ${sessionId}`);
     } catch (error) {
       console.error('Error generating AI chat response:', error);
       console.error('Error details:', error);
