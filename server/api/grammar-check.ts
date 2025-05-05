@@ -1,5 +1,5 @@
-import { generateGeminiResponse } from '../utils/gemini-api';
 import { detectGrammarErrors } from '../utils/text-processing';
+import { generateGrammarCheck } from '../services/aiService';
 
 interface GrammarError {
   id: string;
@@ -37,72 +37,15 @@ export async function checkGrammar(text: string): Promise<GrammarCheckResult> {
     // First, use the local utility to detect common grammar errors
     const detectedErrors = detectGrammarErrors(text);
     
-    // Then, use Gemini API for a more thorough analysis
-    const prompt = `
-      Analyze the following text for grammar errors, provide detailed suggestions, and evaluate the writing.
-      Identify specific grammar issues, suggest corrections, and classify each error by type.
-      Also provide metrics for correctness, clarity, engagement, and delivery on a scale of 0-100.
-      
-      Text to analyze: "${text}"
-      
-      Format your response as JSON with the following structure:
-      {
-        "errors": [
-          {
-            "id": "unique-identifier",
-            "type": "error-type",
-            "errorText": "text with the error",
-            "replacementText": "suggested replacement",
-            "description": "brief explanation",
-            "position": {
-              "start": start_index_in_original_text,
-              "end": end_index_in_original_text
-            }
-          }
-        ],
-        "suggestions": [
-          {
-            "id": "unique-identifier",
-            "type": "suggestion-type",
-            "originalText": "original text",
-            "suggestedText": "suggested replacement",
-            "description": "brief explanation of this suggestion"
-          }
-        ],
-        "metrics": {
-          "correctness": score_0_to_100,
-          "clarity": score_0_to_100,
-          "engagement": score_0_to_100,
-          "delivery": score_0_to_100
-        }
-      }
-    `;
-
-    const response = await generateGeminiResponse(prompt);
+    // Use Perplexity API for grammar analysis through aiService
+    const result = await generateGrammarCheck(text);
     
-    // Parse JSON from the response
-    // Since Gemini might return text with markdown code blocks, we need to extract the JSON
-    const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/) || 
-                      response.match(/```\s*([\s\S]*?)\s*```/) ||
-                      response.match(/({[\s\S]*})/);
-                      
-    let parsedResponse;
-    
-    if (jsonMatch && jsonMatch[1]) {
-      try {
-        parsedResponse = JSON.parse(jsonMatch[1].trim());
-      } catch (e) {
-        console.error("Failed to parse JSON from Gemini response", e);
-        parsedResponse = null;
-      }
-    }
-    
-    // Combine detected errors with AI analysis or use fallback
-    if (parsedResponse && 
-        parsedResponse.errors && 
-        parsedResponse.suggestions && 
-        parsedResponse.metrics) {
-      return parsedResponse as GrammarCheckResult;
+    // If we get a valid result from Perplexity
+    if (result && 
+        result.errors && 
+        result.suggestions && 
+        result.metrics) {
+      return result as GrammarCheckResult;
     } else {
       // Fallback response if Gemini API fails to provide proper JSON
       return {

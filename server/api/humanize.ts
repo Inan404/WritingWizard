@@ -1,4 +1,4 @@
-import { generateGeminiResponse } from '../utils/gemini-api';
+import { generateHumanized } from '../services/aiService';
 
 interface HumanizeResult {
   humanizedText: string;
@@ -23,55 +23,18 @@ export async function humanizeText(text: string, style: string = 'standard'): Pr
     
     const selectedStyle = styleInstructions[style as keyof typeof styleInstructions] || styleInstructions.standard;
     
-    const prompt = `
-      Rewrite the following text to make it sound more human and less like AI-generated content. ${selectedStyle}
-      
-      Add natural variation, occasional informality where appropriate, and more authentic voice.
-      Remove common AI patterns like excessive transitions, perfect parallelism, and overly consistent language.
-      
-      Text to humanize: "${text}"
-      
-      Format your response as JSON with the following structure:
-      {
-        "humanizedText": "the humanized version of the text",
-        "metrics": {
-          "correctness": score_0_to_100,
-          "clarity": score_0_to_100,
-          "engagement": score_0_to_100,
-          "delivery": score_0_to_100
-        }
-      }
-    `;
-
-    const response = await generateGeminiResponse(prompt);
+    // Use Perplexity API for humanizing through aiService
+    const result = await generateHumanized(text, style);
     
-    // Parse JSON from the response
-    const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/) || 
-                      response.match(/```\s*([\s\S]*?)\s*```/) ||
-                      response.match(/({[\s\S]*})/);
-                      
-    let parsedResponse;
-    
-    if (jsonMatch && jsonMatch[1]) {
-      try {
-        parsedResponse = JSON.parse(jsonMatch[1].trim());
-      } catch (e) {
-        console.error("Failed to parse JSON from Gemini response", e);
-        parsedResponse = null;
-      }
-    }
-    
-    if (parsedResponse && 
-        parsedResponse.humanizedText && 
-        parsedResponse.metrics) {
-      return parsedResponse as HumanizeResult;
+    // If we get a valid result from Perplexity
+    if (result && 
+        result.humanizedText && 
+        result.metrics) {
+      return result as HumanizeResult;
     } else {
-      // Extract text if JSON parsing failed
-      const humanizedText = response.replace(/```json|```|{|}/g, '').trim();
-      
       // Fallback response
       return {
-        humanizedText: humanizedText || "Failed to humanize the text. Please try again.",
+        humanizedText: "Failed to humanize the text. Please try again.",
         metrics: {
           correctness: 85,
           clarity: 80,
