@@ -493,6 +493,94 @@ function processLanguageToolResponse(
     }
   }
   
+  // Check if "teachers gives" was detected by our custom detection but NOT by LanguageTool
+  // This is important because sometimes LanguageTool returns correct changes in correctedText
+  // but doesn't include them in the suggestions list
+  const teachersGivesFixed = 
+    originalText.toLowerCase().includes("teachers gives") && 
+    !errors.some(e => e.errorText.toLowerCase().includes("teachers gives"));
+  
+  if (teachersGivesFixed) {
+    console.log("Adding teachers gives error explicitly to suggestions");
+    suggestions.push({
+      id: 'custom-sg-teachers-gives',
+      type: 'grammar',
+      originalText: 'teachers gives',
+      suggestedText: 'teachers give',
+      description: "Subject-verb agreement error. The plural noun 'teachers' should be followed by the plural form of the verb 'give'."
+    });
+  }
+  
+  // Do the same for "nobody help" pattern
+  const nobodyHelpFixed = 
+    originalText.toLowerCase().includes("nobody help") && 
+    !errors.some(e => e.errorText.toLowerCase().includes("nobody help"));
+  
+  if (nobodyHelpFixed) {
+    console.log("Adding nobody help error explicitly to suggestions");
+    suggestions.push({
+      id: 'custom-sg-nobody-help',
+      type: 'grammar',
+      originalText: 'nobody help',
+      suggestedText: 'nobody helps',
+      description: "Subject-verb agreement error. The singular pronoun 'nobody' should be followed by the singular form of the verb 'helps'."
+    });
+  }
+  
+  // Also add the "homeworks" pattern
+  const homeworksFixed = 
+    originalText.toLowerCase().includes("homeworks") && 
+    !errors.some(e => e.errorText.toLowerCase().includes("homeworks"));
+  
+  if (homeworksFixed) {
+    console.log("Adding homeworks error explicitly to suggestions");
+    suggestions.push({
+      id: 'custom-sg-homeworks',
+      type: 'grammar',
+      originalText: 'homeworks',
+      suggestedText: 'homework',
+      description: "Grammar error. 'Homework' is an uncountable noun and should not be pluralized."
+    });
+  }
+  
+  // Add the "everyone have" pattern
+  const everyoneHaveFixed = 
+    originalText.toLowerCase().includes("everyone have") && 
+    !errors.some(e => e.errorText.toLowerCase().includes("everyone have"));
+  
+  if (everyoneHaveFixed) {
+    console.log("Adding everyone have error explicitly to suggestions");
+    suggestions.push({
+      id: 'custom-sg-everyone-have',
+      type: 'grammar',
+      originalText: 'everyone have',
+      suggestedText: 'everyone has',
+      description: "Subject-verb agreement error. The singular pronoun 'everyone' should be followed by the singular form of the verb 'has'."
+    });
+  }
+  
+  // Check for "it's" used as possessive
+  const itsPossessive = /it's\s+(color|size|name|shape|function|purpose|role|value|owner|content|meaning)/i.test(originalText);
+  
+  if (itsPossessive) {
+    console.log("Adding it's (possessive) error explicitly to suggestions");
+    
+    // Extract the specific phrase
+    const match = /it's\s+(color|size|name|shape|function|purpose|role|value|owner|content|meaning)/i.exec(originalText);
+    if (match) {
+      const phrase = match[0];
+      const replacement = phrase.replace(/it's/i, "its");
+      
+      suggestions.push({
+        id: 'custom-sg-its-possessive',
+        type: 'grammar',
+        originalText: phrase,
+        suggestedText: replacement,
+        description: "Incorrect use of contraction. 'It's' is a contraction of 'it is' or 'it has', while 'its' (without apostrophe) is the possessive form."
+      });
+    }
+  }
+  
   return {
     correctedText,
     errors,
