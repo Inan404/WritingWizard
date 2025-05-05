@@ -34,6 +34,14 @@ export function HumanizerComponent() {
   const { toast } = useToast();
   const { mutate, isPending } = useAiTool();
 
+  // Handle streaming updates from the AI
+  const handleStreamUpdate = (text: string) => {
+    // Only update if it's not the initial prompt
+    if (text && text !== "Humanizing text...") {
+      setHumanizedText(text);
+    }
+  };
+
   const handleSubmit = () => {
     if (!text.trim()) {
       toast({
@@ -44,34 +52,43 @@ export function HumanizerComponent() {
       return;
     }
     
+    // Clear previous results when starting new request
+    setHumanizedText("Humanizing your text...");
+    
     mutate(
       { 
         text, 
         mode: 'humanize', 
         style,
-        customTone: style === 'custom' ? customTone : undefined 
+        customTone: style === 'custom' ? customTone : undefined,
+        onStreamUpdate: handleStreamUpdate,
+        stream: true  // Add streaming flag for the API
       },
       {
         onSuccess: (data) => {
+          // This will only execute after streaming is complete
           // Extract just the text content from the response, removing any JSON artifacts
           let processedText = data.humanizedText || '';
           
-          // Check if the text looks like it might still have JSON formatting
-          if (processedText.trim().startsWith('{') && processedText.includes('"humanized"')) {
-            try {
-              // Try to parse it as JSON
-              const jsonData = JSON.parse(processedText);
-              processedText = jsonData.humanized || processedText;
-            } catch (e) {
-              // If parsing fails, try to clean up the text using regex
-              const match = processedText.match(/"humanized"\s*:\s*"([\s\S]*?)(?<!\\)"/);
-              if (match && match[1]) {
-                processedText = match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+          // Only process if streaming didn't already set the text
+          if (!processedText || processedText === "Humanizing your text...") {
+            // Check if the text looks like it might still have JSON formatting
+            if (processedText.trim().startsWith('{') && processedText.includes('"humanized"')) {
+              try {
+                // Try to parse it as JSON
+                const jsonData = JSON.parse(processedText);
+                processedText = jsonData.humanized || processedText;
+              } catch (e) {
+                // If parsing fails, try to clean up the text using regex
+                const match = processedText.match(/"humanized"\s*:\s*"([\s\S]*?)(?<!\\)"/);
+                if (match && match[1]) {
+                  processedText = match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+                }
               }
             }
+            
+            setHumanizedText(processedText);
           }
-          
-          setHumanizedText(processedText);
         },
         onError: (error) => {
           toast({
@@ -79,6 +96,7 @@ export function HumanizerComponent() {
             description: error.message || 'Failed to humanize text',
             variant: 'destructive',
           });
+          setHumanizedText(''); // Clear the loading message on error
         }
       }
     );

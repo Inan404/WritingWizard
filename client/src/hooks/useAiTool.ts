@@ -36,6 +36,7 @@ interface AiToolParams {
   messages?: ApiMessage[];
   language?: string; // Added for LanguageTool API
   chatId?: number | null; // Added to support chat sessions
+  stream?: boolean; // Flag to request streaming response
   onStreamUpdate?: (text: string) => void; // Callback for streaming updates
 }
 
@@ -172,8 +173,15 @@ async function processRequest(params: AiToolParams, cacheKey: string, payload: a
     payload.language = language;
   }
   
-  // Use streaming when it's chat mode and we have a streaming callback
-  const useStreaming = mode === 'chat' && typeof onStreamUpdate === 'function';
+  // Add stream flag for streaming modes
+  if (typeof onStreamUpdate === 'function' && 
+      (mode === 'chat' || mode === 'humanize' || mode === 'paraphrase')) {
+    payload.stream = true;
+  }
+  
+  // Use streaming when we have a streaming callback and are in chat, humanize, or paraphrase mode
+  const useStreaming = (mode === 'chat' || mode === 'humanize' || mode === 'paraphrase') && 
+                      typeof onStreamUpdate === 'function';
   
   // If we're streaming, use a different approach
   if (useStreaming) {
