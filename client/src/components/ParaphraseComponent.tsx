@@ -1,3 +1,20 @@
+/**
+ * ParaphraseComponent.tsx
+ * 
+ * This component provides text paraphrasing functionality with different style options.
+ * It uses the Perplexity AI API to rewrite text in various styles like academic, formal, 
+ * casual, and creative.
+ * 
+ * Features:
+ * - Multiple paraphrasing styles with visual style selectors
+ * - Custom style option with user-defined tone
+ * - Copy to clipboard functionality
+ * - Animated transitions between states
+ * 
+ * Each style uses specific temperature settings and prompt engineering to achieve
+ * the desired writing style.
+ */
+
 import { useState } from 'react';
 import { useAiTool, Style } from '@/hooks/useAiTool';
 import { Textarea } from '@/components/ui/textarea';

@@ -1,3 +1,18 @@
+/**
+ * ChatInterface.tsx
+ * 
+ * This component is the AI chat interface that allows users to interact with the Perplexity AI model.
+ * It displays message history, handles message sending, and manages the conversation state.
+ * 
+ * Features:
+ * - Real-time chat with AI using Perplexity's Llama model
+ * - Message history persistence through database
+ * - Animated message transitions
+ * - Loading states and error handling
+ * 
+ * Note: This component uses the useAiTool hook for API communication.
+ */
+
 import { useState, useRef, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';

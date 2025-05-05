@@ -1,3 +1,19 @@
+/**
+ * DashboardPage.tsx
+ * 
+ * Main dashboard page of the application that displays the AI writing tools.
+ * This is the primary interface users interact with after authentication.
+ * 
+ * Features:
+ * - Tab-based navigation between different AI writing tools
+ * - Responsive design with hamburger menu for mobile
+ * - User authentication status and profile display
+ * - Chat history management
+ * 
+ * IMPORTANT: This is the main dashboard page being used in the application.
+ * The /pages/dashboard.tsx file is an older version that is not used.
+ */
+ 
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';

@@ -1,3 +1,18 @@
+/**
+ * GrammarChecker.tsx
+ * 
+ * This component provides grammar checking functionality using the LanguageTool API integration.
+ * It identifies grammar and spelling errors and provides suggestions for corrections.
+ * 
+ * Features:
+ * - Real-time grammar and spelling error detection
+ * - Inline error corrections with suggestions
+ * - Progressive correction (rechecks text after each correction)
+ * - Support for multiple languages
+ * 
+ * Note: The component makes API calls to the backend which then uses the LanguageTool API.
+ */
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
