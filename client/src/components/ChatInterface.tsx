@@ -24,6 +24,7 @@ import { Card } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { queryClient } from '@/lib/queryClient';
+import ReactMarkdown from 'react-markdown';
 
 // Local UI message interface
 interface Message {
@@ -51,7 +52,16 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     {
       id: 'initial-message',
       role: 'assistant',
-      content: 'Hello! I am your AI writing assistant. How can I help you with your writing needs today?',
+      content: `## Welcome to your AI Writing Assistant!
+
+I can help with:
+- **Grammar checking** and corrections
+- **Paraphrasing** content in different styles
+- **Humanizing** AI-generated text
+- **AI detection** for your content
+- **Chat assistance** for any writing questions
+
+How can I help with your writing needs today?`,
       timestamp: Date.now(),
     },
   ]);
@@ -203,7 +213,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     let messagesToSend: ApiMessage[] = [
       {
         role: 'system',
-        content: 'You are a helpful, friendly AI writing assistant. Provide detailed and thoughtful responses to help users with their writing needs.'
+        content: 'You are a helpful, friendly AI writing assistant. Provide detailed and thoughtful responses to help users with their writing needs. Format your responses using markdown with headings (##), bold (**text**), italics (*text*), code blocks (```), and bullet points when appropriate.'
       }
     ];
     
@@ -294,8 +304,8 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
           const parsed = JSON.parse(formattedText);
           formattedText = parsed.response || formattedText;
         } catch (e) {
-          // If parsing fails, try to manually extract the content
-          const match = formattedText.match(/{"response":"(.*?)"}$/s);
+          // If parsing fails, try to manually extract the content - without s flag
+          const match = formattedText.match(/{"response":"(.*?)"}/);
           if (match && match[1]) {
             formattedText = match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
           }
@@ -401,7 +411,11 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
                     {formatTime(message.timestamp)}
                   </span>
                 </div>
-                <div className="text-sm whitespace-pre-wrap" style={{ overflowWrap: 'break-word' }}>{message.content}</div>
+                <div className="text-sm prose dark:prose-invert max-w-none" style={{ overflowWrap: 'break-word' }}>
+                  <ReactMarkdown>
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
               </div>
             </motion.div>
           ))}

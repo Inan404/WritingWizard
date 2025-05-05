@@ -101,7 +101,7 @@ async function callGeminiAPI(messages: Message[]): Promise<string> {
   try {
     // Extract the system message
     const systemMessage = messages.find(msg => msg.role === 'system');
-    const systemPrompt = systemMessage ? systemMessage.content : 'You are a helpful writing assistant. Answer questions clearly and concisely.';
+    const systemPrompt = systemMessage ? systemMessage.content : 'You are a helpful writing assistant. Answer questions clearly and concisely. Format your responses using markdown with headings (##), bold (**text**), italics (*text*), and bullet points when appropriate.';
     
     // Get conversation history without system messages
     const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
