@@ -7,9 +7,7 @@
 import { 
   generateGrammarCheck as geminiGrammarCheck,
   generateParaphrase as geminiParaphrase,
-  generateParaphraseWithStreaming as geminiParaphraseWithStreaming,
   generateHumanized as geminiHumanize,
-  generateHumanizedWithStreaming as geminiHumanizedWithStreaming,
   generateWriting as geminiWriting,
   generateChatResponse as geminiChatResponse,
   detectAiContent as geminiDetectAi,
@@ -92,46 +90,6 @@ export const generateParaphrase = hasGeminiCredentials
   });
 
 /**
- * Streaming paraphrasing service
- * Uses Gemini API to rewrite text while preserving meaning, with streaming updates
- */
-export const generateParaphraseWithStreaming = hasGeminiCredentials
-  ? async (text: string, onChunk: (text: string) => void, style: string = 'standard', customTone?: string) => {
-    try {
-      console.log('Sending text to Gemini for streaming paraphrase');
-      // Import here to avoid circular dependencies
-      const result = await geminiParaphraseWithStreaming(text, onChunk, style, customTone);
-      return result;
-    } catch (error: any) {
-      console.error('Error in streaming paraphrase:', error);
-      const errorMessage = 'I apologize, but I encountered an error while processing your request. Please try again.';
-      onChunk(errorMessage);
-      return {
-        paraphrased: errorMessage,
-        metrics: {
-          correctness: 0,
-          clarity: 0,
-          engagement: 0,
-          delivery: 0
-        }
-      };
-    }
-  }
-  : (text: string, onChunk: (text: string) => void) => {
-    const mockResponse = 'This is a mock paraphrased text. The API key is not available.';
-    onChunk(mockResponse);
-    return {
-      paraphrased: mockResponse,
-      metrics: {
-        correctness: 70,
-        clarity: 75,
-        engagement: 80,
-        delivery: 78
-      }
-    };
-  };
-
-/**
  * Humanizing service
  * Uses Gemini API to make AI text sound more human
  */
@@ -153,46 +111,6 @@ export const generateHumanized = hasGeminiCredentials
       delivery: 78
     }
   });
-
-/**
- * Streaming humanizing service
- * Uses Gemini API to make AI text sound more human, with streaming updates
- */
-export const generateHumanizedWithStreaming = hasGeminiCredentials
-  ? async (text: string, onChunk: (text: string) => void, style: string = 'standard', customTone?: string) => {
-    try {
-      console.log('Sending text to Gemini for streaming humanization');
-      // Import here to avoid circular dependencies
-      const result = await geminiHumanizedWithStreaming(text, onChunk, style, customTone);
-      return result;
-    } catch (error: any) {
-      console.error('Error in streaming humanize:', error);
-      const errorMessage = 'I apologize, but I encountered an error while processing your request. Please try again.';
-      onChunk(errorMessage);
-      return {
-        humanizedText: errorMessage,
-        metrics: {
-          correctness: 0,
-          clarity: 0,
-          engagement: 0,
-          delivery: 0
-        }
-      };
-    }
-  }
-  : (text: string, onChunk: (text: string) => void) => {
-    const mockResponse = 'This is a mock humanized text. The API key is not available.';
-    onChunk(mockResponse);
-    return {
-      humanizedText: mockResponse,
-      metrics: {
-        correctness: 70,
-        clarity: 75,
-        engagement: 80,
-        delivery: 78
-      }
-    };
-  };
 
 /**
  * Mock AI check response for development

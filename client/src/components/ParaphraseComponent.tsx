@@ -42,14 +42,6 @@ export function ParaphraseComponent() {
   const { toast } = useToast();
   const { mutate, isPending } = useAiTool();
 
-  // Handle streaming updates from the AI
-  const handleStreamUpdate = (text: string) => {
-    // Only update if it's not the initial prompt
-    if (text && text !== "Paraphrasing text...") {
-      setParaphrasedText(text);
-    }
-  };
-
   const handleSubmit = () => {
     if (!text.trim()) {
       toast({
@@ -70,50 +62,36 @@ export function ParaphraseComponent() {
       return;
     }
     
-    // Clear previous results and show loading message
-    setParaphrasedText("Paraphrasing your text...");
-    setMetrics(null);
-    
     mutate(
       { 
         text, 
         mode: 'paraphrase', 
         style,
         // Add custom style parameter when using custom style
-        ...(style === 'custom' && { customTone: customStyle }),
-        onStreamUpdate: handleStreamUpdate,
-        stream: true // Enable streaming
+        ...(style === 'custom' && { customTone: customStyle })
       },
       {
         onSuccess: (data) => {
-          // This will only execute after streaming is complete
           // Extract just the text content from the response, removing any JSON artifacts
           let processedText = data.paraphrasedText || '';
           
-          // Only process if streaming didn't already set the text
-          if (!processedText || processedText === "Paraphrasing your text...") {
-            // Check if the text looks like it might still have JSON formatting
-            if (processedText.trim().startsWith('{') && processedText.includes('"paraphrased"')) {
-              try {
-                // Try to parse it as JSON
-                const jsonData = JSON.parse(processedText);
-                processedText = jsonData.paraphrased || processedText;
-              } catch (e) {
-                // If parsing fails, try to clean up the text using regex
-                const match = processedText.match(/"paraphrased"\s*:\s*"([\s\S]*?)(?<!\\)"/);
-                if (match && match[1]) {
-                  processedText = match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
-                }
+          // Check if the text looks like it might still have JSON formatting
+          if (processedText.trim().startsWith('{') && processedText.includes('"paraphrased"')) {
+            try {
+              // Try to parse it as JSON
+              const jsonData = JSON.parse(processedText);
+              processedText = jsonData.paraphrased || processedText;
+            } catch (e) {
+              // If parsing fails, try to clean up the text using regex
+              const match = processedText.match(/"paraphrased"\s*:\s*"([\s\S]*?)(?<!\\)"/);
+              if (match && match[1]) {
+                processedText = match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
               }
             }
-            
-            setParaphrasedText(processedText);
           }
           
-          // Set metrics if available
-          if (data.metrics) {
-            setMetrics(data.metrics);
-          }
+          setParaphrasedText(processedText);
+          setMetrics(data.metrics || null);
         },
         onError: (error) => {
           toast({
@@ -121,7 +99,6 @@ export function ParaphraseComponent() {
             description: error.message || 'Failed to paraphrase text',
             variant: 'destructive',
           });
-          setParaphrasedText(''); // Clear loading message on error
         }
       }
     );
