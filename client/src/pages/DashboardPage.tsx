@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AiTool } from '@/components/AiTool';
 import { Button } from '@/components/ui/button';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const [deleteChatDialogOpen, setDeleteChatDialogOpen] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<number | null>(null);
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Fetch all chats
   const { data: chatData = { chats: [] }, isLoading } = useQuery({
@@ -215,8 +216,60 @@ export default function DashboardPage() {
       <div className="h-[calc(100vh-65px)] sm:h-[calc(100vh-72px)]">
         {/* Main content */}
         <main className="w-full px-3 py-4 sm:p-6 overflow-y-auto hover-scrollbar">
-          {/* Tab navigation */}
-          <div className="flex justify-center mb-8 sm:mb-12 overflow-x-auto hover-scrollbar">
+          {/* Mobile menu button */}
+          <div className="flex justify-center md:hidden mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="bg-[#111827] rounded-full p-2"
+            >
+              {mobileMenuOpen ? (
+                <X className="h-4 w-4" />
+              ) : (
+                <>
+                  <Menu className="h-4 w-4 mr-2" />
+                  <span>{tabMapping[activeTab]}</span>
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {/* Mobile dropdown menu */}
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="md:hidden mb-6"
+              >
+                <div className="bg-[#111827] rounded-lg p-2 flex flex-col gap-2">
+                  {Object.entries(tabMapping).map(([key, label]) => (
+                    <Button
+                      key={key}
+                      variant={activeTab === key ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => {
+                        handleTabChange(key);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`
+                        rounded-md text-sm text-left justify-start
+                        ${activeTab === key ? "bg-primary text-primary-foreground" : "text-gray-400 hover:text-white"}
+                      `}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          {/* Desktop tab navigation */}
+          <div className="hidden md:flex justify-center mb-8 sm:mb-12 overflow-x-auto hover-scrollbar">
             <div className="bg-[#111827] rounded-full p-1 flex flex-nowrap">
               {Object.entries(tabMapping).map(([key, label]) => (
                 <Button
