@@ -66,7 +66,7 @@ export default function DashboardPage() {
   // Check for hash in URL to set active tab
   useEffect(() => {
     const hash = location.split('#')[1];
-    if (hash && ['chat', 'grammar', 'paraphrase', 'humanize', 'ai-check'].includes(hash)) {
+    if (hash && ['chat', 'grammar', 'paraphrase', 'humanize', 'aicheck'].includes(hash)) {
       setActiveTab(hash);
     }
   }, [location]);
@@ -180,7 +180,7 @@ export default function DashboardPage() {
     'grammar': 'Grammar check',
     'paraphrase': 'Paraphrase',
     'humanize': 'Humanizer',
-    'ai-check': 'AI check'
+    'aicheck': 'AI check'
   };
 
   // Map tabs to their display names
@@ -316,7 +316,7 @@ export default function DashboardPage() {
                 <AiTool mode="humanize" />
               </div>
               
-              <div className={activeTab === 'ai-check' ? 'block' : 'hidden'}>
+              <div className={activeTab === 'aicheck' ? 'block' : 'hidden'}>
                 <AiTool mode="aicheck" />
               </div>
             </motion.div>
