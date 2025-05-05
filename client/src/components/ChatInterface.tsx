@@ -275,10 +275,34 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
       // Set the streaming content state
       setStreamingContent(text);
       
-      // Update the message in the messages array
-      // Replace escaped newlines with actual newlines
-      const formattedText = text.replace(/\\n/g, '\n');
+      // Log the received text for debugging
+      console.log('Received streaming update');
       
+      // Apply multiple formatting fixes:
+      // 1. Replace all escaped newlines with actual newlines
+      // 2. Replace double newlines with proper paragraph breaks
+      // 3. Remove any JSON wrapper artifacts if present
+      let formattedText = text;
+      
+      // Fix escaped newlines
+      formattedText = formattedText.replace(/\\n/g, '\n');
+      
+      // Remove any JSON wrapper artifacts if they somehow made it through
+      if (formattedText.startsWith('{"response":')) {
+        try {
+          // Try to parse and extract just the response
+          const parsed = JSON.parse(formattedText);
+          formattedText = parsed.response || formattedText;
+        } catch (e) {
+          // If parsing fails, try to manually extract the content
+          const match = formattedText.match(/{"response":"(.*?)"}$/s);
+          if (match && match[1]) {
+            formattedText = match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+          }
+        }
+      }
+      
+      // Update the message in the messages array
       setMessages(prev => {
         return prev.map(msg => {
           if (msg.id === streamingId) {
@@ -377,7 +401,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
                     {formatTime(message.timestamp)}
                   </span>
                 </div>
-                <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                <div className="text-sm whitespace-pre-wrap" style={{ overflowWrap: 'break-word' }}>{message.content}</div>
               </div>
             </motion.div>
           ))}

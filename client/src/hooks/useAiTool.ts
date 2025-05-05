@@ -213,8 +213,14 @@ async function processRequest(params: AiToolParams, cacheKey: string, payload: a
         
         if (contentType.includes('text/plain')) {
           // Text mode - direct streaming
-          onStreamUpdate(partialData + chunk);
-          partialData += chunk;
+          // Process escaped newlines for better display
+          const formattedChunk = chunk.replace(/\\n/g, '\n');
+          
+          // Accumulate the formatted text
+          partialData += formattedChunk;
+          
+          // Call the callback with the accumulated text
+          onStreamUpdate(partialData);
         } else if (contentType.includes('application/json')) {
           // JSON mode - try to parse
           partialData += chunk;
