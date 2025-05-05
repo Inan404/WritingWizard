@@ -1,123 +1,160 @@
 /**
  * Gemini API Service
- * Uses Google's Gemini API for AI capabilities
+ * Uses Google's Generative AI library for Gemini model integration
  */
+
+import { GoogleGenerativeAI, GenerativeModel, GenerationConfig } from '@google/generative-ai';
 
 // Get the Gemini API key from environment variables
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
+// Check if API key is available
+export const hasGeminiCredentials = !!GEMINI_API_KEY;
+
+// Initialize the Gemini API client
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY as string);
+
 // Default model to use
 const DEFAULT_MODEL = 'gemini-1.5-pro';
 
-// Function message interface
-interface Message {
-  role: 'user' | 'model' | 'system';
-  parts: {
-    text: string;
-  }[];
-}
+// Cache for model instances
+const modelCache: Record<string, GenerativeModel> = {};
 
-// Options for API requests
-interface GeminiRequestOptions {
-  model?: string;
-  messages: Message[];
-  temperature?: number;
-  topP?: number;
-  topK?: number;
-  maxOutputTokens?: number;
-  candidateCount?: number;
-  safetySettings?: any[];
-}
-
-// Response from Gemini API
-interface GeminiResponse {
-  candidates: {
-    content: {
-      parts: {
-        text: string;
-      }[];
-      role: string;
-    };
-    finishReason: string;
-  }[];
+/**
+ * Get a model instance with caching
+ */
+function getModel(modelName: string = DEFAULT_MODEL, config?: GenerationConfig): GenerativeModel {
+  const cacheKey = `${modelName}-${JSON.stringify(config || {})}`;
+  
+  if (!modelCache[cacheKey]) {
+    modelCache[cacheKey] = genAI.getGenerativeModel({ 
+      model: modelName,
+      generationConfig: config,
+    });
+  }
+  
+  return modelCache[cacheKey];
 }
 
 /**
- * Call the Gemini API with the provided messages
+ * Format messages for chat history
  */
-async function callGeminiAPI(options: GeminiRequestOptions): Promise<GeminiResponse> {
-  // Default options
-  const defaultOptions = {
-    model: DEFAULT_MODEL,
-    temperature: 0.7,
-    topP: 0.95,
-    topK: 40,
-    maxOutputTokens: 8192,
-    candidateCount: 1,
-  };
+interface Message {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
 
-  // Merge with provided options
-  const requestOptions = {
-    ...defaultOptions,
-    ...options
-  };
-
-  // Log the call
-  console.log(`Calling Gemini API with model: ${requestOptions.model}`);
-
-  try {
-    // Make the API request
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${requestOptions.model}:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: requestOptions.messages,
-        generationConfig: {
-          temperature: requestOptions.temperature,
-          topP: requestOptions.topP,
-          topK: requestOptions.topK,
-          maxOutputTokens: requestOptions.maxOutputTokens,
-          candidateCount: requestOptions.candidateCount,
-        },
-        safetySettings: requestOptions.safetySettings || [],
-      }),
-    });
-
-    // Check for errors
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Gemini API error: ${response.status} ${response.statusText} - ${errorText}`);
+/**
+ * Convert messages to the Gemini chat format
+ */
+function prepareMessages(messages: Message[]) {
+  // Create a chat history
+  const history: { role: 'user' | 'model', parts: [{text: string}] }[] = [];
+  let systemMessage = '';
+  
+  // Extract system message and format chat history
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
+    
+    if (message.role === 'system') {
+      systemMessage = message.content;
+    } else if (message.role === 'user') {
+      // If there's a system message and this is the first user message, combine them
+      if (systemMessage && history.length === 0) {
+        history.push({
+          role: 'user',
+          parts: [{ text: `${systemMessage}\n\n${message.content}` }]
+        });
+        systemMessage = ''; // Clear system message after using it
+      } else {
+        history.push({
+          role: 'user',
+          parts: [{ text: message.content }]
+        });
+      }
+    } else if (message.role === 'assistant') {
+      history.push({
+        role: 'model',
+        parts: [{ text: message.content }]
+      });
     }
+  }
+  
+  return history;
+}
 
-    // Parse the response
-    const data = await response.json();
-    return data as GeminiResponse;
+/**
+ * Generate a chat response based on conversation history
+ */
+export async function generateChatResponse(messages: Message[]): Promise<string> {
+  try {
+    console.log('Generating chat response with Gemini');
+    
+    // Format messages for Gemini
+    const history = prepareMessages(messages);
+    
+    // Get the model with a moderate temperature
+    const model = getModel(DEFAULT_MODEL, {
+      temperature: 0.7,
+      topK: 40,
+      topP: 0.95,
+      maxOutputTokens: 8192,
+    });
+    
+    // Create a chat instance and send message
+    const chat = model.startChat({
+      history: history.slice(0, -1), // All messages except the last one
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 8192,
+      },
+    });
+    
+    // Get the last message (user's query)
+    const lastMessage = history[history.length - 1];
+    
+    // Generate the response
+    const result = await chat.sendMessage(lastMessage.parts[0].text);
+    const response = result.response.text();
+    
+    return response;
   } catch (error: any) {
-    console.error('Gemini API call failed:', error);
-    throw new Error(`Failed to call Gemini API: ${error?.message || 'Unknown error'}`);
+    console.error('Error in Gemini chat response:', error);
+    throw new Error(`Failed to generate chat response: ${error?.message || 'Unknown error'}`);
   }
 }
 
 /**
- * Convert system + user message format to Gemini format
+ * Generate text completion with a system prompt and user text
  */
-function convertToGeminiFormat(systemPrompt: string, userPrompt: string): Message[] {
-  return [
-    {
-      role: 'user',
-      parts: [
-        {
-          text: `${systemPrompt}\n\n${userPrompt}`
-        }
-      ]
-    }
-  ];
+async function generateCompletion(systemPrompt: string, userText: string, temperature = 0.7): Promise<string> {
+  try {
+    // Get the model with specified temperature
+    const model = getModel(DEFAULT_MODEL, {
+      temperature,
+      topK: 40,
+      topP: 0.95,
+      maxOutputTokens: 8192,
+    });
+    
+    // Combine system prompt and user text
+    const prompt = `${systemPrompt}\n\n${userText}`;
+    
+    // Generate content
+    const result = await model.generateContent(prompt);
+    const response = result.response.text();
+    
+    return response;
+  } catch (error: any) {
+    console.error('Error in Gemini completion:', error);
+    throw new Error(`Failed to generate completion: ${error?.message || 'Unknown error'}`);
+  }
 }
 
 /**
- * Generate a response for grammar checking
+ * Generate grammar check for text
  */
 export async function generateGrammarCheck(text: string) {
   const systemPrompt = `You are an expert grammar and writing assistant. 
@@ -167,17 +204,13 @@ METRICS SCORING GUIDELINES:
 - NEVER return scores of 0 for any category - minimum value should be 20
 - For capitalization errors like lowercase 'i' that should be uppercase 'I', reduce correctness by 20 points
 - Subject-verb agreement errors like "I is" instead of "I am" should reduce correctness by 30 points
-- Spelling errors should reduce correctness by 10-15 points each
-
-Be precise with error positions in the text.
-Include corrected full text in the response to reflect all applied fixes.`;
+- Spelling errors should reduce correctness by 10-15 points each`;
 
   try {
     // Find common grammar errors before API call
     const lowercaseIPattern = /(\s|^)i(\s|$|\.|,|;|:|\?|!)/g;
     const subjectVerbAgreementPattern = /(\s|^)I\s+is(\s|$|\.|,|;|:|\?|!)/g;
     
-    let modifiedText = text;
     let localErrors = [];
     
     // Check for lowercase "i" as a standalone pronoun and add it as an error
@@ -218,24 +251,14 @@ Include corrected full text in the response to reflect all applied fixes.`;
       });
     }
 
-    const messages = convertToGeminiFormat(systemPrompt, text);
-    const response = await callGeminiAPI({
-      messages,
-      temperature: 0.2, // Lower temperature for more accurate, consistent corrections
-    });
-
-    // Get raw content from the API response
-    const content = response.candidates[0]?.content.parts[0]?.text;
-    
-    if (!content) {
-      throw new Error("Empty response from Gemini API");
-    }
+    // Get response from Gemini
+    const response = await generateCompletion(systemPrompt, text, 0.2);
     
     try {
-      // Try to parse as JSON directly first
-      const parsedResponse = JSON.parse(content);
+      // Try to parse as JSON
+      const parsedResponse = JSON.parse(response);
       
-      // Merge local errors with API errors
+      // Merge local errors with API errors if successful
       if (parsedResponse && parsedResponse.errors && parsedResponse.suggestions && parsedResponse.metrics) {
         const allErrors = [...localErrors, ...parsedResponse.errors];
         
@@ -252,10 +275,10 @@ Include corrected full text in the response to reflect all applied fixes.`;
       
       return parsedResponse;
     } catch (jsonError) {
-      console.warn("JSON parsing failed, attempting to extract JSON from text");
+      console.warn("JSON parsing failed for grammar check, attempting to extract JSON from text");
       
       // Try to find the JSON object in the text (between curly braces)
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
           const extractedJson = JSON.parse(jsonMatch[0]);
@@ -271,31 +294,31 @@ Include corrected full text in the response to reflect all applied fixes.`;
           
           return extractedJson;
         } catch (extractError) {
-          console.error("Failed to extract valid JSON:", extractError);
+          console.error("Failed to extract valid JSON for grammar check:", extractError);
         }
       }
+      
+      // Generate fallback response based on local errors
+      const errorCount = localErrors.length;
+      const fallbackMetrics = {
+        correctness: errorCount > 0 ? Math.max(20, 100 - (errorCount * 20)) : 100,
+        clarity: errorCount > 0 ? Math.max(30, 90 - (errorCount * 15)) : 90,
+        engagement: errorCount > 0 ? Math.max(40, 85 - (errorCount * 10)) : 85,
+        delivery: errorCount > 0 ? Math.max(35, 90 - (errorCount * 15)) : 90
+      };
+      
+      return {
+        errors: localErrors,
+        suggestions: localErrors.map(error => ({
+          id: `sugg-${error.id}`,
+          type: error.type,
+          originalText: error.errorText,
+          suggestedText: error.replacementText,
+          description: error.description
+        })),
+        metrics: fallbackMetrics
+      };
     }
-    
-    // Generate metrics based on error count - more errors means lower scores
-    const errorCount = localErrors.length;
-    const fallbackMetrics = {
-      correctness: errorCount > 0 ? Math.max(20, 100 - (errorCount * 20)) : 100,
-      clarity: errorCount > 0 ? Math.max(30, 90 - (errorCount * 15)) : 90,
-      engagement: errorCount > 0 ? Math.max(40, 85 - (errorCount * 10)) : 85,
-      delivery: errorCount > 0 ? Math.max(35, 90 - (errorCount * 15)) : 90
-    };
-    
-    return {
-      errors: localErrors,
-      suggestions: localErrors.map(error => ({
-        id: `sugg-${error.id}`,
-        type: error.type,
-        originalText: error.errorText,
-        suggestedText: error.replacementText,
-        description: error.description
-      })),
-      metrics: fallbackMetrics
-    };
   } catch (error: any) {
     console.error('Error in grammar check:', error);
     throw new Error(`Failed to check grammar: ${error?.message || 'Unknown error'}`);
@@ -303,7 +326,7 @@ Include corrected full text in the response to reflect all applied fixes.`;
 }
 
 /**
- * Generate a paraphrased version of the text
+ * Generate paraphrased text
  */
 export async function generateParaphrase(text: string, style: string = 'standard', customTone?: string) {
   const styleDescriptions: Record<string, string> = {
@@ -356,28 +379,18 @@ METRICS SCORING GUIDELINES:
     if (style === 'formal') temperature = 0.6;
     if (style === 'custom') temperature = 0.9; // Most creative for custom
     
-    const messages = convertToGeminiFormat(systemPrompt, text);
-    const response = await callGeminiAPI({
-      messages,
-      temperature, // Adjusted temperature based on style
-    });
-
-    // Get raw content from the API response
-    const content = response.candidates[0]?.content.parts[0]?.text;
-    
-    if (!content) {
-      throw new Error("Empty response from Gemini API");
-    }
+    // Get response from Gemini
+    const response = await generateCompletion(systemPrompt, text, temperature);
     
     try {
-      // Try to parse as JSON directly first
-      const parsedResponse = JSON.parse(content);
+      // Try to parse as JSON
+      const parsedResponse = JSON.parse(response);
       return parsedResponse;
     } catch (jsonError) {
       console.warn("JSON parsing failed for paraphrase, attempting to extract JSON from text");
       
       // Try to find the JSON object in the text (between curly braces)
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
           const extractedJson = JSON.parse(jsonMatch[0]);
@@ -388,7 +401,7 @@ METRICS SCORING GUIDELINES:
       }
       
       // Try to extract just the text between the "paraphrased" property quotes
-      const paraphrasedMatch = content.match(/"paraphrased"\s*:\s*"([\s\S]*?)(?<!\\)"/);
+      const paraphrasedMatch = response.match(/"paraphrased"\s*:\s*"([\s\S]*?)(?<!\\)"/);
       if (paraphrasedMatch && paraphrasedMatch[1]) {
         // We found the text inside the paraphrased property
         return {
@@ -402,11 +415,9 @@ METRICS SCORING GUIDELINES:
         };
       }
       
-      // If we couldn't extract the paraphrased text, use the raw content but limit to just text
-      // Strip any JSON-looking formatting to get just plain text
-      const cleanedText = content.replace(/^\s*\{[\s\S]*"paraphrased"\s*:\s*"|"\s*,\s*"metrics[\s\S]*$/g, '');
+      // If we couldn't extract the paraphrased text, use the raw content
       return {
-        paraphrased: cleanedText,
+        paraphrased: response,
         metrics: {
           correctness: 50,
           clarity: 50,
@@ -422,7 +433,7 @@ METRICS SCORING GUIDELINES:
 }
 
 /**
- * Generate a humanized version of AI-generated text
+ * Generate humanized version of AI-generated text
  */
 export async function generateHumanized(text: string, style: string = 'standard', customTone?: string) {
   const styleDescriptions: Record<string, string> = {
@@ -475,28 +486,18 @@ METRICS SCORING GUIDELINES:
     if (style === 'formal') temperature = 0.6;
     if (style === 'custom') temperature = 0.9; // Most creative for custom
     
-    const messages = convertToGeminiFormat(systemPrompt, text);
-    const response = await callGeminiAPI({
-      messages,
-      temperature, // Adjusted temperature based on style
-    });
-
-    // Get raw content from the API response
-    const content = response.candidates[0]?.content.parts[0]?.text;
-    
-    if (!content) {
-      throw new Error("Empty response from Gemini API");
-    }
+    // Get response from Gemini
+    const response = await generateCompletion(systemPrompt, text, temperature);
     
     try {
-      // Try to parse as JSON directly first
-      const parsedResponse = JSON.parse(content);
+      // Try to parse as JSON
+      const parsedResponse = JSON.parse(response);
       return parsedResponse;
     } catch (jsonError) {
       console.warn("JSON parsing failed for humanize, attempting to extract JSON from text");
       
       // Try to find the JSON object in the text (between curly braces)
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
           const extractedJson = JSON.parse(jsonMatch[0]);
@@ -507,7 +508,7 @@ METRICS SCORING GUIDELINES:
       }
       
       // Try to extract just the text between the "humanized" property quotes
-      const humanizedMatch = content.match(/"humanized"\s*:\s*"([\s\S]*?)(?<!\\)"/);
+      const humanizedMatch = response.match(/"humanized"\s*:\s*"([\s\S]*?)(?<!\\)"/);
       if (humanizedMatch && humanizedMatch[1]) {
         // We found the text inside the humanized property
         return {
@@ -521,11 +522,9 @@ METRICS SCORING GUIDELINES:
         };
       }
       
-      // If we couldn't extract the humanized text, use the raw content but limit to just text
-      // Strip any JSON-looking formatting to get just plain text
-      const cleanedText = content.replace(/^\s*\{[\s\S]*"humanized"\s*:\s*"|"\s*,\s*"metrics[\s\S]*$/g, '');
+      // If we couldn't extract the humanized text, use the raw content
       return {
-        humanized: cleanedText,
+        humanized: response,
         metrics: {
           correctness: 50,
           clarity: 50,
@@ -541,7 +540,7 @@ METRICS SCORING GUIDELINES:
 }
 
 /**
- * Analyze text to determine if it was written by AI
+ * Detect if text was written by AI
  */
 export async function detectAiContent(text: string) {
   const systemPrompt = `You are an expert AI content detector. Analyze the provided text and determine if it was likely written by an AI model or a human.
@@ -580,28 +579,18 @@ Include at least 2-3 highlights for texts longer than 100 words if you detect AI
 Metrics should reflect the overall quality regardless of whether it's AI or human-written.`;
 
   try {
-    const messages = convertToGeminiFormat(systemPrompt, text);
-    const response = await callGeminiAPI({
-      messages,
-      temperature: 0.1, // Low temperature for more consistent detection
-    });
-
-    // Get raw content from the API response
-    const content = response.candidates[0]?.content.parts[0]?.text;
-    
-    if (!content) {
-      throw new Error("Empty response from Gemini API");
-    }
+    // Get response from Gemini with low temperature for consistent analysis
+    const response = await generateCompletion(systemPrompt, text, 0.1);
     
     try {
-      // Try to parse as JSON directly first
-      const parsedResponse = JSON.parse(content);
+      // Try to parse as JSON
+      const parsedResponse = JSON.parse(response);
       return parsedResponse;
     } catch (jsonError) {
       console.warn("JSON parsing failed for AI detection, attempting to extract JSON from text");
       
       // Try to find the JSON object in the text (between curly braces)
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
           const extractedJson = JSON.parse(jsonMatch[0]);
@@ -611,8 +600,8 @@ Metrics should reflect the overall quality regardless of whether it's AI or huma
         }
       }
       
-      // Extract the AI percentage using regex
-      const percentMatch = content.match(/(\d+)%|"aiPercentage"\s*:\s*(\d+)/);
+      // Extract the AI percentage using regex if JSON parsing fails
+      const percentMatch = response.match(/(\d+)%|"aiPercentage"\s*:\s*(\d+)/);
       const aiPercentage = percentMatch 
         ? parseInt(percentMatch[1] || percentMatch[2], 10) 
         : 50; // Default to 50% if we can't determine
@@ -658,18 +647,8 @@ Focus on creating original, well-structured text that fulfills all the requested
 Provide your response as plaintext content, with no preamble or explanations, just the generated writing.`;
 
   try {
-    const messages = convertToGeminiFormat(systemPrompt, prompt);
-    const response = await callGeminiAPI({
-      messages,
-      temperature: 0.7,
-    });
-
-    // Get raw content from the API response
-    const generatedText = response.candidates[0]?.content.parts[0]?.text;
-    
-    if (!generatedText) {
-      throw new Error("Empty response from Gemini API");
-    }
+    // Get response from Gemini
+    const generatedText = await generateCompletion(systemPrompt, prompt, 0.7);
     
     return { generatedText };
   } catch (error: any) {
@@ -677,62 +656,3 @@ Provide your response as plaintext content, with no preamble or explanations, ju
     throw new Error(`Failed to generate content: ${error?.message || 'Unknown error'}`);
   }
 }
-
-/**
- * Generate a chat response based on conversation history
- */
-export async function generateChatResponse(messages: any[]): Promise<string> {
-  try {
-    // Convert from Perplexity-style messages to Gemini format
-    const geminiMessages: Message[] = messages.map(msg => ({
-      role: msg.role === 'assistant' ? 'model' : msg.role,
-      parts: [{ text: msg.content }]
-    }));
-    
-    // Ensure the roles alternate correctly for Gemini
-    // This conversion is more complex because Gemini doesn't support system messages directly
-    const processedMessages = geminiMessages.reduce((acc: Message[], msg, index) => {
-      // If it's a system message and there's a user message next, merge them
-      if (msg.role === 'system' && index < geminiMessages.length - 1 && geminiMessages[index + 1].role === 'user') {
-        const systemInstruction = msg.parts[0].text;
-        const userMessage = geminiMessages[index + 1].parts[0].text;
-        
-        acc.push({
-          role: 'user',
-          parts: [{ text: `${systemInstruction}\n\n${userMessage}` }]
-        });
-        
-        // Skip the next message since we merged it
-        geminiMessages[index + 1] = { role: 'processed', parts: [] } as any;
-      } 
-      // Add any non-system messages that haven't been processed yet
-      else if (msg.role !== 'system' && msg.role !== 'processed') {
-        acc.push(msg);
-      }
-      
-      return acc;
-    }, []);
-    
-    console.log('Sending messages to Gemini:', JSON.stringify(processedMessages));
-    
-    const response = await callGeminiAPI({
-      messages: processedMessages,
-      temperature: 0.7,
-    });
-
-    // Get raw content from the API response
-    const content = response.candidates[0]?.content.parts[0]?.text;
-    
-    if (!content) {
-      throw new Error("Empty response from Gemini API");
-    }
-    
-    return content;
-  } catch (error: any) {
-    console.error('Error in chat response:', error);
-    throw new Error(`Failed to generate chat response: ${error?.message || 'Unknown error'}`);
-  }
-}
-
-// Export function that checks if we have credentials
-export const hasGeminiCredentials = !!GEMINI_API_KEY;
