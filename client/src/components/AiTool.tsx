@@ -1,9 +1,9 @@
 import { Mode } from '@/hooks/useAiTool';
 import { ChatInterface } from './ChatInterface';
-import { default as GrammarChecker } from './tools/GrammarChecker';
-import { default as Paraphraser } from './tools/Paraphraser';
-import { default as Humanizer } from './tools/Humanizer';
-import { default as AIChecker } from './AIChecker';
+import { GrammarChecker } from './GrammarChecker';
+import { ParaphraseComponent } from './ParaphraseComponent';
+import { HumanizerComponent } from './HumanizerComponent';
+import { AICheckComponent } from './AICheckComponent';
 
 interface AiToolProps {
   mode: Mode;
@@ -19,11 +19,11 @@ export function AiTool({ mode, defaultText = '', chatId = null }: AiToolProps) {
     case 'grammar':
       return <GrammarChecker />;
     case 'paraphrase':
-      return <Paraphraser />;
+      return <ParaphraseComponent />;
     case 'humanize':
-      return <Humanizer />;
+      return <HumanizerComponent />;
     case 'aicheck':
-      return <AIChecker />;
+      return <AICheckComponent defaultText={defaultText} />;
     default:
       return <div>Unknown mode: {mode}</div>;
   }

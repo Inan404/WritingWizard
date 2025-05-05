@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 
-export type WritingTool = "chat" | "grammar" | "paraphrase" | "aicheck" | "humanizer";
+export type WritingTool = "chat" | "grammar" | "paraphrase" | "ai-check" | "humanizer";
 
 export type WritingStyle = "standard" | "fluency" | "formal" | "academic" | "custom";
 
