@@ -332,3 +332,28 @@ export const generateChatResponse = hasGeminiCredentials
     }
   }
   : () => 'This is a mock chat response. The API key is not available.';
+
+/**
+ * Streaming chat response generation
+ * Uses Gemini API for streaming conversational responses
+ */
+export const generateChatResponseWithStreaming = hasGeminiCredentials
+  ? async (messages: any[], onChunk: (text: string) => void) => {
+    try {
+      console.log('Sending sanitized messages to Gemini with streaming');
+      // Import here to avoid circular dependencies
+      const { generateChatResponseWithStreaming } = await import('./geminiService');
+      const response = await generateChatResponseWithStreaming(messages, onChunk);
+      return response;
+    } catch (error: any) {
+      console.error('Error in streaming chat response:', error);
+      const errorMessage = 'I apologize, but I encountered an error while processing your request. Please try again.';
+      onChunk(errorMessage);
+      return errorMessage;
+    }
+  }
+  : (messages: any[], onChunk: (text: string) => void) => {
+    const mockResponse = 'This is a mock chat response. The API key is not available.';
+    onChunk(mockResponse);
+    return mockResponse;
+  };

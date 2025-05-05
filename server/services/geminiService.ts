@@ -385,7 +385,7 @@ export async function generateChatResponseWithStreaming(
     const sanitizedMessages = sanitizeMessages(messages);
     let userRequest = '';
     if (sanitizedMessages.length > 0) {
-      userRequest = sanitizedMessages[sanitizedMessages.length - 1].parts[0].text;
+      userRequest = sanitizedMessages[sanitizedMessages.length - 1].parts?.[0]?.text || '';
     }
     
     // If messages are empty after sanitation, send a fallback
@@ -419,13 +419,8 @@ export async function generateChatResponseWithStreaming(
         },
       });
       
-      const fullUserMessage = {
-        role: 'user',
-        parts: [{ text: userRequest }],
-      };
-      
       // Generate streaming response
-      const result = await chat.sendMessageStream(fullUserMessage);
+      const result = await chat.sendMessageStream(userRequest);
       
       // Process the stream
       let fullResponse = '';
