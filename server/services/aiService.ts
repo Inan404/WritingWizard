@@ -1,190 +1,334 @@
 /**
  * AI Service that integrates with language models
- * Uses Perplexity API (with Llama 4 model) for powerful AI capabilities
+ * Uses Google's Gemini API for powerful AI capabilities
  * Uses ZeroGPT API for AI content detection
  */
 
-import {
-  generateGrammarCheck as perplexityGrammarCheck,
-  generateParaphrase as perplexityParaphrase,
-  generateHumanized as perplexityHumanize,
-  generateChatResponse as perplexityChatResponse,
-  hasPerplexityCredentials
-} from './perplexityService';
+import { 
+  generateGrammarCheck as geminiGrammarCheck,
+  generateParaphrase as geminiParaphrase,
+  generateHumanized as geminiHumanize,
+  generateWriting as geminiWriting,
+  generateChatResponse as geminiChatResponse,
+  detectAiContent as geminiDetectAi,
+  hasGeminiCredentials
+} from './geminiService';
 
-import {
-  detectAiContent,
-  hasZeroGptCredentials
-} from './zeroGptService';
+// Environment variables
+const ZEROGPT_API_KEY = process.env.ZEROGPT_API_KEY;
+const hasZeroGptCredentials = !!ZEROGPT_API_KEY;
 
-// Function to create mock AI response when no API key is available
+/**
+ * Create mock responses for development when API keys are not available
+ */
 function createMockResponse(message: string) {
+  console.warn(`Using mock AI response: ${message}`);
   return {
-    error: "API key not available",
-    message: message
+    corrected: 'This is a mock corrected text. The API key is not available.',
+    highlights: [],
+    suggestions: [],
+    metrics: {
+      correctness: 70,
+      clarity: 75,
+      engagement: 80,
+      delivery: 78
+    }
   };
 }
 
-// Grammar check handler - uses Perplexity API if available
-export const generateGrammarCheck = hasPerplexityCredentials
-  ? perplexityGrammarCheck
-  : async () => createMockResponse("Grammar check requires Perplexity API key");
+/**
+ * Grammar checking service
+ * Uses Gemini API to check grammar and improve text
+ */
+export const generateGrammarCheck = hasGeminiCredentials
+  ? async (text: string) => {
+    const result = await geminiGrammarCheck(text);
+    
+    // Convert to expected interface format for the frontend
+    return {
+      corrected: text, // Original text, corrections are applied client-side
+      highlights: result.errors.map(error => ({
+        type: error.type,
+        start: error.position.start,
+        end: error.position.end,
+        suggestion: error.replacementText,
+        message: error.description
+      })),
+      suggestions: result.suggestions.map(suggestion => ({
+        id: suggestion.id,
+        type: suggestion.type,
+        text: suggestion.originalText,
+        replacement: suggestion.suggestedText,
+        description: suggestion.description
+      })),
+      metrics: result.metrics
+    };
+  }
+  : () => createMockResponse('Grammar check API is not available');
 
-// Paraphrase handler - uses Perplexity API if available
-export const generateParaphrase = hasPerplexityCredentials
-  ? perplexityParaphrase
-  : async () => createMockResponse("Paraphrasing requires Perplexity API key");
+/**
+ * Paraphrasing service
+ * Uses Gemini API to rewrite text while preserving meaning
+ */
+export const generateParaphrase = hasGeminiCredentials
+  ? async (text: string, style: string = 'standard', customTone?: string) => {
+    const result = await geminiParaphrase(text, style, customTone);
+    
+    return {
+      paraphrased: result.paraphrased,
+      metrics: result.metrics
+    };
+  }
+  : () => ({ 
+    paraphrased: 'This is a mock paraphrased text. The API key is not available.',
+    metrics: {
+      correctness: 70,
+      clarity: 75,
+      engagement: 80,
+      delivery: 78
+    }
+  });
 
-// Humanize handler - uses Perplexity API if available
-export const generateHumanized = hasPerplexityCredentials
-  ? perplexityHumanize
-  : async () => createMockResponse("Humanizing requires Perplexity API key");
+/**
+ * Humanizing service
+ * Uses Gemini API to make AI text sound more human
+ */
+export const generateHumanized = hasGeminiCredentials
+  ? async (text: string, style: string = 'standard', customTone?: string) => {
+    const result = await geminiHumanize(text, style, customTone);
+    
+    return {
+      humanized: result.humanized,
+      metrics: result.metrics
+    };
+  }
+  : () => ({ 
+    humanized: 'This is a mock humanized text. The API key is not available.',
+    metrics: {
+      correctness: 70,
+      clarity: 75,
+      engagement: 80,
+      delivery: 78
+    }
+  });
 
-// Create mock AI check response for development
+/**
+ * Mock AI check response for development
+ */
 function createMockAICheckResponse(text: string) {
+  console.warn('Using mock AI check response');
+  const aiPercentage = Math.floor(Math.random() * 100);
+  
   return {
-    aiPercentage: 35, // Mock AI percentage
+    aiAnalyzed: text,
+    aiPercentage,
     highlights: [
       {
-        id: 'mock-highlight-1',
-        position: {
-          start: 0,
-          end: Math.min(50, text.length)
-        }
+        id: 'mock-1',
+        type: 'ai',
+        start: 0,
+        end: Math.min(text.length, 20),
+        message: 'This section has patterns typical of AI writing.'
       }
     ],
-    suggestions: [],
+    suggestions: [
+      {
+        id: 'mock-sugg-1',
+        type: 'ai',
+        text: text.substring(0, Math.min(text.length, 20)),
+        replacement: 'Try rewriting this part to sound more human.',
+        description: 'This text has characteristics of AI-generated content.'
+      }
+    ],
     metrics: {
-      correctness: 65,
+      correctness: 75,
       clarity: 70,
-      engagement: 75,
+      engagement: 65,
       delivery: 70
     }
   };
 }
 
-// AI check handler - Uses ZeroGPT API if available, falls back to Perplexity
+/**
+ * AI Content Detection
+ * Uses ZeroGPT API with fallback to Gemini
+ */
 export const checkAIContent = async (text: string) => {
-  if (hasZeroGptCredentials) {
-    try {
+  try {
+    if (hasZeroGptCredentials) {
+      // Try ZeroGPT API first
       console.log('Using ZeroGPT API for AI detection');
-      return await detectAiContent(text);
-    } catch (error) {
-      console.error('ZeroGPT API error:', error);
-      // If ZeroGPT fails, fall back to mock response for now
-      if (!hasPerplexityCredentials) {
-        console.warn('Falling back to mock AI check response');
+      
+      const response = await fetch('https://api.zerogpt.com/api/detect/detect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${ZEROGPT_API_KEY}`
+        },
+        body: JSON.stringify({
+          input_text: text
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`ZeroGPT API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('ZeroGPT response:', data);
+      
+      if (data && typeof data.ai_probability === 'number') {
+        // Convert ZeroGPT response to our format
+        const aiPercentage = Math.round(data.ai_probability * 100);
+        
+        // ZeroGPT doesn't provide detailed highlights, so we'll create some based on the score
+        const highlights = [];
+        const suggestions = [];
+        
+        if (aiPercentage > 50) {
+          // Only add highlights if the AI probability is significant
+          const sentenceBreak = /[.!?]+\s+/g;
+          const sentences = text.split(sentenceBreak);
+          
+          let startPos = 0;
+          for (let i = 0; i < Math.min(3, sentences.length); i++) {
+            const sentenceLength = sentences[i].length + 2; // +2 for the punctuation and space
+            
+            highlights.push({
+              id: `aigpt-${i}`,
+              type: 'ai',
+              start: startPos,
+              end: startPos + sentenceLength,
+              message: 'This sentence has characteristics of AI-generated text.'
+            });
+            
+            suggestions.push({
+              id: `sugg-aigpt-${i}`,
+              type: 'ai',
+              text: sentences[i],
+              replacement: 'Consider rewriting this sentence to sound more human.',
+              description: 'This text has patterns typical of AI writing.'
+            });
+            
+            startPos += sentenceLength;
+          }
+        }
+        
+        return {
+          aiAnalyzed: text,
+          aiPercentage,
+          highlights,
+          suggestions,
+          metrics: {
+            correctness: 75,
+            clarity: 75,
+            engagement: 75,
+            delivery: 75
+          }
+        };
+      }
+    }
+    
+    // Fall back to Gemini if ZeroGPT fails or is not available
+    if (hasGeminiCredentials) {
+      console.log('Using Gemini for AI detection (fallback)');
+      const result = await geminiDetectAi(text);
+      
+      return {
+        aiAnalyzed: text,
+        aiPercentage: result.aiPercentage,
+        highlights: result.highlights.map(highlight => ({
+          id: highlight.id,
+          type: 'ai',
+          start: highlight.position?.start || 0,
+          end: highlight.position?.end || 0,
+          message: highlight.message
+        })),
+        suggestions: result.highlights.map((highlight, index) => ({
+          id: `sugg-${highlight.id || index}`,
+          type: 'ai',
+          text: text.substring(highlight.position?.start || 0, highlight.position?.end || text.length),
+          replacement: 'Consider rewriting this section to sound more human.',
+          description: highlight.message || 'This text has patterns typical of AI writing.'
+        })),
+        metrics: result.metrics
+      };
+    }
+    
+    // If no API is available, return a mock response
+    return createMockAICheckResponse(text);
+  } catch (error: any) {
+    console.error('Error in AI content detection:', error);
+    
+    // If Gemini is available, try it as a backup
+    if (hasGeminiCredentials) {
+      try {
+        console.log('Using Gemini for AI detection (after error)');
+        const result = await geminiDetectAi(text);
+        
+        return {
+          aiAnalyzed: text,
+          aiPercentage: result.aiPercentage,
+          highlights: result.highlights.map(highlight => ({
+            id: highlight.id,
+            type: 'ai',
+            start: highlight.position?.start || 0,
+            end: highlight.position?.end || 0,
+            message: highlight.message
+          })),
+          suggestions: result.highlights.map((highlight, index) => ({
+            id: `sugg-${highlight.id || index}`,
+            type: 'ai',
+            text: text.substring(highlight.position?.start || 0, highlight.position?.end || text.length),
+            replacement: 'Consider rewriting this section to sound more human.',
+            description: highlight.message || 'This text has patterns typical of AI writing.'
+          })),
+          metrics: result.metrics
+        };
+      } catch {
+        // If all else fails, return a mock response
         return createMockAICheckResponse(text);
       }
     }
-  } else if (!hasPerplexityCredentials) {
-    console.warn('No AI detection APIs available, using mock response');
-    return createMockAICheckResponse(text);
-  }
-  
-  // If ZeroGPT is not available or failed, use Perplexity as fallback
-  try {
-    console.log('Using Perplexity API for AI detection fallback');
-    // Structured prompt for AI detection
-    const prompt = `
-Analyze this text and determine if it was written by AI or a human.
-Provide your analysis as a percentage (0-100) where 100% means definitely AI-generated.
-Respond ONLY with this percentage without any explanation.
-
-Text to analyze:
-"${text}"
-    `;
     
-    const response = await perplexityChatResponse([
-      {
-        role: 'system',
-        content: 'You are an AI content detector. Analyze text and determine the probability it was written by AI. Respond ONLY with a percentage (0-100).'
-      },
-      {
-        role: 'user',
-        content: prompt
-      }
-    ]);
-    
-    // Extract percentage from response
-    const percentMatch = response.match(/(\d+)/);
-    const aiPercentage = percentMatch ? Math.min(100, Math.max(0, parseInt(percentMatch[1], 10))) : 50;
-    
-    // Generate basic highlights
-    const highlights = [];
-    if (aiPercentage > 30) {
-      const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-      const numHighlights = Math.min(3, sentences.length);
-      
-      for (let i = 0; i < numHighlights; i++) {
-        const sentenceIndex = Math.floor(i * sentences.length / numHighlights);
-        const sentence = sentences[sentenceIndex];
-        const start = text.indexOf(sentence);
-        
-        if (start >= 0) {
-          highlights.push({
-            id: `highlight-${i}`,
-            position: {
-              start,
-              end: start + sentence.length
-            }
-          });
-        }
-      }
-    }
-    
-    return {
-      aiPercentage,
-      highlights,
-      suggestions: [],
-      metrics: {
-        correctness: Math.max(50, 100 - aiPercentage),
-        clarity: 70,
-        engagement: 70,
-        delivery: 70
-      }
-    };
-  } catch (error) {
-    console.error('Perplexity API error for AI detection:', error);
+    // If no API is available, return a mock response
     return createMockAICheckResponse(text);
   }
 };
 
-// Generate writing handler - uses Perplexity API if available
-export const generateWriting = hasPerplexityCredentials
+/**
+ * Content generation
+ * Uses Gemini API to generate writing
+ */
+export const generateWriting = hasGeminiCredentials
   ? async (params: {
-      originalSample: string;
-      referenceUrl?: string;
-      topic: string;
-      length?: string;
-      style?: string;
-      additionalInstructions?: string;
-    }) => {
-      // Create a detailed prompt for the language model
-      const prompt = `Please write content on the following topic: ${params.topic}
-${params.originalSample ? `Here's a sample for reference: ${params.originalSample}` : ''}
-${params.referenceUrl ? `Reference URL for information: ${params.referenceUrl}` : ''}
-${params.length ? `Length: ${params.length}` : 'Length: Medium (300-500 words)'}
-${params.style ? `Style: ${params.style}` : 'Style: Informative and engaging'}
-${params.additionalInstructions ? `Additional instructions: ${params.additionalInstructions}` : ''}`;
+    originalSample: string;
+    referenceUrl?: string;
+    topic: string;
+    length?: string;
+    style?: string;
+    additionalInstructions?: string;
+  }) => {
+    const result = await geminiWriting(params);
+    return result;
+  }
+  : () => ({ 
+    generatedText: 'This is mock generated text. The API key is not available.'
+  });
 
-      // Use the chat response function with our detailed prompt
-      const generatedText = await perplexityChatResponse([
-        {
-          role: 'system',
-          content: 'You are an expert content writer. Write high-quality, engaging content based on the user\'s requirements.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ]);
-
-      return { generatedText };
+/**
+ * Chat response generation
+ * Uses Gemini API for conversational responses
+ */
+export const generateChatResponse = hasGeminiCredentials
+  ? async (messages: any[]) => {
+    try {
+      console.log('Sending sanitized messages to Gemini:', JSON.stringify(messages));
+      const response = await geminiChatResponse(messages);
+      return response;
+    } catch (error: any) {
+      console.error('Error in chat response:', error);
+      return 'I apologize, but I encountered an error while processing your request. Please try again.';
     }
-  : async () => ({ generatedText: "Content generation requires Perplexity API key" });
-
-// Chat response handler - uses Perplexity API if available
-export const generateChatResponse = hasPerplexityCredentials
-  ? perplexityChatResponse
-  : async () => "Chat functionality requires Perplexity API key. Please add the API key to your environment variables.";
+  }
+  : () => 'This is a mock chat response. The API key is not available.';

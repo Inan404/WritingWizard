@@ -59,9 +59,9 @@ export async function processAi(req: Request, res: Response) {
         } catch (languageToolError) {
           console.error("LanguageTool grammar check error:", languageToolError);
           
-          // Fallback to Perplexity AI if LanguageTool fails
+          // Fallback to Gemini AI if LanguageTool fails
           try {
-            console.log("Falling back to Perplexity API for grammar check");
+            console.log("Falling back to Gemini API for grammar check");
             const grammarResult = await generateGrammarCheck(text);
             return res.json(grammarResult);
           } catch (grammarError) {
@@ -91,8 +91,8 @@ export async function processAi(req: Request, res: Response) {
           // Ensure we're returning data in a consistent format
           // Make sure paraphrased text is available in both formats for backward compatibility
           const response = {
-            paraphrased: paraphraseResult.paraphrasedText || paraphraseResult.paraphrased,
-            paraphrasedText: paraphraseResult.paraphrasedText || paraphraseResult.paraphrased,
+            paraphrased: paraphraseResult.paraphrased,
+            paraphrasedText: paraphraseResult.paraphrased, // For backward compatibility
             metrics: paraphraseResult.metrics
           };
           
@@ -123,8 +123,8 @@ export async function processAi(req: Request, res: Response) {
           // Ensure we're returning data in a consistent format
           // Make sure humanized text is available in both formats for backward compatibility
           const response = {
-            humanized: humanizeResult.humanizedText || humanizeResult.humanized,
-            humanizedText: humanizeResult.humanizedText || humanizeResult.humanized,
+            humanized: humanizeResult.humanized,
+            humanizedText: humanizeResult.humanized, // For backward compatibility
             metrics: humanizeResult.metrics
           };
           
