@@ -50,74 +50,93 @@ interface Message {
  * This bypasses some of the library abstraction for faster responses
  */
 async function callGeminiAPI(messages: Message[]): Promise<string> {
-  // Filter out system messages and prepare the content
-  const systemMessage = messages.find(msg => msg.role === 'system');
-  const systemPrompt = systemMessage ? systemMessage.content : 'You are a helpful writing assistant focused on helping users with their writing needs.';
-  
-  // Prepare the chat messages in proper Gemini format
-  const conversationMessages = messages
-    .filter(msg => msg.role !== 'system')
-    .map(msg => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }]
-    }));
-  
-  // If there are no messages, add a default user greeting
-  if (conversationMessages.length === 0) {
-    conversationMessages.push({
-      role: 'user',
-      parts: [{ text: 'Hello, can you help me with my writing?' }]
-    });
-  }
-  
-  // Make sure the conversation starts with a user message
-  if (conversationMessages[0].role !== 'user') {
-    conversationMessages.unshift({
-      role: 'user',
-      parts: [{ text: 'Hello, can you help me with my writing?' }]
-    });
-  }
-  
-  const requestData = {
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: systemPrompt }]
-      },
-      ...conversationMessages
-    ],
-    generationConfig: {
-      temperature: 0.4,
-      topP: 0.8,
-      topK: 40,
-      maxOutputTokens: 800,
-      stopSequences: []
-    },
-    safetySettings: [
-      {
-        category: 'HARM_CATEGORY_HARASSMENT',
-        threshold: 'BLOCK_ONLY_HIGH'
-      },
-      {
-        category: 'HARM_CATEGORY_HATE_SPEECH',
-        threshold: 'BLOCK_ONLY_HIGH'
-      },
-      {
-        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-        threshold: 'BLOCK_ONLY_HIGH'
-      },
-      {
-        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-        threshold: 'BLOCK_ONLY_HIGH'
-      }
-    ]
-  };
-  
-  // Use direct fetch API call for faster response
   try {
+    // Extract the system message
+    const systemMessage = messages.find(msg => msg.role === 'system');
+    const systemPrompt = systemMessage ? systemMessage.content : 'You are a helpful writing assistant. Answer questions clearly and concisely.';
+    
+    // Get conversation history without system messages
+    const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
+    
+    // If no user messages, just return a greeting
+    if (userAndAssistantMessages.length === 0) {
+      return "Hello! I'm your writing assistant. How can I help you today?";
+    }
+    
+    // Prepare a simple array of messages that alternate between user and model
+    // For proper formatting, ensure it starts with user and alternates correctly
+    let properMessages = [];
+    let lastRole = null;
+    
+    // Process messages to ensure proper alternating format
+    for (const msg of userAndAssistantMessages) {
+      // Skip empty messages
+      if (!msg.content.trim()) continue;
+      
+      const currentRole = msg.role === 'assistant' ? 'model' : 'user';
+      
+      // If this message has same role as previous, combine them
+      if (currentRole === lastRole && properMessages.length > 0) {
+        const lastMsg = properMessages[properMessages.length - 1];
+        lastMsg.parts[0].text += '\n\n' + msg.content;
+      } else {
+        properMessages.push({
+          role: currentRole,
+          parts: [{ text: msg.content }]
+        });
+        lastRole = currentRole;
+      }
+    }
+    
+    // Ensure conversation starts with a user message
+    if (properMessages.length > 0 && properMessages[0].role !== 'user') {
+      properMessages.unshift({
+        role: 'user',
+        parts: [{ text: 'Hello, can you help me with my writing?' }]
+      });
+    }
+    
+    // Create the final request data with appropriate configs for creative writing
+    const requestData = {
+      // Important: Include system prompt in a separate initial message
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: systemPrompt }]
+        },
+        ...properMessages
+      ],
+      generationConfig: {
+        temperature: 0.7,  // Higher temperature for more creative responses
+        topP: 0.9,
+        topK: 40,
+        maxOutputTokens: 1200,  // Increased to allow for longer responses like scripts
+        stopSequences: []
+      },
+      safetySettings: [
+        {
+          category: 'HARM_CATEGORY_HARASSMENT',
+          threshold: 'BLOCK_ONLY_HIGH'
+        },
+        {
+          category: 'HARM_CATEGORY_HATE_SPEECH',
+          threshold: 'BLOCK_ONLY_HIGH'
+        },
+        {
+          category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+          threshold: 'BLOCK_ONLY_HIGH'
+        },
+        {
+          category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+          threshold: 'BLOCK_ONLY_HIGH'
+        }
+      ]
+    };
+    
+    // Make the API call with a longer timeout for creative content
     const startTime = Date.now();
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7000); // 7 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // Extended to 15 seconds for creative content
     
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
@@ -156,43 +175,53 @@ async function callGeminiAPI(messages: Message[]): Promise<string> {
  * Newer implementation using the Google Generative AI library as a fallback
  */
 async function generateWithLibrary(messages: Message[]): Promise<string> {
-  // Filter out system messages
-  const systemMessage = messages.find(msg => msg.role === 'system');
-  const systemPrompt = systemMessage ? systemMessage.content : '';
-  
-  // Prepare user messages
-  const chatMessages = messages
-    .filter(msg => msg.role !== 'system')
-    .map(msg => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }]
-    }));
-  
-  // Use the API's chat method
-  const model = genAI.getGenerativeModel({ 
-    model: DEFAULT_MODEL,
-    generationConfig: {
-      temperature: 0.4,
-      topP: 0.8,
-      topK: 40,
-      maxOutputTokens: 800,
+  try {
+    // Extract the system message
+    const systemMessage = messages.find(msg => msg.role === 'system');
+    const systemPrompt = systemMessage ? systemMessage.content : 'You are a helpful writing assistant. Answer clearly and concisely.';
+    
+    // Get user messages (excluding system)
+    const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
+    
+    // Quick escape for empty conversation
+    if (userAndAssistantMessages.length === 0) {
+      return "Hello! I'm your writing assistant. How can I help you today?";
     }
-  });
-  
-  // Create a chat session with system prompt
-  const chat = model.startChat({
-    history: chatMessages,
-    generationConfig: {
-      temperature: 0.4,
-      topP: 0.8,
-      topK: 40,
-      maxOutputTokens: 800,
+    
+    // For simplicity, just use the last user message
+    let lastUserMessage = "";
+    for (let i = userAndAssistantMessages.length - 1; i >= 0; i--) {
+      if (userAndAssistantMessages[i].role === 'user') {
+        lastUserMessage = userAndAssistantMessages[i].content;
+        break;
+      }
     }
-  });
-  
-  // Generate response
-  const result = await chat.sendMessage(systemPrompt || "What can I help you with?");
-  return result.response.text();
+    
+    if (!lastUserMessage) {
+      lastUserMessage = "Can you help me with my writing?";
+    }
+    
+    // Create a simple prompt combining system instructions and user request
+    const fullPrompt = `${systemPrompt}\n\nUser request: ${lastUserMessage}`;
+    
+    // Use a simple generation call instead of chat to avoid format issues
+    const model = genAI.getGenerativeModel({ 
+      model: DEFAULT_MODEL,
+      generationConfig: {
+        temperature: 0.7,  // Match the temperature from direct API for consistency
+        topP: 0.9,
+        topK: 40,
+        maxOutputTokens: 1200,
+      }
+    });
+    
+    // Generate the content with a simple prompt
+    const result = await model.generateContent(fullPrompt);
+    return result.response.text();
+  } catch (error) {
+    console.error('Error in library fallback:', error);
+    throw error;
+  }
 }
 
 /**
