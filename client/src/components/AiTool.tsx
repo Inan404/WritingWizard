@@ -3,7 +3,7 @@ import { ChatInterface } from './ChatInterface';
 import { default as GrammarChecker } from './tools/GrammarChecker';
 import { default as Paraphraser } from './tools/Paraphraser';
 import { default as Humanizer } from './tools/Humanizer';
-import { default as AIChecker } from './AIChecker';
+import { default as AIChecker } from './tools/AIChecker';
 
 interface AiToolProps {
   mode: Mode;
