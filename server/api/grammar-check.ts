@@ -142,10 +142,10 @@ function enhanceLocalDetection(text: string): GrammarError[] {
     },
     {
       // Pattern for "She don't like" -> "She doesn't like"
-      pattern: /\b(She|He|It)\s+don't\s+(\w+)\b/gi,
+      pattern: /\b(She|He|It|she|he|it)\s+don't\b/gi,
       type: "grammar",
       description: "Subject-verb agreement error. Use 'doesn't' with singular third-person subjects.",
-      fix: (match: string) => match.replace(/\s+don't\s+/i, ' doesn\'t ')
+      fix: (match: string) => match.replace(/\s+don't\b/i, ' doesn\'t')
     },
     {
       // Pattern for "you was" -> "you were"
@@ -167,6 +167,45 @@ function enhanceLocalDetection(text: string): GrammarError[] {
       type: "grammar",
       description: "Incorrect pronoun usage. Use 'I' instead of 'me' when referring to yourself as the subject.",
       fix: (match: string) => match.replace(/\bme\b/i, 'I')
+    },
+    {
+      // Pattern for "like go" -> "like going" (gerund after like)
+      pattern: /\b(like|likes|liked)\s+(go|run|walk|eat|drink|sleep|work|study|write|read)\b/gi,
+      type: "grammar",
+      description: "Use gerund form after 'like' when describing an activity.",
+      fix: (match: string) => {
+        // Extract the verb
+        const [likeForm, baseVerb] = match.split(/\s+/);
+        // Convert to gerund form (simply add 'ing' - this is basic but works for this example)
+        let gerund = baseVerb;
+        if (baseVerb.endsWith('e')) {
+          gerund = baseVerb.slice(0, -1) + 'ing'; // handle 'like' -> 'liking'
+        } else {
+          gerund = baseVerb + 'ing';
+        }
+        return `${likeForm} ${gerund}`;
+      }
+    },
+    {
+      // Pattern for plural subject with singular verb
+      pattern: /\b(They|We|You)\s+(goes|has gone|does|is|was)\b/gi,
+      type: "grammar",
+      description: "Subject-verb agreement error. Use plural verb form with plural subjects.",
+      fix: (match: string) => {
+        return match
+          .replace(/\sgoes\b/i, ' go')
+          .replace(/\shas gone\b/i, ' have gone')
+          .replace(/\sdoes\b/i, ' do')
+          .replace(/\sis\b/i, ' are')
+          .replace(/\swas\b/i, ' were');
+      }
+    },
+    {
+      // Pattern for "everyday" vs "every day"
+      pattern: /\beveryday\b/gi,
+      type: "grammar",
+      description: "'Everyday' (one word) is an adjective meaning common. For 'each day', use 'every day' (two words).",
+      fix: (match: string) => 'every day'
     }
   ];
   
