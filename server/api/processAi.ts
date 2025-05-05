@@ -124,8 +124,8 @@ export async function processAi(req: Request, res: Response) {
           // Ensure we're returning data in a consistent format
           // Make sure humanized text is available in both formats for backward compatibility
           const response = {
-            humanized: humanizeResult.humanized,
-            humanizedText: humanizeResult.humanized, // For backward compatibility
+            humanized: humanizeResult.humanizedText,
+            humanizedText: humanizeResult.humanizedText,
             metrics: humanizeResult.metrics
           };
           
