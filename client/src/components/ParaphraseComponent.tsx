@@ -72,7 +72,25 @@ export function ParaphraseComponent() {
       },
       {
         onSuccess: (data) => {
-          setParaphrasedText(data.paraphrasedText || '');
+          // Extract just the text content from the response, removing any JSON artifacts
+          let processedText = data.paraphrasedText || '';
+          
+          // Check if the text looks like it might still have JSON formatting
+          if (processedText.trim().startsWith('{') && processedText.includes('"paraphrased"')) {
+            try {
+              // Try to parse it as JSON
+              const jsonData = JSON.parse(processedText);
+              processedText = jsonData.paraphrased || processedText;
+            } catch (e) {
+              // If parsing fails, try to clean up the text using regex
+              const match = processedText.match(/"paraphrased"\s*:\s*"([\s\S]*?)(?<!\\)"/);
+              if (match && match[1]) {
+                processedText = match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+              }
+            }
+          }
+          
+          setParaphrasedText(processedText);
           setMetrics(data.metrics || null);
         },
         onError: (error) => {

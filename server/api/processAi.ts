@@ -87,7 +87,16 @@ export async function processAi(req: Request, res: Response) {
           const paraphraseResult = paraphraseStyle === 'custom' && customTone
             ? await generateParaphrase(text, paraphraseStyle, customTone)
             : await generateParaphrase(text, paraphraseStyle);
-          return res.json(paraphraseResult);
+          
+          // Ensure we're returning data in a consistent format
+          // Make sure paraphrased text is available in both formats for backward compatibility
+          const response = {
+            paraphrased: paraphraseResult.paraphrasedText || paraphraseResult.paraphrased,
+            paraphrasedText: paraphraseResult.paraphrasedText || paraphraseResult.paraphrased,
+            metrics: paraphraseResult.metrics
+          };
+          
+          return res.json(response);
         } catch (paraphraseError) {
           console.error("Paraphrase error:", paraphraseError);
           return res.status(500).json({ 

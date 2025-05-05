@@ -199,14 +199,11 @@ async function processRequest(params: AiToolParams, cacheKey: string, payload: a
       }
     };
   } else if (mode === 'paraphrase') {
+    // Ensure we handle both API formats (paraphrased or paraphrasedText)
+    // We only include the metrics if they're present
     return {
       paraphrasedText: data.paraphrased || data.paraphrasedText || text,
-      metrics: data.metrics || {
-        correctness: Math.floor(Math.random() * 30) + 50,
-        clarity: Math.floor(Math.random() * 30) + 50,
-        engagement: Math.floor(Math.random() * 30) + 50,
-        delivery: Math.floor(Math.random() * 30) + 50
-      }
+      metrics: data.metrics || null
     };
   } else if (mode === 'humanize') {
     // Ensure we handle both API formats (humanized or humanizedText)
