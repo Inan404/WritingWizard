@@ -135,6 +135,52 @@ export function GrammarChecker() {
       });
     }
   };
+  
+  // Function to ignore a suggestion
+  const ignoreSuggestion = (id: string) => {
+    setAppliedCorrections(prev => {
+      const updated = new Set(prev);
+      updated.add(id);
+      return updated;
+    });
+    
+    toast({
+      title: 'Suggestion ignored',
+      description: 'The suggestion will no longer be shown'
+    });
+  };
+  
+  // Function to apply all corrections at once
+  const applyAllCorrections = () => {
+    if (!result?.suggestions || result.suggestions.length === 0) return;
+    
+    // Filter out already applied corrections
+    const pendingSuggestions = result.suggestions.filter(
+      (suggestion: any) => !appliedCorrections.has(suggestion.id)
+    );
+    
+    if (pendingSuggestions.length === 0) return;
+    
+    // Start with the current text
+    let newText = text;
+    const newAppliedCorrections = new Set(appliedCorrections);
+    
+    // Apply each correction sequentially
+    // Note: This is simplistic and might have issues with overlapping corrections
+    pendingSuggestions.forEach((suggestion: any) => {
+      newText = newText.replace(suggestion.text, suggestion.replacement);
+      newAppliedCorrections.add(suggestion.id);
+    });
+    
+    // Update text and applied corrections
+    setText(newText);
+    setAppliedCorrections(newAppliedCorrections);
+    
+    toast({
+      title: 'All corrections applied',
+      description: `Applied ${pendingSuggestions.length} corrections`
+    });
+  };
 
   return (
     <div className="h-full flex flex-col md:flex-row gap-4 md:gap-6">
@@ -199,6 +245,18 @@ export function GrammarChecker() {
                 exit={{ opacity: 0 }}
                 className="p-4"
               >
+                {/* Fix All button */}
+                {result.suggestions && result.suggestions.filter((suggestion: any) => !appliedCorrections.has(suggestion.id)).length > 0 && (
+                  <div className="mb-3">
+                    <Button 
+                      onClick={applyAllCorrections}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      Fix All ({result.suggestions.filter((suggestion: any) => !appliedCorrections.has(suggestion.id)).length})
+                    </Button>
+                  </div>
+                )}
+                
                 {/* Grammar error cards */}
                 {result.suggestions && result.suggestions.filter((suggestion: any) => !appliedCorrections.has(suggestion.id)).length > 0 ? (
                   result.suggestions
@@ -206,24 +264,43 @@ export function GrammarChecker() {
                     .map((suggestion: any) => (
                       <Card 
                         key={suggestion.id} 
-                        className="mb-2 overflow-hidden border-l-4 border-l-red-500 cursor-pointer hover:bg-secondary/50 transition-colors"
-                        onClick={() => applyCorrection({
-                          id: suggestion.id,
-                          type: suggestion.type,
-                          errorText: suggestion.text,
-                          replacementText: suggestion.replacement,
-                          description: suggestion.description
-                        })}
+                        className="mb-2 overflow-hidden border-l-4 border-l-red-500 hover:bg-secondary/50 transition-colors"
                       >
                         <CardContent className="p-3">
                           <div className="flex gap-2 items-start">
                             <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                            <div>
+                            <div className="w-full">
                               <p className="text-sm font-medium">Grammar issue</p>
                               <p className="text-sm mt-1">{suggestion.description}</p>
                               <div className="mt-2 text-sm">
                                 <p className="font-mono">{suggestion.text}</p>
                                 <p className="font-mono text-green-600">→ {suggestion.replacement}</p>
+                              </div>
+                              
+                              <div className="mt-2 flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                  onClick={() => applyCorrection({
+                                    id: suggestion.id,
+                                    type: suggestion.type,
+                                    errorText: suggestion.text,
+                                    replacementText: suggestion.replacement,
+                                    description: suggestion.description
+                                  })}
+                                >
+                                  Apply
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="secondary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    ignoreSuggestion(suggestion.id);
+                                  }}
+                                >
+                                  Ignore
+                                </Button>
                               </div>
                             </div>
                           </div>

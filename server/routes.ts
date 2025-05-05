@@ -114,53 +114,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/grammar-check", async (req, res) => {
     try {
       const { text } = req.body;
-      const language = req.body.language || 'en-US';
       
       if (!text || typeof text !== "string") {
         return res.status(400).json({ message: "Invalid text input" });
       }
       
       try {
-        // Use LanguageTool API for grammar checking
-        console.log("Using LanguageTool API for grammar check with language:", language);
-        const result = await checkGrammarWithLanguageTool(text, language);
-        
-        // Transform the result to match the expected format for the UI
-        const transformedResult = {
-          corrected: result.correctedText,
-          highlights: result.errors?.map(err => ({
-            id: err.id,
-            start: err.position?.start || 0,
-            end: err.position?.end || 0,
-            type: err.type
-          })) || [],
-          suggestions: [
-            ...(result.errors?.map(err => ({
-              id: err.id,
-              type: err.type,
-              text: err.errorText,
-              replacement: err.replacementText,
-              description: err.description
-            })) || []),
-            ...(result.suggestions?.map(sugg => ({
-              id: sugg.id,
-              type: sugg.type,
-              text: sugg.originalText,
-              replacement: sugg.suggestedText,
-              description: sugg.description
-            })) || [])
-          ],
-          metrics: result.metrics
-        };
-        
-        return res.json(transformedResult);
-      } catch (languageToolError) {
-        console.error("LanguageTool grammar check error:", languageToolError);
-        
-        // Fallback to Gemini AI if LanguageTool fails
-        console.log("Falling back to Gemini API for grammar check");
+        // Use Gemini API for grammar checking
+        console.log("Using Gemini API for grammar check");
         const result = await generateGrammarCheck(text);
         return res.json(result);
+      } catch (error) {
+        console.error("Grammar check error:", error);
+        res.status(500).json({ message: "Error checking grammar" });
       }
     } catch (error) {
       console.error("Grammar check error:", error);
