@@ -1,47 +1,36 @@
-import { useState, useEffect } from "react";
-import { Moon, Sun } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
+import * as React from "react"
+import { Moon, Sun } from "lucide-react"
+import { useTheme } from "@/components/ui/theme-provider"
+import { Button } from "@/components/ui/button"
+import { motion } from "framer-motion"
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState(() => {
-    // Check for theme preference in localStorage or default to 'light'
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') || 'light';
-    }
-    return 'light';
-  });
-
-  // Apply theme class to document element when theme changes
-  useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+  const { theme, setTheme } = useTheme()
 
   const toggleTheme = () => {
-    console.log('Current theme:', theme);
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
+    setTheme(theme === "light" ? "dark" : "light")
+  }
 
   return (
-    <motion.div 
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+    <motion.div
+      whileTap={{ scale: 0.9 }}
     >
-      <Button
-        variant="outline"
-        size="icon"
+      <Button 
+        variant="ghost" 
+        size="icon" 
         onClick={toggleTheme}
-        className="h-9 w-9 rounded-full"
+        className="rounded-full focus-visible:ring-0 focus-visible:ring-offset-0"
       >
-        {theme === "dark" ? (
-          <Sun className="h-5 w-5 text-yellow-400" />
-        ) : (
-          <Moon className="h-5 w-5" />
-        )}
+        <motion.div
+          initial={{ rotate: 0 }}
+          animate={{ rotate: theme === "dark" ? 180 : 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        </motion.div>
+        <span className="sr-only">Toggle theme</span>
       </Button>
     </motion.div>
-  );
+  )
 }
