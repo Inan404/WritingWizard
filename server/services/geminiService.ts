@@ -894,6 +894,174 @@ METRICS SCORING GUIDELINES:
 }
 
 /**
+ * Generate paraphrased text with streaming updates
+ */
+export async function generateParaphraseWithStreaming(
+  text: string, 
+  onChunk: (text: string) => void, 
+  style: string = 'standard', 
+  customTone?: string
+) {
+  const styleDescriptions: Record<string, string> = {
+    'standard': 'Maintain the original tone while rewording for clarity. Example: "This is important" → "This matter is significant"',
+    'formal': 'Use more formal language with academic vocabulary and structure. Example: "I think" → "It is proposed that", "We did this" → "This action was undertaken"',
+    'fluency': 'Optimize for smooth, natural-sounding flow. Example: "The system processes data" → "Data flows smoothly through the system"',
+    'academic': 'Use academic terminology and structures appropriate for scholarly work. Example: "This shows" → "This evidence demonstrates", "We found" → "The findings indicate"',
+    'custom': 'Paraphrase using the specific tone and style specified in the custom description'
+  };
+
+  // For custom style, use the provided tone description
+  const styleDescription = style === 'custom' && customTone 
+    ? `Write in the style and tone of ${customTone}. Match their vocabulary choices, sentence structures, and characteristic expressions.` 
+    : styleDescriptions[style] || styleDescriptions.standard;
+
+  const systemPrompt = `You are an expert paraphrasing assistant. Rewrite the given text to express the same meaning in different words. 
+
+STYLE: ${style.toUpperCase()}
+${styleDescription}
+
+IMPORTANT:
+1. Preserve the EXACT meaning of the original text
+2. Change the wording significantly - aim for at least 80% different words
+3. Maintain the tone appropriate to the specified style
+4. Keep approximately the same length
+5. Don't add new information not in the original
+6. Don't lose any key points from the original text
+
+IMPORTANT: Provide your response as a raw, valid JSON object with no markdown formatting, no extra text, and no explanation outside the JSON object.
+Respond with ONLY the following JSON format:
+{
+  "paraphrased": "Your paraphrased text here with no explanation",
+  "metrics": {
+    "correctness": 85,
+    "clarity": 70,
+    "engagement": 80,
+    "delivery": 75
+  }
+}
+
+METRICS SCORING GUIDELINES:
+- Correctness: Rate how well the paraphrased text preserves the original meaning (50-100)
+- Clarity: Rate how clear and understandable the paraphrased text is (50-100)
+- Engagement: Rate how engaging and interesting the paraphrased text is (50-100)
+- Delivery: Rate how well the paraphrased text flows and sounds natural (50-100)
+- NEVER return scores of 0 for any category - minimum value should be 50`;
+
+  try {
+    // Adjust temperature based on style - higher for creative styles
+    let temperature = 0.7; // Default
+    if (style === 'fluency') temperature = 0.8;
+    if (style === 'academic') temperature = 0.5; // More controlled for academic
+    if (style === 'formal') temperature = 0.6;
+    if (style === 'custom') temperature = 0.9; // Most creative for custom
+    
+    // Process with streaming updates
+    let processing = true;
+    let foundResult = false;
+    
+    // Start streaming with dummy initial content for immediate feedback
+    onChunk("Paraphrasing text...");
+    
+    // Use the streaming version of completion
+    const response = await generateCompletionWithStreaming(
+      systemPrompt,
+      text,
+      (chunk) => {
+        if (processing) {
+          // For the first chunk, replace the dummy text
+          if (chunk.includes("paraphrased")) {
+            processing = false;
+          } 
+          else if (!foundResult) {
+            try {
+              // Check if this chunk contains valid JSON
+              const jsonMatch = chunk.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                const jsonObj = JSON.parse(jsonMatch[0]);
+                if (jsonObj.paraphrased) {
+                  onChunk(jsonObj.paraphrased);
+                  foundResult = true;
+                }
+              }
+            } catch (e) {
+              // If not valid JSON, continue streaming raw chunks
+              onChunk(chunk);
+            }
+          }
+        }
+      },
+      temperature
+    );
+    
+    // Parse the final response if we haven't found a result yet
+    if (!foundResult) {
+      try {
+        const parsedResponse = JSON.parse(response);
+        if (parsedResponse.paraphrased) {
+          onChunk(parsedResponse.paraphrased);
+          return parsedResponse;
+        }
+      } catch (jsonError) {
+        console.warn("JSON parsing failed for streaming paraphrase, attempting to extract JSON from text");
+        
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            const extractedJson = JSON.parse(jsonMatch[0]);
+            if (extractedJson.paraphrased) {
+              onChunk(extractedJson.paraphrased);
+              return extractedJson;
+            }
+          } catch (extractError) {
+            console.error("Failed to extract valid JSON for streaming paraphrase:", extractError);
+          }
+        }
+        
+        // Try to extract just the text
+        const paraphrasedMatch = response.match(/"paraphrased"\s*:\s*"([\s\S]*?)(?<!\\)"/);
+        if (paraphrasedMatch && paraphrasedMatch[1]) {
+          const cleanText = paraphrasedMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+          onChunk(cleanText);
+          return {
+            paraphrased: cleanText,
+            metrics: {
+              correctness: 75,
+              clarity: 75,
+              engagement: 75,
+              delivery: 75
+            }
+          };
+        }
+      }
+    }
+    
+    // If we reached here, we couldn't parse JSON but have already streamed content
+    return {
+      paraphrased: response,
+      metrics: {
+        correctness: 50,
+        clarity: 50,
+        engagement: 50,
+        delivery: 50
+      }
+    };
+  } catch (error: any) {
+    console.error('Error in paraphrasing with streaming:', error);
+    const errorMsg = `Failed to paraphrase text: ${error?.message || 'Unknown error'}`;
+    onChunk(errorMsg);
+    return {
+      paraphrased: errorMsg,
+      metrics: {
+        correctness: 0,
+        clarity: 0,
+        engagement: 0,
+        delivery: 0
+      }
+    };
+  }
+}
+
+/**
  * Generate humanized version of AI-generated text that won't be detected by AI checkers
  */
 export async function generateHumanized(text: string, style: string = 'standard', customTone?: string) {

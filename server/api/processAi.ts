@@ -2,7 +2,9 @@ import { Request, Response } from "express";
 import {
   generateGrammarCheck,
   generateParaphrase,
+  generateParaphraseWithStreaming,
   generateHumanized,
+  generateHumanizedWithStreaming,
   generateChatResponse,
   generateChatResponseWithStreaming,
   checkAIContent
@@ -83,27 +85,59 @@ export async function processAi(req: Request, res: Response) {
         const validParaphraseStyles = ["standard", "formal", "fluency", "academic", "custom"];
         const paraphraseStyle = style && validParaphraseStyles.includes(style) ? style : "standard";
         
-        try {
-          // Pass custom tone to paraphrase function if style is custom
-          const paraphraseResult = paraphraseStyle === 'custom' && customTone
-            ? await generateParaphrase(text, paraphraseStyle, customTone)
-            : await generateParaphrase(text, paraphraseStyle);
-          
-          // Ensure we're returning data in a consistent format
-          // Make sure paraphrased text is available in both formats for backward compatibility
-          const response = {
-            paraphrased: paraphraseResult.paraphrased,
-            paraphrasedText: paraphraseResult.paraphrased, // For backward compatibility
-            metrics: paraphraseResult.metrics
-          };
-          
-          return res.json(response);
-        } catch (paraphraseError) {
-          console.error("Paraphrase error:", paraphraseError);
-          return res.status(500).json({ 
-            error: "Paraphrase failed", 
-            message: paraphraseError instanceof Error ? paraphraseError.message : "Unknown error during paraphrasing"
-          });
+        // Check if streaming is requested
+        const streamParaphrase = req.body.stream === true;
+        
+        if (streamParaphrase) {
+          try {
+            // Set headers for streaming response
+            res.setHeader('Content-Type', 'text/plain');
+            
+            // Generate paraphrased text with streaming
+            const fullResponse = await generateParaphraseWithStreaming(
+              text, 
+              (chunkText) => {
+                // For streaming, just send the actual text (not wrapped in JSON)
+                res.write(chunkText);
+              },
+              paraphraseStyle,
+              paraphraseStyle === 'custom' ? customTone : undefined
+            );
+            
+            // Send the final response and end the stream
+            res.end();
+            return;
+          } catch (streamError) {
+            console.error("Streaming paraphrase error:", streamError);
+            return res.status(500).json({ 
+              error: "Streaming paraphrase failed", 
+              message: streamError instanceof Error ? streamError.message : "Unknown error during streaming paraphrase"
+            });
+          }
+        } else {
+          // Non-streaming mode
+          try {
+            // Pass custom tone to paraphrase function if style is custom
+            const paraphraseResult = paraphraseStyle === 'custom' && customTone
+              ? await generateParaphrase(text, paraphraseStyle, customTone)
+              : await generateParaphrase(text, paraphraseStyle);
+            
+            // Ensure we're returning data in a consistent format
+            // Make sure paraphrased text is available in both formats for backward compatibility
+            const response = {
+              paraphrased: paraphraseResult.paraphrased,
+              paraphrasedText: paraphraseResult.paraphrased, // For backward compatibility
+              metrics: paraphraseResult.metrics
+            };
+            
+            return res.json(response);
+          } catch (paraphraseError) {
+            console.error("Paraphrase error:", paraphraseError);
+            return res.status(500).json({ 
+              error: "Paraphrase failed", 
+              message: paraphraseError instanceof Error ? paraphraseError.message : "Unknown error during paraphrasing"
+            });
+          }
         }
 
       case "humanize":
@@ -115,27 +149,59 @@ export async function processAi(req: Request, res: Response) {
         const validHumanizeStyles = ["standard", "formal", "fluency", "academic", "custom"];
         const humanizeStyle = style && validHumanizeStyles.includes(style) ? style : "standard";
         
-        try {
-          // Pass custom tone to humanize function if style is custom
-          const humanizeResult = humanizeStyle === 'custom' && customTone
-            ? await generateHumanized(text, humanizeStyle, customTone)
-            : await generateHumanized(text, humanizeStyle);
-          
-          // Ensure we're returning data in a consistent format
-          // Make sure humanized text is available in both formats for backward compatibility
-          const response = {
-            humanized: humanizeResult.humanizedText,
-            humanizedText: humanizeResult.humanizedText,
-            metrics: humanizeResult.metrics
-          };
-          
-          return res.json(response);
-        } catch (humanizeError) {
-          console.error("Humanize error:", humanizeError);
-          return res.status(500).json({ 
-            error: "Humanize failed", 
-            message: humanizeError instanceof Error ? humanizeError.message : "Unknown error during humanizing"
-          });
+        // Check if streaming is requested
+        const streamHumanize = req.body.stream === true;
+        
+        if (streamHumanize) {
+          try {
+            // Set headers for streaming response
+            res.setHeader('Content-Type', 'text/plain');
+            
+            // Generate humanized text with streaming
+            const fullResponse = await generateHumanizedWithStreaming(
+              text, 
+              (chunkText) => {
+                // For streaming, just send the actual text (not wrapped in JSON)
+                res.write(chunkText);
+              },
+              humanizeStyle,
+              humanizeStyle === 'custom' ? customTone : undefined
+            );
+            
+            // Send the final response and end the stream
+            res.end();
+            return;
+          } catch (streamError) {
+            console.error("Streaming humanize error:", streamError);
+            return res.status(500).json({ 
+              error: "Streaming humanize failed", 
+              message: streamError instanceof Error ? streamError.message : "Unknown error during streaming humanization"
+            });
+          }
+        } else {
+          // Non-streaming mode
+          try {
+            // Pass custom tone to humanize function if style is custom
+            const humanizeResult = humanizeStyle === 'custom' && customTone
+              ? await generateHumanized(text, humanizeStyle, customTone)
+              : await generateHumanized(text, humanizeStyle);
+            
+            // Ensure we're returning data in a consistent format
+            // Make sure humanized text is available in both formats for backward compatibility
+            const response = {
+              humanized: humanizeResult.humanizedText,
+              humanizedText: humanizeResult.humanizedText,
+              metrics: humanizeResult.metrics
+            };
+            
+            return res.json(response);
+          } catch (humanizeError) {
+            console.error("Humanize error:", humanizeError);
+            return res.status(500).json({ 
+              error: "Humanize failed", 
+              message: humanizeError instanceof Error ? humanizeError.message : "Unknown error during humanizing"
+            });
+          }
         }
 
       case "aicheck":
