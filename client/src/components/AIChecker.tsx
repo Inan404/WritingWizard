@@ -7,24 +7,28 @@ import { useAiTool } from '@/hooks/useAiTool';
 import { Progress } from '@/components/ui/progress';
 import ReactMarkdown from 'react-markdown';
 import { useWriting } from '@/context/WritingContext';
+import { Textarea } from '@/components/ui/textarea';
 
-interface AICheckerProps {
-  // We'll make these props optional since we'll use context
-  inputText?: string;
-  onSave?: (result: any) => void;
-}
-
-const AIChecker: React.FC<AICheckerProps> = () => {
+const AIChecker: React.FC = () => {
   const { toast } = useToast();
   const [showUI, setShowUI] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const { aiCheckText, setAiCheckText, setScoreMetrics } = useWriting();
   
-  // Get text from the context
-  const inputText = aiCheckText.original;
+  // Get text from the context and maintain a local copy
+  const [inputText, setInputText] = useState(aiCheckText.original);
   
   const { mutate, isPending } = useAiTool();
+
+  // Update context when input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(e.target.value);
+    setAiCheckText({
+      ...aiCheckText,
+      original: e.target.value
+    });
+  };
 
   // Run the AI detection when the component first shows
   const handleDetectAI = () => {
@@ -153,27 +157,37 @@ const AIChecker: React.FC<AICheckerProps> = () => {
 
   return (
     <div className="flex flex-col space-y-4">
-      {!showUI ? (
-        <div className="flex justify-center my-8">
-          <Button
-            onClick={handleDetectAI}
-            disabled={isPending || !inputText.trim()}
-            className="w-full max-w-md"
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <AlertCircle className="mr-2 h-4 w-4" />
-                Detect AI Content
-              </>
-            )}
-          </Button>
-        </div>
-      ) : (
+      {/* Text input area */}
+      <Textarea
+        value={inputText}
+        onChange={handleInputChange}
+        placeholder="Enter text to check for AI content..."
+        className="min-h-[200px] bg-gray-900 border-gray-700 text-white"
+      />
+      
+      {/* Detect AI Content button */}
+      <div className="flex justify-center">
+        <Button
+          onClick={handleDetectAI}
+          disabled={isPending || !inputText.trim()}
+          className="w-full h-12 bg-blue-500 hover:bg-blue-600 rounded-md text-white"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Analyzing...
+            </>
+          ) : (
+            <>
+              <AlertCircle className="mr-2 h-5 w-5" />
+              Detect AI Content
+            </>
+          )}
+        </Button>
+      </div>
+      
+      {/* Results section */}
+      {showUI && (
         <>
           {error ? (
             <Card className="p-4 bg-destructive/10 text-destructive border-destructive">
