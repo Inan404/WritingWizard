@@ -1,11 +1,15 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useTheme } from "@/components/ui/theme-provider";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { Sun, Moon, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function LandingPage() {
   const { theme, setTheme } = useTheme();
+  
+  // Set the page title
+  usePageTitle("Welcome", "WriteCraft AI");
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
