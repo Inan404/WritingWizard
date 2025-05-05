@@ -190,15 +190,15 @@ async function processRequest(params: AiToolParams, cacheKey: string, payload: a
         throw new Error(errorData.message || errorData.error || 'Failed to process AI request');
       }
       
-      // Start reading the response text incrementally
+      // Server-Sent Events approach
+      // Read as a stream
       const reader = res.body?.getReader();
       if (!reader) {
         throw new Error('Stream not available');
       }
       
       const decoder = new TextDecoder();
-      let partialData = '';
-      let isFirstChunk = true;
+      let accumulatedText = '';
       
       // Process the stream chunks
       while (true) {
@@ -207,40 +207,37 @@ async function processRequest(params: AiToolParams, cacheKey: string, payload: a
         
         // Decode the chunk to text
         const chunk = decoder.decode(value, { stream: true });
-        partialData += chunk;
         
-        // For the first chunk, we might get a partial JSON response
-        // so we need to be careful about parsing it
-        if (isFirstChunk) {
-          try {
-            // Try to parse the JSON - only if it looks like valid JSON
-            if (partialData.trim().startsWith('{') && partialData.includes('}')) {
-              const parsedData = JSON.parse(partialData);
-              if (parsedData && parsedData.response) {
-                // Initial value found - start streaming from here
-                onStreamUpdate(parsedData.response || '');
-                isFirstChunk = false;
+        // Parse server-sent events format (data: content\n\n)
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            // Extract content after 'data:'
+            const content = line.substring(5).trim();
+            
+            try {
+              // Check if it's JSON (first message usually is)
+              if (content.startsWith('{')) {
+                const parsedData = JSON.parse(content);
+                if (parsedData.response !== undefined) {
+                  // It's the initial message
+                  continue; // Skip initial empty message
+                }
               }
+              
+              // Plain text content - add it directly
+              accumulatedText += content;
+              onStreamUpdate(accumulatedText);
+            } catch (e) {
+              // If not valid JSON, just add the raw content
+              accumulatedText += content;
+              onStreamUpdate(accumulatedText);
             }
-          } catch (err) {
-            // Ignore JSON parsing errors for partial chunks
           }
-        } else {
-          // For subsequent chunks, we use append mode - just add the raw text
-          // This assumes the server is sending text chunks directly after the initial JSON
-          onStreamUpdate(chunk);
         }
       }
       
-      // When the stream is done, try to parse the full response data
-      try {
-        const fullData = JSON.parse(partialData);
-        return fullData.response || '';
-      } catch (e) {
-        // If we can't parse it as JSON (server might have switched to raw text mode)
-        // just return the accumulated text
-        return partialData;
-      }
+      return accumulatedText;
     } catch (error) {
       console.error('Streaming error:', error);
       throw error;

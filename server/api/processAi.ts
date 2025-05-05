@@ -205,12 +205,25 @@ export async function processAi(req: Request, res: Response) {
           const chatId = req.body.chatId;
           
           // Set headers for streaming response
-          res.setHeader('Content-Type', 'application/json');
+          res.setHeader('Content-Type', 'text/event-stream');
+          res.setHeader('Cache-Control', 'no-cache');
+          res.setHeader('Connection', 'keep-alive');
+          
+          // Stream an initial empty chunk to establish the connection
+          res.write(`data: ${JSON.stringify({ response: '' })}\n\n`);
+          
+          // Keep track of what we've sent so far
+          let lastSentContent = '';
           
           // Generate the chat response with streaming
-          const fullResponse = await generateChatResponseWithStreaming(formattedMessages, (chunkText) => {
-            // For each chunk, send a JSON response with the accumulated text so far
-            res.write(JSON.stringify({ response: chunkText }) + '\n');
+          const fullResponse = await generateChatResponseWithStreaming(formattedMessages, (accumulatedText) => {
+            // Only send the new part, not the entire accumulated text
+            const newContent = accumulatedText.substring(lastSentContent.length);
+            if (newContent) {
+              // Send the new chunk as a server-sent event
+              res.write(`data: ${newContent}\n\n`);
+              lastSentContent = accumulatedText;
+            }
           });
           
           // If a chatId is provided, save the AI response to the database when complete
