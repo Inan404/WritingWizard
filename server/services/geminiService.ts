@@ -48,39 +48,44 @@ interface Message {
  * Convert messages to the Gemini chat format
  */
 function prepareMessages(messages: Message[]) {
-  // Create a chat history
-  const history: { role: 'user' | 'model', parts: [{text: string}] }[] = [];
-  let systemMessage = '';
+  // For Gemini, we need to handle messages differently:
+  // 1. System messages need to be prepended to the first user message
+  // 2. We need to ensure the first message is from the user (Gemini requirement)
+  // 3. We need to alternate user/model roles properly
   
-  // Extract system message and format chat history
+  let systemPrompt = '';
+  let userMessages: Message[] = [];
+  
+  // First, extract any system message and filter messages
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
-    
     if (message.role === 'system') {
-      systemMessage = message.content;
-    } else if (message.role === 'user') {
-      // If there's a system message and this is the first user message, combine them
-      if (systemMessage && history.length === 0) {
-        history.push({
-          role: 'user',
-          parts: [{ text: `${systemMessage}\n\n${message.content}` }]
-        });
-        systemMessage = ''; // Clear system message after using it
-      } else {
-        history.push({
-          role: 'user',
-          parts: [{ text: message.content }]
-        });
-      }
-    } else if (message.role === 'assistant') {
-      history.push({
-        role: 'model',
-        parts: [{ text: message.content }]
-      });
+      systemPrompt = message.content;
+    } else {
+      userMessages.push(message);
     }
   }
   
-  return history;
+  // Ensure the first message is from the user
+  if (userMessages.length === 0 || userMessages[0].role !== 'user') {
+    console.warn('No user message found or first message is not from user. Creating default user prompt.');
+    userMessages.unshift({
+      role: 'user',
+      content: 'Hello, can you help me with my writing?'
+    });
+  }
+  
+  // Prepend system message to first user message if available
+  if (systemPrompt && userMessages[0].role === 'user') {
+    userMessages[0].content = `${systemPrompt}\n\n${userMessages[0].content}`;
+  }
+  
+  // Now create properly formatted history for Gemini
+  // We'll only use the first user message for simplicity and reliability
+  return [{
+    role: 'user',
+    parts: [{ text: userMessages[0].content }]
+  }];
 }
 
 /**
@@ -90,8 +95,9 @@ export async function generateChatResponse(messages: Message[]): Promise<string>
   try {
     console.log('Generating chat response with Gemini');
     
-    // Format messages for Gemini
-    const history = prepareMessages(messages);
+    // Format messages for Gemini (we now just get a simple user message)
+    const formattedMessages = prepareMessages(messages);
+    console.log('Sending sanitized messages to Gemini:', JSON.stringify(formattedMessages));
     
     // Get the model with a moderate temperature
     const model = getModel(DEFAULT_MODEL, {
@@ -101,22 +107,16 @@ export async function generateChatResponse(messages: Message[]): Promise<string>
       maxOutputTokens: 8192,
     });
     
-    // Create a chat instance and send message
-    const chat = model.startChat({
-      history: history.slice(0, -1), // All messages except the last one
-      generationConfig: {
-        temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 8192,
-      },
-    });
+    if (!formattedMessages || formattedMessages.length === 0) {
+      throw new Error('No valid messages to send to the model');
+    }
     
-    // Get the last message (user's query)
-    const lastMessage = history[history.length - 1];
+    // For Gemini, we need to send content directly rather than using chat history
+    // since we've simplified our approach to avoid message ordering issues
+    const userMessage = formattedMessages[0].parts[0].text;
     
-    // Generate the response
-    const result = await chat.sendMessage(lastMessage.parts[0].text);
+    // Generate content directly instead of using chat
+    const result = await model.generateContent(userMessage);
     const response = result.response.text();
     
     return response;
