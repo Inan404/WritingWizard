@@ -226,10 +226,18 @@ function processLanguageToolResponse(
   // Check for additional pattern-based errors that LanguageTool might miss
   
   // Check for "teachers gives" pattern if not already detected
-  if (!errors.some(e => e.errorText.includes("teachers gives"))) {
-    const teachersGivesPattern = /\b(teachers)\s+(gives)\b/g;
+  const hasTeachersGives = originalText.toLowerCase().includes("teachers gives");
+  console.log(`Original text contains "teachers gives": ${hasTeachersGives}`);
+  
+  if (hasTeachersGives) {
+    const teachersGivesPattern = /\b(teachers)\s+(gives)\b/gi;
     let match;
+    let found = false;
+    
     while ((match = teachersGivesPattern.exec(originalText)) !== null) {
+      found = true;
+      console.log(`Found "teachers gives" at position ${match.index}`);
+      
       errors.push({
         id: `custom-sv-${match.index}`,
         type: "grammar",
@@ -242,13 +250,40 @@ function processLanguageToolResponse(
         }
       });
     }
+    
+    if (!found) {
+      console.log("RegExp failed to match 'teachers gives' despite it being in the text");
+      // Fallback approach for safety
+      const index = originalText.toLowerCase().indexOf("teachers gives");
+      if (index !== -1) {
+        errors.push({
+          id: `custom-sv-fallback-${index}`,
+          type: "grammar",
+          errorText: originalText.substring(index, index + 14), // "teachers gives"
+          replacementText: "teachers give",
+          description: "Subject-verb agreement error. The plural noun 'teachers' should be followed by the plural form of the verb 'give'.",
+          position: {
+            start: index,
+            end: index + 14
+          }
+        });
+      }
+    }
   }
   
   // Check for "homeworks" (uncountable noun error)
-  if (!errors.some(e => e.errorText.includes("homeworks"))) {
-    const homeworksPattern = /\b(homeworks)\b/g;
+  const hasHomeworks = originalText.toLowerCase().includes("homeworks");
+  console.log(`Original text contains "homeworks": ${hasHomeworks}`);
+  
+  if (hasHomeworks) {
+    const homeworksPattern = /\b(homeworks)\b/gi;
     let match;
+    let found = false;
+    
     while ((match = homeworksPattern.exec(originalText)) !== null) {
+      found = true;
+      console.log(`Found "homeworks" at position ${match.index}`);
+      
       errors.push({
         id: `custom-noun-${match.index}`,
         type: "grammar",
@@ -261,15 +296,42 @@ function processLanguageToolResponse(
         }
       });
     }
+    
+    if (!found) {
+      console.log("RegExp failed to match 'homeworks' despite it being in the text");
+      // Fallback approach for safety
+      const index = originalText.toLowerCase().indexOf("homeworks");
+      if (index !== -1) {
+        errors.push({
+          id: `custom-noun-fallback-${index}`,
+          type: "grammar",
+          errorText: originalText.substring(index, index + 9), // "homeworks"
+          replacementText: "homework",
+          description: "Grammar error. 'Homework' is an uncountable noun and should not be pluralized.",
+          position: {
+            start: index,
+            end: index + 9
+          }
+        });
+      }
+    }
   }
   
   // Check for "nobody help" pattern
-  if (!errors.some(e => e.errorText.includes("nobody help"))) {
-    const nobodyHelpPattern = /\b(nobody)\s+(help)\b/g;
+  const hasNobodyHelp = originalText.toLowerCase().includes("nobody help");
+  console.log(`Original text contains "nobody help": ${hasNobodyHelp}`);
+  
+  if (hasNobodyHelp) {
+    const nobodyHelpPattern = /\b(nobody)\s+(help)\b/gi;
     let match;
+    let found = false;
+    
     while ((match = nobodyHelpPattern.exec(originalText)) !== null) {
+      found = true;
+      console.log(`Found "nobody help" at position ${match.index}`);
+      
       errors.push({
-        id: `custom-sv-${match.index}`,
+        id: `custom-sv-indef-${match.index}`,
         type: "grammar",
         errorText: match[0],
         replacementText: "nobody helps",
@@ -279,6 +341,25 @@ function processLanguageToolResponse(
           end: match.index + match[0].length
         }
       });
+    }
+    
+    if (!found) {
+      console.log("RegExp failed to match 'nobody help' despite it being in the text");
+      // Fallback approach for safety
+      const index = originalText.toLowerCase().indexOf("nobody help");
+      if (index !== -1) {
+        errors.push({
+          id: `custom-sv-indef-fallback-${index}`,
+          type: "grammar",
+          errorText: originalText.substring(index, index + 11), // "nobody help"
+          replacementText: "nobody helps",
+          description: "Subject-verb agreement error. The singular pronoun 'nobody' should be followed by the singular form of the verb 'helps'.",
+          position: {
+            start: index,
+            end: index + 11
+          }
+        });
+      }
     }
   }
   

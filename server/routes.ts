@@ -153,6 +153,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metrics: result.metrics
         };
         
+        // Add debug info
+        console.log("Grammar check result:", { 
+          textToCheck: text.slice(0, 50) + "...",
+          errorCount: result.errors?.length || 0,
+          suggestionCount: result.suggestions?.length || 0,
+          teachersGivesDetected: text.includes("teachers gives"),
+          nobodyHelpDetected: text.includes("nobody help"),
+          homeworksDetected: text.includes("homeworks"),
+          correctedText: result.correctedText?.slice(0, 50) + "...",
+          suggestions: transformedResult.suggestions.slice(0, 3)
+        });
+        
         return res.json(transformedResult);
       } catch (languageToolError) {
         console.error("LanguageTool grammar check error:", languageToolError);
