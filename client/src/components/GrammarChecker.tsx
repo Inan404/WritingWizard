@@ -17,7 +17,7 @@ import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, CheckSquare, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 
@@ -85,14 +85,89 @@ export function GrammarChecker() {
     // Reset any previously applied corrections
     setAppliedCorrections(new Set());
     
-    // Set loading state
+    // Use our helper function to check grammar
+    checkGrammarWithText(text);
+  };
+  
+  // Function to apply a grammar correction
+  const applyCorrection = (error: GrammarError) => {
+    if (error.errorText && error.replacementText) {
+      // Replace the text
+      const newText = text.replace(error.errorText, error.replacementText);
+      setText(newText);
+      
+      // Add to applied corrections to prevent showing again
+      setAppliedCorrections(prev => {
+        const updated = new Set(prev);
+        updated.add(error.id);
+        return updated;
+      });
+      
+      toast({
+        title: 'Correction applied',
+        description: `"${error.errorText}" replaced with "${error.replacementText}"`
+      });
+      
+      // Re-run grammar check with the updated text
+      setTimeout(() => {
+        checkGrammarWithText(newText);
+      }, 500); // Small delay to ensure UI updates first
+    }
+  };
+  
+  // Function to ignore a grammar correction
+  const ignoreCorrection = (errorId: string) => {
+    setAppliedCorrections(prev => {
+      const updated = new Set(prev);
+      updated.add(errorId);
+      return updated;
+    });
+    
+    toast({
+      title: 'Suggestion ignored',
+      description: 'This suggestion has been hidden'
+    });
+  };
+  
+  // Function to fix all grammar issues at once
+  const fixAllCorrections = () => {
+    if (!result || !result.suggestions || result.suggestions.length === 0) {
+      return;
+    }
+    
+    let newText = text;
+    const updatedApplied = new Set(appliedCorrections);
+    
+    // Apply all corrections that haven't already been applied
+    result.suggestions
+      .filter((suggestion: any) => !appliedCorrections.has(suggestion.id))
+      .forEach((suggestion: any) => {
+        newText = newText.replace(suggestion.text, suggestion.replacement);
+        updatedApplied.add(suggestion.id);
+      });
+      
+    setText(newText);
+    setAppliedCorrections(updatedApplied);
+    
+    toast({
+      title: 'All corrections applied',
+      description: `Applied ${result.suggestions.filter((s: any) => !appliedCorrections.has(s.id)).length} corrections`
+    });
+    
+    // Re-run grammar check with all corrections applied
+    setTimeout(() => {
+      checkGrammarWithText(newText);
+    }, 500); // Small delay to ensure UI updates first
+  };
+  
+  // Helper function to check grammar with specific text
+  const checkGrammarWithText = (textToCheck: string) => {
     setIsPending(true);
     
-    // Use direct API endpoint for grammar checking
     fetch('/api/grammar-check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, language })
+      body: JSON.stringify({ text: textToCheck, language })
     })
     .then(res => {
       if (!res.ok) {
@@ -114,27 +189,6 @@ export function GrammarChecker() {
       setIsPending(false);
     });
   };
-  
-  // Function to apply a grammar correction
-  const applyCorrection = (error: GrammarError) => {
-    if (error.errorText && error.replacementText) {
-      // Replace the text
-      const newText = text.replace(error.errorText, error.replacementText);
-      setText(newText);
-      
-      // Add to applied corrections to prevent showing again
-      setAppliedCorrections(prev => {
-        const updated = new Set(prev);
-        updated.add(error.id);
-        return updated;
-      });
-      
-      toast({
-        title: 'Correction applied',
-        description: `"${error.errorText}" replaced with "${error.replacementText}"`
-      });
-    }
-  };
 
   return (
     <div className="h-full flex flex-col md:flex-row gap-4 md:gap-6">
@@ -149,22 +203,35 @@ export function GrammarChecker() {
         />
         
         <div className="mt-4 flex flex-col items-center gap-2">
-          <Button 
-            onClick={handleCheckGrammar} 
-            disabled={isPending || !text.trim()}
-            className="w-[200px] bg-blue-600 hover:bg-blue-700 text-white"
-            size="lg"
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Checking...
-              </>
-            ) : (
-              'Check Grammar'
-            )}
-          </Button>
+          <div className="flex flex-row gap-2">
+            <Button 
+              onClick={handleCheckGrammar} 
+              disabled={isPending || !text.trim()}
+              className="w-[200px] bg-blue-600 hover:bg-blue-700 text-white"
+              size="lg"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Checking...
+                </>
+              ) : (
+                'Check Grammar'
+              )}
+            </Button>
 
+            {result && result.suggestions && result.suggestions.filter((s: any) => !appliedCorrections.has(s.id)).length > 0 && (
+              <Button 
+                onClick={fixAllCorrections} 
+                disabled={isPending}
+                className="w-[140px] bg-green-600 hover:bg-green-700 text-white"
+                size="lg"
+              >
+                <CheckSquare className="mr-2 h-4 w-4" />
+                Fix All
+              </Button>
+            )}
+          </div>
         </div>
       </div>
       
@@ -206,25 +273,48 @@ export function GrammarChecker() {
                     .map((suggestion: any) => (
                       <Card 
                         key={suggestion.id} 
-                        className="mb-2 overflow-hidden border-l-4 border-l-red-500 cursor-pointer hover:bg-secondary/50 transition-colors"
-                        onClick={() => applyCorrection({
-                          id: suggestion.id,
-                          type: suggestion.type,
-                          errorText: suggestion.text,
-                          replacementText: suggestion.replacement,
-                          description: suggestion.description
-                        })}
+                        className="mb-2 overflow-hidden border-l-4 border-l-red-500 transition-colors"
                       >
                         <CardContent className="p-3">
                           <div className="flex gap-2 items-start">
                             <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-sm font-medium">Grammar issue</p>
+                            <div className="flex-1">
+                              <div className="flex justify-between items-start">
+                                <p className="text-sm font-medium">Grammar issue</p>
+                                <div className="flex gap-1">
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      ignoreCorrection(suggestion.id);
+                                    }}
+                                    className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                                  >
+                                    <X className="h-4 w-4" />
+                                    <span className="sr-only">Ignore</span>
+                                  </Button>
+                                </div>
+                              </div>
                               <p className="text-sm mt-1">{suggestion.description}</p>
                               <div className="mt-2 text-sm">
                                 <p className="font-mono">{suggestion.text}</p>
                                 <p className="font-mono text-green-600">→ {suggestion.replacement}</p>
                               </div>
+                              <Button 
+                                className="mt-2 w-full bg-green-600 hover:bg-green-700 text-white"
+                                size="sm"
+                                onClick={() => applyCorrection({
+                                  id: suggestion.id,
+                                  type: suggestion.type,
+                                  errorText: suggestion.text,
+                                  replacementText: suggestion.replacement,
+                                  description: suggestion.description
+                                })}
+                              >
+                                <CheckSquare className="mr-2 h-4 w-4" />
+                                Apply Correction
+                              </Button>
                             </div>
                           </div>
                         </CardContent>
