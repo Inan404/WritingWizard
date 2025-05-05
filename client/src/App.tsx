@@ -26,7 +26,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="app-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="app-theme">
         <AuthProvider>
           <div className="min-h-screen bg-background text-foreground antialiased">
             <Router />
