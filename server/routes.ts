@@ -11,7 +11,7 @@ import {
   generateChatResponse 
 } from "./services/aiService";
 // WebSocket removed: migrated to HTTP-only approach for improved performance
-import { checkGrammarWithLanguageTool } from "./services/languageToolService";
+// LanguageTool removed: using Gemini API exclusively for grammar checking
 import { processAi } from "./api/processAi";
 import { setupAuth } from "./auth";
 import { ensureTablesExist } from "./db";
@@ -176,13 +176,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const result = await generateHumanized(text, style || 'standard');
       console.log("Humanize result:", { 
-        humanizedTextLength: result.humanized?.length,
+        humanizedTextLength: result.humanizedText?.length,
         metricsAvailable: !!result.metrics
       });
       
       // Return result with consistent key names
       res.json({
-        humanizedText: result.humanized,
+        humanizedText: result.humanizedText,
         metrics: result.metrics
       });
     } catch (error) {

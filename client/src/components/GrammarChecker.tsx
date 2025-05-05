@@ -1,7 +1,7 @@
 /**
  * GrammarChecker.tsx
  * 
- * This component provides grammar checking functionality using the LanguageTool API integration.
+ * This component provides grammar checking functionality using the Gemini API integration.
  * It identifies grammar and spelling errors and provides suggestions for corrections.
  * 
  * Features:
@@ -9,8 +9,10 @@
  * - Inline error corrections with suggestions
  * - Progressive correction (rechecks text after each correction)
  * - Support for multiple languages
+ * - "Fix All" button to apply all corrections at once
+ * - "Ignore" button to skip unwanted suggestions
  * 
- * Note: The component makes API calls to the backend which then uses the LanguageTool API.
+ * Note: The component makes API calls to the backend which then uses the Gemini API.
  */
 
 import React, { useState, useRef } from 'react';
@@ -71,19 +73,9 @@ export function GrammarChecker() {
   const [result, setResult] = useState<any>(null);
   const [isPending, setIsPending] = useState(false);
   
-  // Function to handle grammar check
-  const handleCheckGrammar = () => {
-    if (!text.trim()) {
-      toast({
-        title: 'Empty text',
-        description: 'Please enter some text to check.',
-        variant: 'destructive'
-      });
-      return;
-    }
-    
-    // Reset any previously applied corrections
-    setAppliedCorrections(new Set());
+  // Function to check grammar with the given text
+  const checkGrammar = (textToCheck: string) => {
+    if (!textToCheck.trim()) return;
     
     // Set loading state
     setIsPending(true);
@@ -92,7 +84,7 @@ export function GrammarChecker() {
     fetch('/api/grammar-check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, language })
+      body: JSON.stringify({ text: textToCheck, language })
     })
     .then(res => {
       if (!res.ok) {
@@ -115,6 +107,24 @@ export function GrammarChecker() {
     });
   };
   
+  // Function to handle initial grammar check button click
+  const handleCheckGrammar = () => {
+    if (!text.trim()) {
+      toast({
+        title: 'Empty text',
+        description: 'Please enter some text to check.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    // Reset any previously applied corrections
+    setAppliedCorrections(new Set());
+    
+    // Run the grammar check
+    checkGrammar(text);
+  };
+  
   // Function to apply a grammar correction
   const applyCorrection = (error: GrammarError) => {
     if (error.errorText && error.replacementText) {
@@ -133,6 +143,11 @@ export function GrammarChecker() {
         title: 'Correction applied',
         description: `"${error.errorText}" replaced with "${error.replacementText}"`
       });
+      
+      // Run grammar check on the updated text after a slight delay
+      setTimeout(() => {
+        checkGrammar(newText);
+      }, 500);
     }
   };
   
@@ -180,6 +195,11 @@ export function GrammarChecker() {
       title: 'All corrections applied',
       description: `Applied ${pendingSuggestions.length} corrections`
     });
+    
+    // Run grammar check on the fully corrected text after a slight delay
+    setTimeout(() => {
+      checkGrammar(newText);
+    }, 500);
   };
 
   return (
