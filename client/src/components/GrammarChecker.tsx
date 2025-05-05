@@ -1,7 +1,7 @@
 /**
  * GrammarChecker.tsx
  * 
- * This component provides grammar checking functionality using the Gemini API integration.
+ * This component provides grammar checking functionality using the LanguageTool API integration.
  * It identifies grammar and spelling errors and provides suggestions for corrections.
  * 
  * Features:
@@ -9,10 +9,8 @@
  * - Inline error corrections with suggestions
  * - Progressive correction (rechecks text after each correction)
  * - Support for multiple languages
- * - "Fix All" button to apply all corrections at once
- * - "Ignore" button to skip unwanted suggestions
  * 
- * Note: The component makes API calls to the backend which then uses the Gemini API.
+ * Note: The component makes API calls to the backend which then uses the LanguageTool API.
  */
 
 import React, { useState, useRef } from 'react';
@@ -73,9 +71,19 @@ export function GrammarChecker() {
   const [result, setResult] = useState<any>(null);
   const [isPending, setIsPending] = useState(false);
   
-  // Function to check grammar with the given text
-  const checkGrammar = (textToCheck: string) => {
-    if (!textToCheck.trim()) return;
+  // Function to handle grammar check
+  const handleCheckGrammar = () => {
+    if (!text.trim()) {
+      toast({
+        title: 'Empty text',
+        description: 'Please enter some text to check.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    // Reset any previously applied corrections
+    setAppliedCorrections(new Set());
     
     // Set loading state
     setIsPending(true);
@@ -84,7 +92,7 @@ export function GrammarChecker() {
     fetch('/api/grammar-check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: textToCheck, language })
+      body: JSON.stringify({ text, language })
     })
     .then(res => {
       if (!res.ok) {
@@ -107,24 +115,6 @@ export function GrammarChecker() {
     });
   };
   
-  // Function to handle initial grammar check button click
-  const handleCheckGrammar = () => {
-    if (!text.trim()) {
-      toast({
-        title: 'Empty text',
-        description: 'Please enter some text to check.',
-        variant: 'destructive'
-      });
-      return;
-    }
-    
-    // Reset any previously applied corrections
-    setAppliedCorrections(new Set());
-    
-    // Run the grammar check
-    checkGrammar(text);
-  };
-  
   // Function to apply a grammar correction
   const applyCorrection = (error: GrammarError) => {
     if (error.errorText && error.replacementText) {
@@ -143,63 +133,7 @@ export function GrammarChecker() {
         title: 'Correction applied',
         description: `"${error.errorText}" replaced with "${error.replacementText}"`
       });
-      
-      // Run grammar check on the updated text after a slight delay
-      setTimeout(() => {
-        checkGrammar(newText);
-      }, 500);
     }
-  };
-  
-  // Function to ignore a suggestion
-  const ignoreSuggestion = (id: string) => {
-    setAppliedCorrections(prev => {
-      const updated = new Set(prev);
-      updated.add(id);
-      return updated;
-    });
-    
-    toast({
-      title: 'Suggestion ignored',
-      description: 'The suggestion will no longer be shown'
-    });
-  };
-  
-  // Function to apply all corrections at once
-  const applyAllCorrections = () => {
-    if (!result?.suggestions || result.suggestions.length === 0) return;
-    
-    // Filter out already applied corrections
-    const pendingSuggestions = result.suggestions.filter(
-      (suggestion: any) => !appliedCorrections.has(suggestion.id)
-    );
-    
-    if (pendingSuggestions.length === 0) return;
-    
-    // Start with the current text
-    let newText = text;
-    const newAppliedCorrections = new Set(appliedCorrections);
-    
-    // Apply each correction sequentially
-    // Note: This is simplistic and might have issues with overlapping corrections
-    pendingSuggestions.forEach((suggestion: any) => {
-      newText = newText.replace(suggestion.text, suggestion.replacement);
-      newAppliedCorrections.add(suggestion.id);
-    });
-    
-    // Update text and applied corrections
-    setText(newText);
-    setAppliedCorrections(newAppliedCorrections);
-    
-    toast({
-      title: 'All corrections applied',
-      description: `Applied ${pendingSuggestions.length} corrections`
-    });
-    
-    // Run grammar check on the fully corrected text after a slight delay
-    setTimeout(() => {
-      checkGrammar(newText);
-    }, 500);
   };
 
   return (
@@ -265,18 +199,6 @@ export function GrammarChecker() {
                 exit={{ opacity: 0 }}
                 className="p-4"
               >
-                {/* Fix All button */}
-                {result.suggestions && result.suggestions.filter((suggestion: any) => !appliedCorrections.has(suggestion.id)).length > 0 && (
-                  <div className="mb-3">
-                    <Button 
-                      onClick={applyAllCorrections}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      Fix All ({result.suggestions.filter((suggestion: any) => !appliedCorrections.has(suggestion.id)).length})
-                    </Button>
-                  </div>
-                )}
-                
                 {/* Grammar error cards */}
                 {result.suggestions && result.suggestions.filter((suggestion: any) => !appliedCorrections.has(suggestion.id)).length > 0 ? (
                   result.suggestions
@@ -284,43 +206,24 @@ export function GrammarChecker() {
                     .map((suggestion: any) => (
                       <Card 
                         key={suggestion.id} 
-                        className="mb-2 overflow-hidden border-l-4 border-l-red-500 hover:bg-secondary/50 transition-colors"
+                        className="mb-2 overflow-hidden border-l-4 border-l-red-500 cursor-pointer hover:bg-secondary/50 transition-colors"
+                        onClick={() => applyCorrection({
+                          id: suggestion.id,
+                          type: suggestion.type,
+                          errorText: suggestion.text,
+                          replacementText: suggestion.replacement,
+                          description: suggestion.description
+                        })}
                       >
                         <CardContent className="p-3">
                           <div className="flex gap-2 items-start">
                             <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                            <div className="w-full">
+                            <div>
                               <p className="text-sm font-medium">Grammar issue</p>
                               <p className="text-sm mt-1">{suggestion.description}</p>
                               <div className="mt-2 text-sm">
                                 <p className="font-mono">{suggestion.text}</p>
                                 <p className="font-mono text-green-600">→ {suggestion.replacement}</p>
-                              </div>
-                              
-                              <div className="mt-2 flex gap-2">
-                                <Button 
-                                  size="sm" 
-                                  className="bg-green-600 hover:bg-green-700 text-white"
-                                  onClick={() => applyCorrection({
-                                    id: suggestion.id,
-                                    type: suggestion.type,
-                                    errorText: suggestion.text,
-                                    replacementText: suggestion.replacement,
-                                    description: suggestion.description
-                                  })}
-                                >
-                                  Apply
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="secondary"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    ignoreSuggestion(suggestion.id);
-                                  }}
-                                >
-                                  Ignore
-                                </Button>
                               </div>
                             </div>
                           </div>
