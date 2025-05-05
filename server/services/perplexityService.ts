@@ -463,10 +463,29 @@ METRICS SCORING GUIDELINES:
         }
       }
       
-      // If JSON parsing fails, use the raw content as the humanized text
+      // If JSON parsing fails, try to extract just the humanized text content
       console.warn("Falling back to text processing for humanize");
+      
+      // Try to extract just the text between the "humanized" property quotes
+      const humanizedMatch = content.match(/"humanized"\s*:\s*"([\s\S]*?)(?<!\\)"/);
+      if (humanizedMatch && humanizedMatch[1]) {
+        // We found the text inside the humanized property
+        return {
+          humanized: humanizedMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n'),
+          metrics: {
+            correctness: 75,
+            clarity: 75,
+            engagement: 75,
+            delivery: 75
+          }
+        };
+      }
+      
+      // If we couldn't extract the humanized text, use the raw content but limit to just text
+      // Strip any JSON-looking formatting to get just plain text
+      const cleanedText = content.replace(/^\s*\{[\s\S]*"humanized"\s*:\s*"|"\s*,\s*"metrics[\s\S]*$/g, '');
       return {
-        humanized: content,
+        humanized: cleanedText,
         metrics: {
           correctness: 50,
           clarity: 50,

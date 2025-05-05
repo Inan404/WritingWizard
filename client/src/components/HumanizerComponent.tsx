@@ -53,7 +53,25 @@ export function HumanizerComponent() {
       },
       {
         onSuccess: (data) => {
-          setHumanizedText(data.humanizedText || '');
+          // Extract just the text content from the response, removing any JSON artifacts
+          let processedText = data.humanizedText || '';
+          
+          // Check if the text looks like it might still have JSON formatting
+          if (processedText.trim().startsWith('{') && processedText.includes('"humanized"')) {
+            try {
+              // Try to parse it as JSON
+              const jsonData = JSON.parse(processedText);
+              processedText = jsonData.humanized || processedText;
+            } catch (e) {
+              // If parsing fails, try to clean up the text using regex
+              const match = processedText.match(/"humanized"\s*:\s*"([\s\S]*?)(?<!\\)"/);
+              if (match && match[1]) {
+                processedText = match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+              }
+            }
+          }
+          
+          setHumanizedText(processedText);
         },
         onError: (error) => {
           toast({
