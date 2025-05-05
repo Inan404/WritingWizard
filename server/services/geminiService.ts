@@ -422,16 +422,12 @@ export async function generateChatResponseWithStreaming(
       // Generate streaming response
       const result = await chat.sendMessageStream([{text: userRequest}]);
       
-      // Process the stream - send INCREMENTAL chunks
+      // Process the stream
       let fullResponse = '';
       for await (const chunk of result.stream) {
         const chunkText = chunk.text();
-        if (chunkText) {
-          fullResponse += chunkText;
-          // Send only the new chunk, not the accumulated text
-          // This allows the client to control accumulation
-          onChunk(chunkText);
-        }
+        fullResponse += chunkText;
+        onChunk(fullResponse); // Send accumulated text so far
       }
       
       return fullResponse;
