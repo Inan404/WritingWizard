@@ -6,17 +6,23 @@ import { Loader2, AlertCircle, Check } from 'lucide-react';
 import { useAiTool } from '@/hooks/useAiTool';
 import { Progress } from '@/components/ui/progress';
 import ReactMarkdown from 'react-markdown';
+import { useWriting } from '@/context/WritingContext';
 
 interface AICheckerProps {
-  inputText: string;
-  onSave: (result: any) => void;
+  // We'll make these props optional since we'll use context
+  inputText?: string;
+  onSave?: (result: any) => void;
 }
 
-const AIChecker: React.FC<AICheckerProps> = ({ inputText, onSave }) => {
+const AIChecker: React.FC<AICheckerProps> = () => {
   const { toast } = useToast();
   const [showUI, setShowUI] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const { aiCheckText, setAiCheckText, setScoreMetrics } = useWriting();
+  
+  // Get text from the context
+  const inputText = aiCheckText.original;
   
   const { mutate, isPending } = useAiTool();
 
@@ -56,8 +62,54 @@ const AIChecker: React.FC<AICheckerProps> = ({ inputText, onSave }) => {
     );
   };
 
+  // Save the analysis results to the context
   const handleSave = () => {
-    onSave(result);
+    if (result) {
+      // Update AI percentage in the metrics
+      setScoreMetrics({
+        ...result.metrics,
+        aiPercentage: result.aiPercentage
+      });
+      
+      // Save highlight information if available
+      if (result.highlights) {
+        setAiCheckText({
+          ...aiCheckText,
+          highlights: result.highlights.map((h: any) => ({
+            type: 'ai',
+            start: h.position.start,
+            end: h.position.end,
+            message: h.description || ''
+          }))
+        });
+      }
+      
+      // Save to database via an API call
+      fetch('/api/db/writing-entries', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: 'AI Check Text',
+          inputText: inputText,
+          aiCheckResult: JSON.stringify(result)
+        })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to save analysis');
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Entry saved successfully:', data);
+      })
+      .catch(error => {
+        console.error('Error saving entry:', error);
+      });
+    }
+    
     toast({
       title: 'Analysis saved',
       description: 'AI content detection results have been saved.',
