@@ -577,20 +577,20 @@ METRICS SCORING GUIDELINES:
 }
 
 /**
- * Generate humanized version of AI-generated text
+ * Generate humanized version of AI-generated text that won't be detected by AI checkers
  */
 export async function generateHumanized(text: string, style: string = 'standard', customTone?: string) {
   const styleDescriptions: Record<string, string> = {
-    'standard': 'Make the text sound more human by adding natural variations and flow. Example: "The data is analyzed" → "I\'ve gone through the data"',
-    'formal': 'Humanize while maintaining formal tone suitable for professional contexts. Example: "This shows results" → "The analysis reveals these findings"',
-    'fluency': 'Optimize for conversational flow and natural rhythm. Example: "It was determined that" → "We figured out that" or "I discovered that"',
-    'academic': 'Humanize while preserving academic integrity and appropriate terminology. Example: "The study shows" → "Our research indicates" or "The evidence suggests"',
-    'custom': 'Be creative with humanizing the text while making it sound authentic. Follow the specified tone exactly.'
+    'standard': 'Transform the text to sound genuinely human, with natural speech patterns, contractions, occasional sentence fragments, casual transitions, and imperfect grammar at times. Include occasional parenthetical thoughts and use varied sentence structure. Example: "The data is analyzed" → "I went through the data and noticed (actually, this surprised me) several interesting patterns."',
+    'formal': 'Rewrite with human touches while maintaining professionalism - vary sentence length, use occasional first-person perspective, and add thoughtful transitions. Example: "This shows results" → "As we can see from these findings, the results point to several key insights."',
+    'fluency': 'Make it conversational with casual transitions, contractions, parenthetical thoughts, and natural flow. Example: "It was determined that" → "So I figured out that..." or "What we found, which was actually pretty interesting, was that..."',
+    'academic': 'Add human elements like occasional hedging, personal perspective, and varied citations while preserving academic integrity. Example: "The study shows" → "From my analysis of the literature, this research suggests" or "The evidence appears to indicate"',
+    'custom': 'Completely transform this text to sound authentically human in exactly the specified tone, with natural imperfections, varied sentence structures, and idiomatic expressions.'
   };
 
   // For custom style, use the provided tone description if available
   const styleDescription = style === 'custom' && customTone 
-    ? `Use a ${customTone} tone while humanizing the text to sound authentic.` 
+    ? `Use a ${customTone} tone while making the text sound authentically human and undetectable by AI checkers.` 
     : styleDescriptions[style] || styleDescriptions.standard;
     
   // Make the style more prominent in the prompt
@@ -598,11 +598,27 @@ export async function generateHumanized(text: string, style: string = 'standard'
     ? `[CUSTOM TONE: ${customTone.toUpperCase()}]` 
     : `[STYLE: ${style.toUpperCase()}]`;
 
-  const systemPrompt = `You are an expert writing assistant specializing in making AI-generated text sound more human.
+  const systemPrompt = `You are an expert writing coach specializing in making text sound authentically human and UNDETECTABLE by AI content checkers.
+
 ${stylePrefix}
-Rewrite the provided text to sound more natural and human-written.
-VERY IMPORTANT: Use the ${style === 'custom' ? customTone : style} style for humanizing.
-Style description: ${styleDescription}
+
+Your task is to completely transform the provided AI-generated text to sound genuinely human-written in a way that will pass AI detection tools.
+
+CRITICAL INSTRUCTIONS:
+1. Introduce natural human imperfections - include occasional run-on sentences, contractions (don't, I'm, you're), sentence fragments, off-topic asides, and self-corrections
+2. Vary sentence lengths dramatically - mix very short sentences with occasional long ones
+3. Use informal transitions like "anyway", "so", "actually", "you know", "honestly", "I mean"
+4. Add personal touches like "personally", "in my experience", "I've found that", "to be honest"
+5. Incorporate rhetorical questions, especially when transitioning to new points
+6. Include occasional tangential thoughts in parentheses (these make text seem more spontaneous)
+7. Use casual punctuation in places - occasional exclamation points, em dashes, or ellipses...
+8. Incorporate idioms, metaphors, and colloquialisms that AI typically won't generate
+9. DON'T be too perfect or consistent, humans rarely are
+
+Style specifics: ${styleDescription}
+
+IMPORTANT: Final output should sound completely natural and human, avoiding ANY patterns that AI detectors look for. Make extensive changes to phrasing, structure, and organization.
+
 IMPORTANT: Provide your response as a raw, valid JSON object with no markdown formatting, no extra text, and no explanation outside the JSON object.
 Respond with ONLY the following JSON format:
 {
@@ -623,12 +639,12 @@ METRICS SCORING GUIDELINES:
 - NEVER return scores of 0 for any category - minimum value should be 50`;
 
   try {
-    // Adjust temperature based on style - higher for creative styles
-    let temperature = 0.7; // Default
-    if (style === 'fluency') temperature = 0.8;
-    if (style === 'academic') temperature = 0.5; // More controlled for academic
-    if (style === 'formal') temperature = 0.6;
-    if (style === 'custom') temperature = 0.9; // Most creative for custom
+    // Higher temperatures for more randomness and creativity to avoid AI detection patterns
+    let temperature = 0.85; // Higher default for all humanization
+    if (style === 'fluency') temperature = 0.92;
+    if (style === 'academic') temperature = 0.75; // Still higher than before, but more controlled for academic
+    if (style === 'formal') temperature = 0.8;
+    if (style === 'custom') temperature = 0.95; // Very high for maximum randomness and creativity
     
     // Get response from Gemini
     const response = await generateCompletion(systemPrompt, text, temperature);
