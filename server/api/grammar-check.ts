@@ -195,6 +195,9 @@ function enhanceLocalDetection(text: string): GrammarError[] {
   return errors;
 }
 
+/**
+ * Main grammar check function that uses multiple services
+ */
 export async function checkGrammar(text: string): Promise<GrammarCheckResult> {
   try {
     // Validate input
@@ -214,24 +217,41 @@ export async function checkGrammar(text: string): Promise<GrammarCheckResult> {
     // First, use enhanced local detection for common errors
     const enhancedErrors = enhanceLocalDetection(text);
     
-    // Next, use the local utility to detect common grammar errors
-    const detectedErrors = detectGrammarErrors(text).map((error, index) => ({
-      id: `local-${index}`,
-      type: error.type,
-      errorText: text.substring(error.start, error.end),
-      replacementText: text.substring(error.start, error.end), // No replacement suggestion in basic detection
-      description: `Possible ${error.type} error`,
-      position: {
-        start: error.start,
-        end: error.end
-      }
-    }));
+    // Use Gemini API as primary method for grammar checking
+    console.log("Using Gemini API for primary grammar check");
+    const geminiResult = await generateGrammarCheck(text);
     
-    // Try LanguageTool API for more accurate grammar checking
+    // Check if Gemini result has the expected properties
+    if (geminiResult && 
+        (geminiResult as any).errors && 
+        (geminiResult as any).suggestions && 
+        (geminiResult as any).metrics) {
+      
+      // Type assertion to work with the result
+      const typedResult = geminiResult as any;
+      
+      // Merge with enhanced errors to make sure we catch common issues
+      return {
+        errors: [...enhancedErrors, ...typedResult.errors],
+        suggestions: [
+          ...enhancedErrors.map(error => ({
+            id: `sugg-${error.id}`,
+            type: error.type,
+            originalText: error.errorText,
+            suggestedText: error.replacementText,
+            description: error.description
+          })),
+          ...typedResult.suggestions
+        ],
+        metrics: typedResult.metrics
+      };
+    }
+    
+    // If Gemini fails, try LanguageTool API as a backup
     const languageToolResult = await checkWithLanguageTool(text);
     
     if (languageToolResult && languageToolResult.errors.length > 0) {
-      console.log("Grammar check completed via direct HTTP API");
+      console.log("Grammar check completed via LanguageTool API (fallback)");
       // Merge with enhanced errors
       return {
         ...languageToolResult,
@@ -249,57 +269,45 @@ export async function checkGrammar(text: string): Promise<GrammarCheckResult> {
       };
     }
     
-    // Use Gemini API as a fallback
-    const result = await generateGrammarCheck(text);
+    // If all external services fail, use local detection as final fallback
+    const detectedErrors = detectGrammarErrors(text).map((error, index) => ({
+      id: `local-${index}`,
+      type: error.type,
+      errorText: text.substring(error.start, error.end),
+      replacementText: text.substring(error.start, error.end), // No replacement suggestion in basic detection
+      description: `Possible ${error.type} error`,
+      position: {
+        start: error.start,
+        end: error.end
+      }
+    }));
     
-    // If we get a valid result from Gemini
-    if (result && 
-        result.errors && 
-        result.suggestions && 
-        result.metrics) {
-      // Merge with enhanced errors
-      return {
-        ...result,
-        errors: [...enhancedErrors, ...result.errors],
-        suggestions: [
-          ...enhancedErrors.map(error => ({
-            id: `sugg-${error.id}`,
-            type: error.type,
-            originalText: error.errorText,
-            suggestedText: error.replacementText,
-            description: error.description
-          })),
-          ...result.suggestions
-        ]
-      };
-    } else {
-      // Fallback response if both services fail
-      return {
-        errors: [...enhancedErrors, ...detectedErrors],
-        suggestions: [
-          ...enhancedErrors.map(error => ({
-            id: `sugg-${error.id}`,
-            type: error.type,
-            originalText: error.errorText,
-            suggestedText: error.replacementText,
-            description: error.description
-          })),
-          ...detectedErrors.map(error => ({
-            id: `sugg-${error.id}`,
-            type: error.type,
-            originalText: error.errorText,
-            suggestedText: error.replacementText,
-            description: error.description
-          }))
-        ],
-        metrics: {
-          correctness: Math.max(30, 85 - ((enhancedErrors.length + detectedErrors.length) * 5)),
-          clarity: 80,
-          engagement: 75,
-          delivery: 70
-        }
-      };
-    }
+    // Return local detection results
+    return {
+      errors: [...enhancedErrors, ...detectedErrors],
+      suggestions: [
+        ...enhancedErrors.map(error => ({
+          id: `sugg-${error.id}`,
+          type: error.type,
+          originalText: error.errorText,
+          suggestedText: error.replacementText,
+          description: error.description
+        })),
+        ...detectedErrors.map(error => ({
+          id: `sugg-${error.id}`,
+          type: error.type,
+          originalText: error.errorText,
+          suggestedText: error.replacementText,
+          description: error.description
+        }))
+      ],
+      metrics: {
+        correctness: Math.max(30, 85 - ((enhancedErrors.length + detectedErrors.length) * 5)),
+        clarity: 80,
+        engagement: 75,
+        delivery: 70
+      }
+    };
   } catch (error) {
     console.error("Error in grammar check:", error);
     throw error;
