@@ -782,25 +782,25 @@ METRICS SCORING GUIDELINES:
  */
 export async function generateHumanized(text: string, style: string = 'standard', customTone?: string) {
   const styleDescriptions: Record<string, string> = {
-    'standard': 'Transform the text to sound genuinely human, with natural speech patterns, contractions, occasional sentence fragments, casual transitions, and imperfect grammar at times. Include occasional parenthetical thoughts, use varied sentence structure, and add filler words like "um" and "like" in moderation. Example: "The data is analyzed" → "I went through the data and noticed (actually, this surprised me) several interesting patterns."',
+    'standard': 'Transform the text to sound like it was written by a real person, not an AI. Use casual language, contractions, varied sentence lengths (mix very short sentences with longer ones), and natural phrasing. Add everyday expressions, slight imperfections, and write the way a person would honestly explain their thoughts in a blog post. Include parenthetical thoughts (these make text seem more spontaneous) and occasional self-corrections. Example: "The data is analyzed" → "I went through the data and noticed (actually, this surprised me) several interesting patterns."',
     
-    'formal': 'Rewrite with human touches while maintaining professionalism - vary sentence length, use occasional first-person perspective, add thoughtful transitions, and include subtle opinion markers like "in my assessment" or "it seems reasonable to conclude." Example: "This shows results" → "As we can see from these findings, the results point to several key insights that, in my professional opinion, warrant further consideration."',
+    'formal': 'Rewrite with human touches while maintaining professionalism - vary sentence length, use occasional first-person perspective, add thoughtful transitions, and include subtle opinion markers like "in my assessment" or "it seems reasonable to conclude." Imagine you\'re a thoughtful professional speaking to colleagues, not writing a report. Example: "This shows results" → "As we can see from these findings, the results point to several key insights that, in my professional opinion, warrant further consideration."',
     
-    'fluency': 'Make it conversational with casual transitions, contractions, parenthetical thoughts, and natural flow. Add conversational fillers like "you know," "I mean," and "like" in moderation, and include occasional mid-sentence restarts or self-corrections. Example: "It was determined that" → "So I figured out that... well, actually, what we found, which was pretty interesting, was that..."',
+    'fluency': 'Make it sound like someone talking to a friend - use casual transitions, lots of contractions, parenthetical thoughts, and natural flow. Add conversational fillers like "you know," "I mean," and "like" in moderation, and include occasional mid-sentence restarts. Use the tone of someone reflecting in a personal conversation. Example: "It was determined that" → "So I figured out that... well, actually, what we found, which was pretty interesting, was that..."',
     
-    'academic': 'Add human elements like occasional hedging, personal perspective, and varied citations while preserving academic integrity. Include moments of first-person reflection, rhetorical questions, and phrases like "I would argue" or "this finding suggests to me." Example: "The study shows" → "From my analysis of the literature, this research suggests—and I find this particularly noteworthy—that the variables have a complex relationship."',
+    'academic': 'Write like a college professor speaking to students or colleagues - add human elements like occasional hedging, personal perspective, and varied citations while preserving academic integrity. Include moments of first-person reflection, rhetorical questions, and phrases like "I would argue" or "this finding suggests to me." Example: "The study shows" → "From my analysis of the literature, this research suggests—and I find this particularly noteworthy—that the variables have a complex relationship."',
     
-    'custom': 'Completely transform this text to sound authentically human in exactly the specified tone, with natural imperfections, varied sentence structures, idiomatic expressions, and subtle inconsistencies that AI detection systems cannot easily identify.'
+    'custom': 'Completely transform this text to sound authentically human in exactly the specified tone. Avoid sounding like an AI. Break up long sentences, use everyday language, and write the way a person would talk. Keep it real and slightly imperfect with natural imperfections, varied sentence structures, idiomatic expressions, and subtle inconsistencies that AI detection systems cannot easily identify.'
   };
 
-  // For custom style, use the provided tone description if available
+  // For custom style, use the provided tone description if available and enhance it with style anchors
   const styleDescription = style === 'custom' && customTone 
-    ? `Use a ${customTone} tone while making the text sound authentically human and completely undetectable by AI checkers.` 
+    ? `Imagine you're ${customTone}. Write in that exact tone and style while making the text sound authentically human and completely undetectable by AI checkers. Break up sentences, use natural language, and write the way a real person with this specific style would write or talk.` 
     : styleDescriptions[style] || styleDescriptions.standard;
     
   // Make the style more prominent in the prompt
   const stylePrefix = style === 'custom' && customTone 
-    ? `[CUSTOM TONE: ${customTone.toUpperCase()}]` 
+    ? `[CUSTOM STYLE ANCHOR: WRITE LIKE ${customTone.toUpperCase()}]` 
     : `[STYLE: ${style.toUpperCase()}]`;
 
   // Adjusting temperature based on style
@@ -815,6 +815,28 @@ export async function generateHumanized(text: string, style: string = 'standard'
 ${stylePrefix}
 
 IMPORTANT CONTEXT: This text must pass AI detection tools and appear completely human-written. The current generation of AI detectors look for patterns in word usage, sentence structure, punctuation patterns, and overall consistency. Your goal is to transform this text to eliminate ALL detectable AI patterns.
+
+EXAMPLES OF PERFECT HUMANIZATION IN DIFFERENT STYLES:
+
+Standard (Casual) Style:
+Original AI text: "The impact of climate change on global ecosystems is substantial. Rising temperatures are altering habitats and disrupting wildlife patterns. Scientists have observed significant shifts in migration routes and breeding seasons. It is essential that we implement sustainable solutions to mitigate these effects."
+
+Humanized version: "So I was reading about how climate change is really messing with ecosystems all over the place. Like, temperatures are going up, right? And that's totally screwing with habitats and wildlife. I mean, scientists have been watching this stuff (pretty concerning, tbh) and they're seeing animals changing their migration paths and when they breed and all that. It's crazy! We NEED to get our act together with some sustainable solutions... because this isn't getting better on its own. I don't know about you, but I'm worried about what this means for our future."
+
+Formal Style:
+Original AI text: "The quarterly financial report indicates a 12% increase in revenue compared to the previous quarter. Operating expenses have remained stable, resulting in improved profit margins. The board recommends continuing the current investment strategy for the next fiscal year."
+
+Humanized version: "I'm pleased to share that our quarterly financial performance shows a notable 12% revenue increase over last quarter. What's particularly encouraging, in my view, is that we've maintained stable operating expenses during this period — which has directly contributed to our improved margins. While these results are promising, I believe we should approach the next fiscal year with measured optimism. Based on my analysis of these trends, I would support the board's recommendation to maintain our current investment approach, though we might want to consider some targeted adjustments as market conditions evolve."
+
+Academic Style:
+Original AI text: "The correlation between socioeconomic status and educational outcomes is well-documented in the literature. Research indicates that students from higher socioeconomic backgrounds tend to achieve better academic results. This relationship persists across different educational systems globally."
+
+Humanized version: "I've been examining the relationship between socioeconomic factors and educational performance, and I must say, the correlation is quite striking. From my analysis of the literature (and there's quite a bit of it), students from more affluent backgrounds do seem to perform better academically — though of course there are always exceptions. What I find particularly interesting is that this pattern repeats itself across educational systems worldwide. I wonder, though, if we're fully accounting for all the variables? It's something I've been grappling with in my own research..."
+
+Fluency Style:
+Original AI text: "Recent studies suggest that regular meditation improves cognitive function. Participants who meditated for 20 minutes daily showed enhanced attention span and memory retention. These benefits were observed across all age groups in the study."
+
+Humanized version: "So, I've been looking into meditation lately, you know? And there's actually some pretty cool research coming out about it. Like, people who took just 20 minutes a day to meditate — which isn't even that long when you think about it — they actually did better on attention tests and remembered stuff more easily. And here's the thing... it worked for everyone! Young people, older folks, everyone seemed to get something out of it. I mean, I've tried meditation a few times myself (never could stick with it for long though, haha), but seeing these studies makes me think maybe I should give it another shot? Anyway, I thought that was pretty interesting."
 
 CRITICAL TECHNIQUES TO IMPLEMENT (MUST USE MULTIPLE TECHNIQUES):
 1. HUMAN IMPERFECTIONS: Add grammatical inconsistencies, occasional typos (later fixed), mid-sentence thought changes, and restarts.
