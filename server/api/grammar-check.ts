@@ -99,6 +99,74 @@ function enhanceLocalDetection(text: string): GrammarError[] {
           
         return match;
       }
+    },
+    {
+      // Pattern for "she/he don't" -> "she/he doesn't"
+      pattern: /\b(he|she|it)\s+don't\b/gi,
+      type: "grammar",
+      description: "Subject-verb agreement error. Use 'doesn't' with singular subjects.",
+      fix: (match: string) => match.replace(/\s+don't\b/i, ' doesn\'t')
+    },
+    {
+      // Pattern for "I doesn't" -> "I don't"
+      pattern: /\bI\s+doesn't\b/gi,
+      type: "grammar",
+      description: "Subject-verb agreement error. Use 'don't' with 'I' as the subject.",
+      fix: (match: string) => match.replace(/\s+doesn't\b/i, ' don\'t')
+    },
+    {
+      // Pattern for "They doesn't" -> "They don't"
+      pattern: /\b(we|you|they)\s+doesn't\b/gi,
+      type: "grammar",
+      description: "Subject-verb agreement error. Use 'don't' with plural subjects.",
+      fix: (match: string) => match.replace(/\s+doesn't\b/i, ' don\'t')
+    },
+    {
+      // Pattern for double negatives
+      pattern: /\b(don't|doesn't|won't|can't|wouldn't|couldn't|shouldn't)\s+.{0,10}\s+(no|not|nothing|nobody|nowhere|none)\b/gi,
+      type: "grammar",
+      description: "Double negative. Use either a negative verb or a negative pronoun, but not both.",
+      fix: (match: string) => {
+        // This is a simple fix that might not be perfect for all cases
+        if (match.match(/\b(don't|doesn't)\b/i)) {
+          return match.replace(/\b(don't|doesn't)\b/i, 'do')
+            .replace(/\b(no)\b/i, 'any')
+            .replace(/\b(not)\b/i, '')
+            .replace(/\b(nothing)\b/i, 'anything')
+            .replace(/\b(nobody)\b/i, 'anybody')
+            .replace(/\b(nowhere)\b/i, 'anywhere')
+            .replace(/\b(none)\b/i, 'any');
+        }
+        return match;
+      }
+    },
+    {
+      // Pattern for "She don't like" -> "She doesn't like"
+      pattern: /\b(She|He|It)\s+don't\s+(\w+)\b/gi,
+      type: "grammar",
+      description: "Subject-verb agreement error. Use 'doesn't' with singular third-person subjects.",
+      fix: (match: string) => match.replace(/\s+don't\s+/i, ' doesn\'t ')
+    },
+    {
+      // Pattern for "you was" -> "you were"
+      pattern: /\b(you|we|they)\s+was\b/gi,
+      type: "grammar",
+      description: "Subject-verb agreement error. Use 'were' with 'you', 'we', and 'they'.",
+      fix: (match: string) => match.replace(/\s+was\b/i, ' were')
+    },
+    {
+      // Pattern for incorrect article usage with vowel sounds
+      pattern: /\b(a)\s+(apple|orange|elephant|hour|umbrella|honest|university)\b/gi,
+      type: "grammar",
+      description: "Incorrect article usage. Use 'an' before words that begin with vowel sounds.",
+      fix: (match: string) => match.replace(/\ba\b/i, 'an')
+    },
+    {
+      // Pattern for incorrect use of "me" instead of "I" as subject
+      pattern: /\b(me and \w+|me, \w+ and \w+)\s+(am|are|is|was|were|have|has|will|would|should)\b/gi,
+      type: "grammar",
+      description: "Incorrect pronoun usage. Use 'I' instead of 'me' when referring to yourself as the subject.",
+      fix: (match: string) => match.replace(/\bme\b/i, 'I')
     }
   ];
   
