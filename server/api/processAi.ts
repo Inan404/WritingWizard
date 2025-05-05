@@ -110,7 +110,16 @@ export async function processAi(req: Request, res: Response) {
           const humanizeResult = humanizeStyle === 'custom' && customTone
             ? await generateHumanized(text, humanizeStyle, customTone)
             : await generateHumanized(text, humanizeStyle);
-          return res.json(humanizeResult);
+          
+          // Ensure we're returning data in a consistent format
+          // Make sure humanized text is available in both formats for backward compatibility
+          const response = {
+            humanized: humanizeResult.humanizedText || humanizeResult.humanized,
+            humanizedText: humanizeResult.humanizedText || humanizeResult.humanized,
+            metrics: humanizeResult.metrics
+          };
+          
+          return res.json(response);
         } catch (humanizeError) {
           console.error("Humanize error:", humanizeError);
           return res.status(500).json({ 

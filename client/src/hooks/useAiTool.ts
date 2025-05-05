@@ -209,14 +209,10 @@ async function processRequest(params: AiToolParams, cacheKey: string, payload: a
       }
     };
   } else if (mode === 'humanize') {
+    // Ensure we handle both API formats (humanized or humanizedText)
+    // We only return the text content itself to the UI component
     return {
-      humanizedText: data.humanized || data.humanizedText || text,
-      metrics: data.metrics || {
-        correctness: Math.floor(Math.random() * 30) + 50,
-        clarity: Math.floor(Math.random() * 30) + 50,
-        engagement: Math.floor(Math.random() * 30) + 50,
-        delivery: Math.floor(Math.random() * 30) + 50
-      }
+      humanizedText: data.humanized || data.humanizedText || text
     };
   } else if (mode === 'aicheck') {
     return {
