@@ -49,42 +49,55 @@ interface Message {
  */
 function prepareMessages(messages: Message[]) {
   // For Gemini, we need to handle messages differently:
-  // 1. System messages need to be prepended to the first user message
-  // 2. We need to ensure the first message is from the user (Gemini requirement)
-  // 3. We need to alternate user/model roles properly
+  // 1. System messages are handled separately
+  // 2. Gemini requires the first message to be from the user
+  // 3. We need to get the actual user input
   
   let systemPrompt = '';
-  let userMessages: Message[] = [];
+  let userContent = '';
+  let chatHistory = '';
+  let lastUserMessage = '';
   
-  // First, extract any system message and filter messages
-  for (let i = 0; i < messages.length; i++) {
-    const message = messages[i];
-    if (message.role === 'system') {
-      systemPrompt = message.content;
-    } else {
-      userMessages.push(message);
+  // Extract system message
+  const systemMessage = messages.find(msg => msg.role === 'system');
+  if (systemMessage) {
+    systemPrompt = systemMessage.content;
+  }
+  
+  // Find the last user message - this is what we'll directly respond to
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') {
+      lastUserMessage = messages[i].content;
+      break;
     }
   }
   
-  // Ensure the first message is from the user
-  if (userMessages.length === 0 || userMessages[0].role !== 'user') {
-    console.warn('No user message found or first message is not from user. Creating default user prompt.');
-    userMessages.unshift({
-      role: 'user',
-      content: 'Hello, can you help me with my writing?'
-    });
+  // If no user message found, use a default
+  if (!lastUserMessage) {
+    lastUserMessage = 'Hi, can you help me with my writing?';
   }
   
-  // Prepend system message to first user message if available
-  if (systemPrompt && userMessages[0].role === 'user') {
-    userMessages[0].content = `${systemPrompt}\n\n${userMessages[0].content}`;
+  // Collect chat history (limited to 5 most recent exchanges for efficiency)
+  const recentMessages = messages
+    .filter(msg => msg.role !== 'system')
+    .slice(-10);
+  
+  if (recentMessages.length > 1) {
+    chatHistory = 'Recent conversation:\n' + 
+      recentMessages.map(msg => 
+        `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
+      ).join('\n') + '\n\n';
   }
   
-  // Now create properly formatted history for Gemini
-  // We'll only use the first user message for simplicity and reliability
+  // Combine everything into a single prompt
+  userContent = `${systemPrompt ? systemPrompt + '\n\n' : ''}${
+    chatHistory ? 'Context: ' + chatHistory : ''
+  }Current message: ${lastUserMessage}`;
+  
+  // Return in Gemini's expected format
   return [{
     role: 'user',
-    parts: [{ text: userMessages[0].content }]
+    parts: [{ text: userContent }]
   }];
 }
 
@@ -95,32 +108,61 @@ export async function generateChatResponse(messages: Message[]): Promise<string>
   try {
     console.log('Generating chat response with Gemini');
     
-    // Format messages for Gemini (we now just get a simple user message)
-    const formattedMessages = prepareMessages(messages);
-    console.log('Sending sanitized messages to Gemini:', JSON.stringify(formattedMessages));
+    // Find the last user message
+    let lastUserMessage = '';
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        lastUserMessage = messages[i].content;
+        break;
+      }
+    }
     
-    // Get the model with a moderate temperature
+    // If the message is short (like 'hi', 'hello'), give a more focused response
+    if (lastUserMessage && lastUserMessage.trim().length < 15 && 
+        /^(hi|hello|hey|greetings|hi there|hello there)/i.test(lastUserMessage.trim())) {
+      return "Hello! I'm your writing assistant. I can help with grammar checking, paraphrasing, humanizing text, content creation, and more. What type of writing help do you need today?";
+    }
+    
+    // Format messages for Gemini
+    const formattedMessages = prepareMessages(messages);
+    
+    // Get the model with more conversation-appropriate settings
     const model = getModel(DEFAULT_MODEL, {
-      temperature: 0.7,
-      topK: 40,
-      topP: 0.95,
-      maxOutputTokens: 8192,
+      temperature: 0.6, // Slightly lower for more focused responses
+      topK: 30,
+      topP: 0.85,
+      maxOutputTokens: 800, // Limit response length for faster generation
     });
     
     if (!formattedMessages || formattedMessages.length === 0) {
       throw new Error('No valid messages to send to the model');
     }
     
-    // For Gemini, we need to send content directly rather than using chat history
-    // since we've simplified our approach to avoid message ordering issues
+    // Get the consolidated user message
     const userMessage = formattedMessages[0].parts[0].text;
     
-    // Generate content directly instead of using chat
-    const result = await model.generateContent(userMessage);
+    // Start timing the response
+    const startTime = Date.now();
+    
+    // Generate content with timeout to prevent long-running requests
+    const result = await Promise.race([
+      model.generateContent(userMessage),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Response generation timed out')), 8000)
+      )
+    ]) as any; // Cast to any to avoid type issues
+    
     const response = result.response.text();
+    const responseTime = Date.now() - startTime;
+    
+    console.log(`AI response generated in ${responseTime}ms`);
     
     return response;
   } catch (error: any) {
+    if (error.message === 'Response generation timed out') {
+      console.error('Gemini response timed out');
+      return "I'm having trouble generating a complete response right now. Could you try asking a more specific question about your writing needs?";
+    }
     console.error('Error in Gemini chat response:', error);
     throw new Error(`Failed to generate chat response: ${error?.message || 'Unknown error'}`);
   }
