@@ -206,7 +206,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#040b14] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Top navigation bar */}
       <header className="py-2 sm:py-4 px-3 sm:px-6 flex items-center justify-between border-b border-gray-800">
         <h1 className="text-base sm:text-lg font-medium truncate">{user?.username || 'User'}'s Dashboard</h1>
@@ -242,7 +242,7 @@ export default function DashboardPage() {
               variant="ghost"
               size="sm"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="bg-[#111827] rounded-full p-2"
+              className="bg-card rounded-full p-2"
             >
               {mobileMenuOpen ? (
                 <X className="h-4 w-4" />
@@ -265,7 +265,7 @@ export default function DashboardPage() {
                 transition={{ duration: 0.2 }}
                 className="md:hidden mb-6"
               >
-                <div className="bg-[#111827] rounded-lg p-2 flex flex-col gap-2">
+                <div className="bg-card rounded-lg p-2 flex flex-col gap-2">
                   {Object.entries(tabMapping).map(([key, label]) => (
                     <Button
                       key={key}
@@ -290,7 +290,7 @@ export default function DashboardPage() {
           
           {/* Desktop tab navigation */}
           <div className="hidden md:flex justify-center mb-8 sm:mb-12 overflow-x-auto hover-scrollbar">
-            <div className="bg-[#111827] rounded-full p-1 flex flex-nowrap">
+            <div className="bg-card rounded-full p-1 flex flex-nowrap">
               {Object.entries(tabMapping).map(([key, label]) => (
                 <Button
                   key={key}
@@ -346,10 +346,10 @@ export default function DashboardPage() {
 
       {/* Delete chat confirmation dialog */}
       <Dialog open={deleteChatDialogOpen} onOpenChange={setDeleteChatDialogOpen}>
-        <DialogContent className="bg-[#111827] border-gray-800 text-white">
+        <DialogContent className="bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle>Delete Chat</DialogTitle>
-            <DialogDescription className="text-gray-400">
+            <DialogDescription className="text-muted-foreground">
               Are you sure you want to delete this chat? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
