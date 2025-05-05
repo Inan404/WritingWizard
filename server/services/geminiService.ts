@@ -803,16 +803,32 @@ export async function generateHumanized(text: string, style: string = 'standard'
     ? `[CUSTOM STYLE ANCHOR: WRITE LIKE ${customTone.toUpperCase()}]` 
     : `[STYLE: ${style.toUpperCase()}]`;
 
-  // Adjusting temperature based on style
-  let temperature = 0.75; // Default
-  if (style === 'fluency') temperature = 0.85;
-  if (style === 'academic') temperature = 0.6;
-  if (style === 'formal') temperature = 0.7;
-  if (style === 'custom') temperature = 0.9; // Most creative for custom
+  // Adjusting temperature and other generation parameters based on style
+  let temperature = 0.9; // Using high randomness (0.9) for more human-like creativity
+  let topK = 40; // Narrows word choices slightly, still diverse
+  let topP = 0.95; // Keeps natural variability, limits outlier tokens
+  
+  // Slight adjustments based on style
+  if (style === 'academic') {
+    temperature = 0.7; // Less randomness for academic tone
+    topP = 0.85; // More focused word selection for academic writing
+  }
+  if (style === 'formal') {
+    temperature = 0.8; // Moderate randomness for formal tone
+    topP = 0.9; // Slightly more focused word selection
+  }
 
-  const systemPrompt = `You are an advanced writing expert specializing in making AI-generated content undetectable by even the most sophisticated AI content detection systems like ZeroGPT, GPTZero, and others.
+  const systemPrompt = `You are a writing assistant that rewrites AI-generated text to sound like a real human wrote it.
 
 ${stylePrefix}
+
+Your task:
+- Make the text sound informal, like someone casually reflecting or explaining an idea
+- Break up long sentences
+- Use contractions (I'm, don't, it's)
+- Include slight hesitation, filler words (like, kind of, maybe), and small personal touches
+- Vary sentence lengths. Don't make it too clean or academic
+- Avoid sounding robotic or too balanced. Make it natural and conversational
 
 IMPORTANT CONTEXT: This text must pass AI detection tools and appear completely human-written. The current generation of AI detectors look for patterns in word usage, sentence structure, punctuation patterns, and overall consistency. Your goal is to transform this text to eliminate ALL detectable AI patterns.
 
@@ -874,7 +890,19 @@ CRITICAL TECHNIQUES TO IMPLEMENT (MUST USE MULTIPLE TECHNIQUES):
    - Add occasional ellipses for trailing thoughts...
    - Mix punctuation styles! (Sometimes parentheses, sometimes em dashes)
 
+8. EXTRA STEALTH TECHNIQUES:
+   - Insert a few real typos or casual grammar flaws (like "its" vs "it's" mix-up)
+   - Add a small personal memory or observation ("I remember when...")
+   - Include 1-2 redundant words or slightly awkward phrasing 
+   - Slightly paraphrase the first and last sentence to break AI pattern recognition
+
 Style specifics: ${styleDescription}
+
+Example:
+Input: "Artificial intelligence is transforming the way we live and work. Its influence extends to numerous aspects of society, including healthcare, transportation, and entertainment. As AI technologies continue to advance, they will undoubtedly create new opportunities and challenges."
+Output: "AI is kind of everywhere these days. It's changing how we live, work, even how we think about the future! Like, have you noticed how it's showing up in healthcare? And don't even get me started on what it's doing to transportation and entertainment. I was watching a show last night that was supposedly created with some AI help, and honestly? Couldn't tell the difference. As this tech keeps getting better—and trust me, it's evolving FAST—we're gonna see some pretty cool opportunities. But also some, um, interesting challenges too. Kinda makes you wonder where we'll be in another five years, doesn't it?"
+
+Now do the same for this text:
 
 IMPORTANT: Manipulate perplexity and burstiness patterns by creating deliberate variability in word predictability and sentence complexity. Create a mix of high-entropy (unpredictable) and low-entropy (common) word choices that mirrors human writing patterns.
 
