@@ -230,7 +230,8 @@ function processLanguageToolResponse(
   console.log(`Original text contains "teachers gives": ${hasTeachersGives}`);
   
   if (hasTeachersGives) {
-    const teachersGivesPattern = /\b(teachers)\s+(gives)\b/gi;
+    // Use a more lenient regex pattern that doesn't require word boundaries
+    const teachersGivesPattern = /(teachers)\s+(gives)/gi;
     let match;
     let found = false;
     
@@ -317,12 +318,18 @@ function processLanguageToolResponse(
     }
   }
   
-  // Check for "nobody help" pattern
+  // Check for "nobody help" pattern and similar indefinite pronoun patterns
   const hasNobodyHelp = originalText.toLowerCase().includes("nobody help");
+  const hasEveryoneHave = originalText.toLowerCase().includes("everyone have");
+  const hasItsPossessive = /\bit's\s+(?:\w+\s+){0,3}(?:is|was|has|will)/i.test(originalText); // Looking for possessive its followed by a verb
   console.log(`Original text contains "nobody help": ${hasNobodyHelp}`);
+  console.log(`Original text contains "everyone have": ${hasEveryoneHave}`);
+  console.log(`Original text contains potential "it's" possessive misuse: ${hasItsPossessive}`);
   
+  // Check for "nobody help" pattern
   if (hasNobodyHelp) {
-    const nobodyHelpPattern = /\b(nobody)\s+(help)\b/gi;
+    // Use a more lenient regex pattern that doesn't require word boundaries
+    const nobodyHelpPattern = /(nobody)\s+(help)/gi;
     let match;
     let found = false;
     
@@ -357,6 +364,96 @@ function processLanguageToolResponse(
           position: {
             start: index,
             end: index + 11
+          }
+        });
+      }
+    }
+  }
+  
+  // Check for "everyone have" pattern
+  if (hasEveryoneHave) {
+    // Use a more lenient regex pattern that doesn't require word boundaries
+    const everyoneHavePattern = /(everyone)\s+(have)/gi;
+    let match;
+    let found = false;
+    
+    while ((match = everyoneHavePattern.exec(originalText)) !== null) {
+      found = true;
+      console.log(`Found "everyone have" at position ${match.index}`);
+      
+      errors.push({
+        id: `custom-sv-indef-${match.index}`,
+        type: "grammar",
+        errorText: match[0],
+        replacementText: "everyone has",
+        description: "Subject-verb agreement error. The singular pronoun 'everyone' should be followed by the singular form of the verb 'has'.",
+        position: {
+          start: match.index,
+          end: match.index + match[0].length
+        }
+      });
+    }
+    
+    if (!found) {
+      console.log("RegExp failed to match 'everyone have' despite it being in the text");
+      // Fallback approach for safety
+      const index = originalText.toLowerCase().indexOf("everyone have");
+      if (index !== -1) {
+        errors.push({
+          id: `custom-sv-indef-fallback-${index}`,
+          type: "grammar",
+          errorText: originalText.substring(index, index + 13), // "everyone have"
+          replacementText: "everyone has",
+          description: "Subject-verb agreement error. The singular pronoun 'everyone' should be followed by the singular form of the verb 'has'.",
+          position: {
+            start: index,
+            end: index + 13
+          }
+        });
+      }
+    }
+  }
+  
+  // Check for misuse of "it's" (contraction) as a possessive
+  if (hasItsPossessive) {
+    // Look for cases where "it's" is used as a possessive followed by a noun
+    const itsPossessivePattern = /\b(it's)\s+(\w+)(?:\s+(?:is|was|has|will))/gi;
+    let match;
+    let found = false;
+    
+    while ((match = itsPossessivePattern.exec(originalText)) !== null) {
+      found = true;
+      console.log(`Found potential possessive "it's" misuse at position ${match.index}`);
+      
+      errors.push({
+        id: `custom-its-${match.index}`,
+        type: "grammar",
+        errorText: match[1], // Just the "it's" part
+        replacementText: "its",
+        description: "Incorrect use of contraction. 'It's' is a contraction of 'it is' or 'it has', while 'its' (without apostrophe) is the possessive form.",
+        position: {
+          start: match.index,
+          end: match.index + 4 // Length of "it's"
+        }
+      });
+    }
+    
+    if (!found) {
+      // More general pattern detection without requiring the verb after
+      const simpleItsPossessivePattern = /\b(it's)\s+(color|size|name|shape|function|purpose|role|value|owner|content|meaning|definition|importance|significance|appearance)\b/gi;
+      
+      while ((match = simpleItsPossessivePattern.exec(originalText)) !== null) {
+        console.log(`Found likely possessive "it's" misuse with common noun at position ${match.index}`);
+        
+        errors.push({
+          id: `custom-its-noun-${match.index}`,
+          type: "grammar",
+          errorText: match[1], // Just the "it's" part
+          replacementText: "its",
+          description: "Incorrect use of contraction. 'It's' is a contraction of 'it is' or 'it has', while 'its' (without apostrophe) is the possessive form.",
+          position: {
+            start: match.index,
+            end: match.index + 4 // Length of "it's"
           }
         });
       }
