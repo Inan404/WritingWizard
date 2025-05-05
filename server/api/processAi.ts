@@ -202,9 +202,17 @@ export async function processAi(req: Request, res: Response) {
         try {
           // Extract chatId if it exists to save the AI response to the database
           const chatId = req.body.chatId;
-          const chatResponse = await generateChatResponse(formattedMessages);
           
-          // If a chatId is provided, save the AI response to the database
+          // Set headers for streaming response
+          res.setHeader('Content-Type', 'application/json');
+          
+          // Generate the chat response with streaming
+          const fullResponse = await generateChatResponseWithStreaming(formattedMessages, (chunkText) => {
+            // For each chunk, send a JSON response with the accumulated text so far
+            res.write(JSON.stringify({ response: chunkText }) + '\n');
+          });
+          
+          // If a chatId is provided, save the AI response to the database when complete
           if (chatId && typeof chatId === 'number' && req.user?.id) {
             try {
               const dbStorage = (await import('../dbStorage')).dbStorage;
@@ -213,7 +221,7 @@ export async function processAi(req: Request, res: Response) {
               await dbStorage.createChatMessage({
                 sessionId: chatId,
                 role: 'assistant',
-                content: chatResponse
+                content: fullResponse
               });
               
               console.log(`Saved AI response to chat session ${chatId}`);
@@ -223,7 +231,9 @@ export async function processAi(req: Request, res: Response) {
             }
           }
           
-          return res.json({ response: chatResponse });
+          // Send the final response and end the stream
+          res.end();
+          return;
         } catch (chatError) {
           console.error("Chat response error:", chatError);
           return res.status(500).json({ 

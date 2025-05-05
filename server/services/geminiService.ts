@@ -3,7 +3,7 @@
  * Uses Google's Generative AI library for Gemini model integration
  */
 
-import { GoogleGenerativeAI, GenerativeModel, GenerationConfig } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel, GenerationConfig, Content } from '@google/generative-ai';
 import fetch from 'node-fetch';
 
 // Get the Gemini API key from environment variables
@@ -20,6 +20,54 @@ const DEFAULT_MODEL = 'gemini-1.5-pro-latest';
 
 // Cache for model instances
 const modelCache: Record<string, GenerativeModel> = {};
+
+/**
+ * Convert standard message format to Google's Content format
+ */
+function sanitizeMessages(messages: Message[]): Content[] {
+  // Extract the system message
+  const systemMessage = messages.find(msg => msg.role === 'system');
+  const systemPrompt = systemMessage ? systemMessage.content : 'You are a helpful writing assistant. Answer clearly and concisely.';
+  
+  // Get conversation history without system messages
+  const userAndAssistantMessages = messages.filter(msg => msg.role !== 'system');
+  
+  // If no user messages, return empty array
+  if (userAndAssistantMessages.length === 0) {
+    return [];
+  }
+  
+  // Prepare messages that alternate between user and model
+  const result: Content[] = [];
+  let lastRole: string | null = null;
+  
+  // Process messages to ensure proper alternating format
+  for (const msg of userAndAssistantMessages) {
+    // Skip empty messages
+    if (!msg.content.trim()) continue;
+    
+    const currentRole = msg.role === 'assistant' ? 'model' : 'user';
+    
+    // If this message has same role as previous, combine them
+    if (currentRole === lastRole && result.length > 0) {
+      const lastMsg = result[result.length - 1];
+      if (lastMsg.parts && Array.isArray(lastMsg.parts)) {
+        const lastPart = lastMsg.parts[0];
+        if (typeof lastPart === 'object' && 'text' in lastPart) {
+          lastPart.text += '\n\n' + msg.content;
+        }
+      }
+    } else {
+      result.push({
+        role: currentRole,
+        parts: [{ text: msg.content }]
+      });
+      lastRole = currentRole;
+    }
+  }
+  
+  return result;
+}
 
 /**
  * Get a model instance with caching
@@ -298,6 +346,118 @@ export async function generateChatResponse(messages: Message[]): Promise<string>
   } catch (error: any) {
     console.error('Error in Gemini chat response:', error);
     return "I'm having trouble connecting to my knowledge source right now. Please try again with a specific writing question.";
+  }
+}
+
+/**
+ * Generate a streaming chat response based on conversation history
+ * @param messages The conversation messages
+ * @param onChunk Callback that's called with each chunk of text as it's generated
+ * @returns The complete response when finished
+ */
+export async function generateChatResponseWithStreaming(
+  messages: Message[], 
+  onChunk: (text: string) => void
+): Promise<string> {
+  try {
+    console.log('Generating streaming chat response with Gemini');
+    
+    // Quick responses for specific user inputs
+    const lastUserMessage = messages.findLast(msg => msg.role === 'user')?.content || '';
+    if (lastUserMessage.trim().length < 15) {
+      const normalizedMessage = lastUserMessage.trim().toLowerCase();
+      
+      // Simple greeting detection with quick responses
+      if (/^(hi|hello|hey|greetings|hi there|hello there)/.test(normalizedMessage)) {
+        const response = "Hello! I'm your writing assistant. I can help with grammar checking, paraphrasing, humanizing text, content creation, and more. What type of writing help do you need today?";
+        onChunk(response);
+        return response;
+      }
+      
+      if (/^(thanks|thank you|thx)/.test(normalizedMessage)) {
+        const response = "You're welcome! Is there anything else you'd like help with?";
+        onChunk(response);
+        return response;
+      }
+    }
+    
+    // Format Gemini API message format
+    const sanitizedMessages = sanitizeMessages(messages);
+    let userRequest = '';
+    if (sanitizedMessages.length > 0) {
+      userRequest = sanitizedMessages[sanitizedMessages.length - 1].parts[0].text;
+    }
+    
+    // If messages are empty after sanitation, send a fallback
+    if (!userRequest) {
+      const fallback = "I'm not sure what you're asking. Could you provide more details about your writing needs?";
+      onChunk(fallback);
+      return fallback;
+    }
+
+    try {
+      // First try real streaming with the library
+      const model = genAI.getGenerativeModel({ 
+        model: DEFAULT_MODEL,
+        generationConfig: {
+          temperature: 0.7,  // Match the direct API temp
+          topP: 0.9,
+          topK: 40,
+          maxOutputTokens: 1200,
+        }
+      });
+      
+      // Create complete chat context using multi-turn history
+      // We'll format it as a prompt to preserve full context
+      const chat = model.startChat({
+        history: sanitizedMessages.slice(0, -1) || [],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.9,
+          topK: 40,
+          maxOutputTokens: 1200,
+        },
+      });
+      
+      const fullUserMessage = {
+        role: 'user',
+        parts: [{ text: userRequest }],
+      };
+      
+      // Generate streaming response
+      const result = await chat.sendMessageStream(fullUserMessage);
+      
+      // Process the stream
+      let fullResponse = '';
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        fullResponse += chunkText;
+        onChunk(fullResponse); // Send accumulated text so far
+      }
+      
+      return fullResponse;
+    } catch (streamingError) {
+      console.error('Streaming with library failed:', streamingError);
+      
+      // Fall back to direct API
+      try {
+        const response = await callGeminiAPI(messages);
+        onChunk(response);
+        return response;
+      } catch (directApiError) {
+        console.error('Direct API also failed:', directApiError);
+        
+        // Last resort fallback
+        const fallback = "I'm experiencing some technical difficulties right now. Could you try again with a more specific writing-related question?";
+        onChunk(fallback);
+        return fallback;
+      }
+    }
+  } catch (error: any) {
+    console.error('Error in Gemini streaming response:', error);
+    const errorMsg = "I'm having trouble connecting to my knowledge source right now. Please try again with a specific writing question.";
+    onChunk(errorMsg);
+    return errorMsg;
   }
 }
 
