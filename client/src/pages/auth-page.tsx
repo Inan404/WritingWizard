@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Redirect } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,9 @@ export default function AuthPage() {
     passwordConfirm: "",
   });
   const [activeTab, setActiveTab] = useState("login");
+  
+  // Set the page title
+  usePageTitle(activeTab === "login" ? "Login" : "Register", "WriteCraft AI");
 
   // Redirect if user is already logged in
   if (user) {

@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { User, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -204,6 +205,9 @@ export default function DashboardPage() {
   const getTabName = (tabKey: string) => {
     return tabMapping[tabKey as keyof typeof tabMapping] || tabKey;
   };
+
+  // Set the page title based on the active tab
+  usePageTitle(`${getTabName(activeTab)}`);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
