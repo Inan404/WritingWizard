@@ -4,6 +4,7 @@
  */
 
 import { GoogleGenerativeAI, GenerativeModel, GenerationConfig } from '@google/generative-ai';
+import fetch from 'node-fetch';
 
 // Get the Gemini API key from environment variables
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -15,7 +16,7 @@ export const hasGeminiCredentials = !!GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY as string);
 
 // Default model to use
-const DEFAULT_MODEL = 'gemini-1.5-pro';
+const DEFAULT_MODEL = 'gemini-1.5-pro-latest';
 
 // Cache for model instances
 const modelCache: Record<string, GenerativeModel> = {};
@@ -45,60 +46,153 @@ interface Message {
 }
 
 /**
- * Convert messages to the Gemini chat format
+ * Call the Gemini API directly using fetch for better performance
+ * This bypasses some of the library abstraction for faster responses
  */
-function prepareMessages(messages: Message[]) {
-  // For Gemini, we need to handle messages differently:
-  // 1. System messages are handled separately
-  // 2. Gemini requires the first message to be from the user
-  // 3. We need to get the actual user input
-  
-  let systemPrompt = '';
-  let userContent = '';
-  let chatHistory = '';
-  let lastUserMessage = '';
-  
-  // Extract system message
+async function callGeminiAPI(messages: Message[]): Promise<string> {
+  // Filter out system messages and prepare the content
   const systemMessage = messages.find(msg => msg.role === 'system');
-  if (systemMessage) {
-    systemPrompt = systemMessage.content;
-  }
+  const systemPrompt = systemMessage ? systemMessage.content : 'You are a helpful writing assistant focused on helping users with their writing needs.';
   
-  // Find the last user message - this is what we'll directly respond to
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'user') {
-      lastUserMessage = messages[i].content;
-      break;
-    }
-  }
-  
-  // If no user message found, use a default
-  if (!lastUserMessage) {
-    lastUserMessage = 'Hi, can you help me with my writing?';
-  }
-  
-  // Collect chat history (limited to 5 most recent exchanges for efficiency)
-  const recentMessages = messages
+  // Prepare the chat messages in proper Gemini format
+  const conversationMessages = messages
     .filter(msg => msg.role !== 'system')
-    .slice(-10);
+    .map(msg => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }]
+    }));
   
-  if (recentMessages.length > 1) {
-    chatHistory = 'Recent conversation:\n' + 
-      recentMessages.map(msg => 
-        `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
-      ).join('\n') + '\n\n';
+  // If there are no messages, add a default user greeting
+  if (conversationMessages.length === 0) {
+    conversationMessages.push({
+      role: 'user',
+      parts: [{ text: 'Hello, can you help me with my writing?' }]
+    });
   }
   
-  // Combine everything into a single prompt
-  userContent = `${systemPrompt ? systemPrompt + '\n\n' : ''}${
-    chatHistory ? 'Context: ' + chatHistory : ''
-  }Current message: ${lastUserMessage}`;
+  // Make sure the conversation starts with a user message
+  if (conversationMessages[0].role !== 'user') {
+    conversationMessages.unshift({
+      role: 'user',
+      parts: [{ text: 'Hello, can you help me with my writing?' }]
+    });
+  }
   
-  // Return in Gemini's expected format
-  return [{
-    role: 'user',
-    parts: [{ text: userContent }]
-  }];
+  const requestData = {
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: systemPrompt }]
+      },
+      ...conversationMessages
+    ],
+    generationConfig: {
+      temperature: 0.4,
+      topP: 0.8,
+      topK: 40,
+      maxOutputTokens: 800,
+      stopSequences: []
+    },
+    safetySettings: [
+      {
+        category: 'HARM_CATEGORY_HARASSMENT',
+        threshold: 'BLOCK_ONLY_HIGH'
+      },
+      {
+        category: 'HARM_CATEGORY_HATE_SPEECH',
+        threshold: 'BLOCK_ONLY_HIGH'
+      },
+      {
+        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        threshold: 'BLOCK_ONLY_HIGH'
+      },
+      {
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: 'BLOCK_ONLY_HIGH'
+      }
+    ]
+  };
+  
+  // Use direct fetch API call for faster response
+  try {
+    const startTime = Date.now();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000); // 7 second timeout
+    
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData),
+        signal: controller.signal
+      }
+    );
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const result = await response.json() as any;
+    const responseTime = Date.now() - startTime;
+    console.log(`Direct Gemini API response received in ${responseTime}ms`);
+    
+    if (!result.candidates || !result.candidates[0] || !result.candidates[0].content) {
+      throw new Error('Invalid response from Gemini API');
+    }
+    
+    return result.candidates[0].content.parts[0].text;
+  } catch (error) {
+    console.error('Error in direct Gemini API call:', error);
+    throw error;
+  }
+}
+
+/**
+ * Newer implementation using the Google Generative AI library as a fallback
+ */
+async function generateWithLibrary(messages: Message[]): Promise<string> {
+  // Filter out system messages
+  const systemMessage = messages.find(msg => msg.role === 'system');
+  const systemPrompt = systemMessage ? systemMessage.content : '';
+  
+  // Prepare user messages
+  const chatMessages = messages
+    .filter(msg => msg.role !== 'system')
+    .map(msg => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }]
+    }));
+  
+  // Use the API's chat method
+  const model = genAI.getGenerativeModel({ 
+    model: DEFAULT_MODEL,
+    generationConfig: {
+      temperature: 0.4,
+      topP: 0.8,
+      topK: 40,
+      maxOutputTokens: 800,
+    }
+  });
+  
+  // Create a chat session with system prompt
+  const chat = model.startChat({
+    history: chatMessages,
+    generationConfig: {
+      temperature: 0.4,
+      topP: 0.8,
+      topK: 40,
+      maxOutputTokens: 800,
+    }
+  });
+  
+  // Generate response
+  const result = await chat.sendMessage(systemPrompt || "What can I help you with?");
+  return result.response.text();
 }
 
 /**
@@ -108,63 +202,42 @@ export async function generateChatResponse(messages: Message[]): Promise<string>
   try {
     console.log('Generating chat response with Gemini');
     
-    // Find the last user message
-    let lastUserMessage = '';
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'user') {
-        lastUserMessage = messages[i].content;
-        break;
+    // Quick responses for specific user inputs (mainly greetings)
+    const lastUserMessage = messages.findLast(msg => msg.role === 'user')?.content || '';
+    if (lastUserMessage.trim().length < 15) {
+      const normalizedMessage = lastUserMessage.trim().toLowerCase();
+      
+      // Simple greeting detection with quick responses
+      if (/^(hi|hello|hey|greetings|hi there|hello there)/.test(normalizedMessage)) {
+        return "Hello! I'm your writing assistant. I can help with grammar checking, paraphrasing, humanizing text, content creation, and more. What type of writing help do you need today?";
+      }
+      
+      if (/^(thanks|thank you|thx)/.test(normalizedMessage)) {
+        return "You're welcome! Is there anything else you'd like help with?";
       }
     }
     
-    // If the message is short (like 'hi', 'hello'), give a more focused response
-    if (lastUserMessage && lastUserMessage.trim().length < 15 && 
-        /^(hi|hello|hey|greetings|hi there|hello there)/i.test(lastUserMessage.trim())) {
-      return "Hello! I'm your writing assistant. I can help with grammar checking, paraphrasing, humanizing text, content creation, and more. What type of writing help do you need today?";
+    // Try the direct API call first (faster)
+    try {
+      const response = await callGeminiAPI(messages);
+      return response;
+    } catch (directApiError) {
+      console.warn('Direct API call failed, falling back to library:', directApiError);
+      
+      // Try the library method as fallback
+      try {
+        const response = await generateWithLibrary(messages);
+        return response;
+      } catch (libraryError) {
+        console.error('All Gemini methods failed:', libraryError);
+        
+        // Simplified fallback response if everything fails
+        return "I'm experiencing some technical difficulties right now. Could you try again with a more specific writing-related question?";
+      }
     }
-    
-    // Format messages for Gemini
-    const formattedMessages = prepareMessages(messages);
-    
-    // Get the model with more conversation-appropriate settings
-    const model = getModel(DEFAULT_MODEL, {
-      temperature: 0.6, // Slightly lower for more focused responses
-      topK: 30,
-      topP: 0.85,
-      maxOutputTokens: 800, // Limit response length for faster generation
-    });
-    
-    if (!formattedMessages || formattedMessages.length === 0) {
-      throw new Error('No valid messages to send to the model');
-    }
-    
-    // Get the consolidated user message
-    const userMessage = formattedMessages[0].parts[0].text;
-    
-    // Start timing the response
-    const startTime = Date.now();
-    
-    // Generate content with timeout to prevent long-running requests
-    const result = await Promise.race([
-      model.generateContent(userMessage),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Response generation timed out')), 8000)
-      )
-    ]) as any; // Cast to any to avoid type issues
-    
-    const response = result.response.text();
-    const responseTime = Date.now() - startTime;
-    
-    console.log(`AI response generated in ${responseTime}ms`);
-    
-    return response;
   } catch (error: any) {
-    if (error.message === 'Response generation timed out') {
-      console.error('Gemini response timed out');
-      return "I'm having trouble generating a complete response right now. Could you try asking a more specific question about your writing needs?";
-    }
     console.error('Error in Gemini chat response:', error);
-    throw new Error(`Failed to generate chat response: ${error?.message || 'Unknown error'}`);
+    return "I'm having trouble connecting to my knowledge source right now. Please try again with a specific writing question.";
   }
 }
 
