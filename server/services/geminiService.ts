@@ -424,10 +424,19 @@ export async function generateChatResponseWithStreaming(
       
       // Process the stream
       let fullResponse = '';
+      let lastChunk = '';
+      
       for await (const chunk of result.stream) {
         const chunkText = chunk.text();
+        
+        // Add current chunk to full response
         fullResponse += chunkText;
-        onChunk(fullResponse); // Send accumulated text so far
+        
+        // Ensure we're only sending the new portion, not the entire accumulated text
+        // This prevents the client from seeing duplicate text
+        onChunk(chunkText);
+        
+        lastChunk = chunkText;
       }
       
       return fullResponse;

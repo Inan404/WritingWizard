@@ -207,28 +207,41 @@ async function processRequest(params: AiToolParams, cacheKey: string, payload: a
         
         // Decode the chunk to text
         const chunk = decoder.decode(value, { stream: true });
-        partialData += chunk;
         
-        // For the first chunk, we might get a partial JSON response
-        // so we need to be careful about parsing it
-        if (isFirstChunk) {
-          try {
-            // Try to parse the JSON - only if it looks like valid JSON
-            if (partialData.trim().startsWith('{') && partialData.includes('}')) {
-              const parsedData = JSON.parse(partialData);
-              if (parsedData && parsedData.response) {
-                // Initial value found - start streaming from here
-                onStreamUpdate(parsedData.response || '');
-                isFirstChunk = false;
+        // Handle server response based on content type
+        const contentType = res.headers.get('Content-Type') || '';
+        
+        if (contentType.includes('text/plain')) {
+          // Text mode - direct streaming
+          onStreamUpdate(partialData + chunk);
+          partialData += chunk;
+        } else if (contentType.includes('application/json')) {
+          // JSON mode - try to parse
+          partialData += chunk;
+          
+          if (isFirstChunk) {
+            try {
+              // Try to parse the JSON - only if it looks like valid JSON
+              if (partialData.trim().startsWith('{') && partialData.includes('}')) {
+                const parsedData = JSON.parse(partialData);
+                if (parsedData && parsedData.response) {
+                  // Initial value found - start streaming from here
+                  onStreamUpdate(parsedData.response || '');
+                  isFirstChunk = false;
+                }
               }
+            } catch (err) {
+              // Ignore JSON parsing errors for partial chunks
             }
-          } catch (err) {
-            // Ignore JSON parsing errors for partial chunks
+          } else {
+            // For subsequent chunks, we use append mode - just add the raw text
+            // This assumes the server is sending text chunks directly after the initial JSON
+            onStreamUpdate(chunk);
           }
         } else {
-          // For subsequent chunks, we use append mode - just add the raw text
-          // This assumes the server is sending text chunks directly after the initial JSON
-          onStreamUpdate(chunk);
+          // Unknown content type, try to handle as raw text
+          onStreamUpdate(partialData + chunk);
+          partialData += chunk;
         }
       }
       

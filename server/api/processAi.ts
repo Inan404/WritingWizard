@@ -205,12 +205,12 @@ export async function processAi(req: Request, res: Response) {
           const chatId = req.body.chatId;
           
           // Set headers for streaming response
-          res.setHeader('Content-Type', 'application/json');
+          res.setHeader('Content-Type', 'text/plain');
           
           // Generate the chat response with streaming
           const fullResponse = await generateChatResponseWithStreaming(formattedMessages, (chunkText) => {
-            // For each chunk, send a JSON response with the accumulated text so far
-            res.write(JSON.stringify({ response: chunkText }) + '\n');
+            // For streaming, just send the actual text (not wrapped in JSON)
+            res.write(chunkText);
           });
           
           // If a chatId is provided, save the AI response to the database when complete

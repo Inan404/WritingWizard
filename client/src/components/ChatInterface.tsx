@@ -272,20 +272,19 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     
     // Function to handle streaming updates
     const handleStreamUpdate = (text: string) => {
-      setStreamingContent(prev => {
-        // If this is the first update, just set it
-        if (!prev) return text;
-        // Otherwise append the new text
-        return prev + text;
-      });
+      // Set the streaming content state
+      setStreamingContent(text);
       
       // Update the message in the messages array
+      // Replace escaped newlines with actual newlines
+      const formattedText = text.replace(/\\n/g, '\n');
+      
       setMessages(prev => {
         return prev.map(msg => {
           if (msg.id === streamingId) {
             return {
               ...msg,
-              content: text
+              content: formattedText
             };
           }
           return msg;
