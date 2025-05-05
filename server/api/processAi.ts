@@ -7,7 +7,6 @@ import {
   generateChatResponseWithStreaming,
   checkAIContent
 } from "../services/aiService";
-import { checkGrammarWithLanguageTool } from "../services/languageToolService";
 
 /**
  * Unified AI processing endpoint that handles different modes:
