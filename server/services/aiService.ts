@@ -118,10 +118,18 @@ export const generateHumanized = hasGeminiCredentials
 function createMockAICheckResponse(text: string) {
   console.warn('Using mock AI check response');
   const aiPercentage = Math.floor(Math.random() * 100);
+  const isAI = aiPercentage >= 50;
   
   return {
     aiAnalyzed: text,
     aiPercentage,
+    verdict: isAI ? 'AI-generated' : 'Human-written',
+    confidence: aiPercentage / 100,
+    reasons: [
+      isAI ? 'Consistent tone throughout the text' : 'Varied tone and natural language patterns',
+      isAI ? 'Lack of personal voice or anecdotes' : 'Contains personal perspective',
+      isAI ? 'Too perfect sentence structure and grammar' : 'Natural sentence variety'
+    ],
     highlights: [
       {
         id: 'mock-1',
@@ -217,6 +225,11 @@ export const checkAIContent = async (text: string) => {
         return {
           aiAnalyzed: text,
           aiPercentage,
+          verdict: aiPercentage >= 50 ? 'AI-generated' : 'Human-written',
+          confidence: data.ai_probability,
+          reasons: aiPercentage >= 50 ? 
+            ['Patterns consistent with AI-generated text', 'Statistical language patterns match AI models', 'Lack of human writing variance'] :
+            ['Natural language patterns', 'Statistical variance consistent with human writing', 'Unpredictable sentence structures'],
           highlights,
           suggestions,
           metrics: {
@@ -237,6 +250,9 @@ export const checkAIContent = async (text: string) => {
       return {
         aiAnalyzed: text,
         aiPercentage: result.aiPercentage,
+        verdict: result.verdict || (result.aiPercentage >= 50 ? 'AI-generated' : 'Human-written'),
+        confidence: result.confidence || (result.aiPercentage / 100),
+        reasons: result.reasons || ['AI patterns detected in the text'],
         highlights: result.highlights.map(highlight => ({
           id: highlight.id,
           type: 'ai',
@@ -269,6 +285,9 @@ export const checkAIContent = async (text: string) => {
         return {
           aiAnalyzed: text,
           aiPercentage: result.aiPercentage,
+          verdict: result.verdict || (result.aiPercentage >= 50 ? 'AI-generated' : 'Human-written'),
+          confidence: result.confidence || (result.aiPercentage / 100),
+          reasons: result.reasons || ['AI patterns detected in the text'],
           highlights: result.highlights.map(highlight => ({
             id: highlight.id,
             type: 'ai',
