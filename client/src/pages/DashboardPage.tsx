@@ -66,6 +66,15 @@ export default function DashboardPage() {
   // Check for hash in URL to set active tab
   useEffect(() => {
     const hash = location.split('#')[1];
+    
+    // Handle legacy URL format with 'ai-check' by mapping it to 'aicheck'
+    if (hash === 'ai-check') {
+      setActiveTab('aicheck');
+      // Update URL to new format (optional, for consistency)
+      window.history.replaceState(null, '', '#aicheck');
+      return;
+    }
+    
     if (hash && ['chat', 'grammar', 'paraphrase', 'humanize', 'aicheck'].includes(hash)) {
       setActiveTab(hash);
     }
