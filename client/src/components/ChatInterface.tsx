@@ -303,7 +303,7 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
                 className={`max-w-[95%] sm:max-w-[85%] md:max-w-[80%] rounded-lg p-2 sm:p-3 ${
                   message.role === 'user' 
                     ? 'bg-primary text-primary-foreground' 
-                    : 'bg-muted'
+                    : 'bg-muted text-foreground'
                 }`}
               >
                 <div className="flex items-center mb-1">
