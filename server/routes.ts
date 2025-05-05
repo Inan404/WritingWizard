@@ -157,8 +157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (languageToolError) {
         console.error("LanguageTool grammar check error:", languageToolError);
         
-        // Fallback to Perplexity AI if LanguageTool fails
-        console.log("Falling back to Perplexity API for grammar check");
+        // Fallback to Gemini AI if LanguageTool fails
+        console.log("Falling back to Gemini API for grammar check");
         const result = await generateGrammarCheck(text);
         return res.json(result);
       }
@@ -526,7 +526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: msg.content
       }));
       
-      // Validate message sequence - Perplexity requires user/assistant alternation ending with user
+      // Validate message sequence - Gemini works best with proper alternation of roles
       let lastRole = '';
       let invalidSequence = false;
       let correctedMessages = [...aiMessages];
@@ -551,13 +551,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Ensure the last message is from the user
       if (correctedMessages.length > 0 && correctedMessages[correctedMessages.length - 1].role !== 'user') {
-        console.log('Warning: Last message is not from the user, this may cause issues with the Perplexity API');
+        console.log('Warning: Last message is not from the user, this may cause issues with the Gemini API');
       }
       
       // Record start time for performance tracking
       const startTime = Date.now();
       
-      // Generate AI response using the Llama model
+      // Generate AI response using the Gemini model
       const aiResponse = await generateChatResponse(correctedMessages);
       
       // Record completion time
