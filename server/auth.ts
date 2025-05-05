@@ -53,16 +53,19 @@ export function setupAuth(app: Express) {
     createTableIfMissing: true,
   });
 
-  // Configure session middleware
+  // Configure session middleware with improved cookie settings for cross-environment compatibility
   app.use(session({
     store: sessionStore,
     secret: process.env.SESSION_SECRET || 'writing-app-secret',
     resave: false,
     saveUninitialized: false,
+    proxy: true, // Trust the reverse proxy
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax', // Allow cookies to be sent in first-party context
+      path: '/' // Ensure cookies are available for all paths
     }
   }));
 

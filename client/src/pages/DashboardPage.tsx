@@ -229,7 +229,7 @@ export default function DashboardPage() {
               ) : (
                 <>
                   <Menu className="h-4 w-4 mr-2" />
-                  <span>{tabMapping[activeTab]}</span>
+                  <span>{tabMapping[activeTab as keyof typeof tabMapping]}</span>
                 </>
               )}
             </Button>

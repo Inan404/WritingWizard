@@ -6,6 +6,8 @@ import { ensureTablesExist } from "./db";
 import path from "path";
 
 const app = express();
+// Setup for proper secure cookies in production
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
