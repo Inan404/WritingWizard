@@ -784,18 +784,18 @@ export async function generateHumanized(text: string, style: string = 'standard'
   const styleDescriptions: Record<string, string> = {
     'standard': 'Transform the text to sound like it was written by a real person, not an AI. Use casual language, contractions, varied sentence lengths (mix very short sentences with longer ones), and natural phrasing. Add everyday expressions, slight imperfections, and write the way a person would honestly explain their thoughts in a blog post. Include parenthetical thoughts (these make text seem more spontaneous) and occasional self-corrections. Example: "The data is analyzed" → "I went through the data and noticed (actually, this surprised me) several interesting patterns."',
     
-    'formal': 'Rewrite with human touches while maintaining professionalism - vary sentence length, use occasional first-person perspective, add thoughtful transitions, and include subtle opinion markers like "in my assessment" or "it seems reasonable to conclude." Imagine you\'re a thoughtful professional speaking to colleagues, not writing a report. Example: "This shows results" → "As we can see from these findings, the results point to several key insights that, in my professional opinion, warrant further consideration."',
+    'formal': 'Rewrite with human touches while maintaining professionalism - vary sentence length, use occasional first-person perspective, add thoughtful transitions, and include subtle opinion markers like "in my assessment" or "it seems reasonable to conclude." Avoid casual language and slang. Use precise vocabulary and well-structured arguments, but with natural human elements like occasional hedging ("it appears that") and measured personal insights. Imagine you\'re a thoughtful professional speaking to colleagues, not writing a report. Example: "This shows results" → "As we can see from these findings, the results point to several key insights that, in my professional opinion, warrant further consideration."',
     
-    'fluency': 'Make it sound like someone talking to a friend - use casual transitions, lots of contractions, parenthetical thoughts, and natural flow. Add conversational fillers like "you know," "I mean," and "like" in moderation, and include occasional mid-sentence restarts. Use the tone of someone reflecting in a personal conversation. Example: "It was determined that" → "So I figured out that... well, actually, what we found, which was pretty interesting, was that..."',
+    'fluency': 'Make it sound like someone casually talking to a close friend - use LOTS of casual transitions, abundant contractions, parenthetical thoughts, and very natural flow with occasional repetition. Add conversational fillers like "you know," "I mean," and "like" somewhat frequently, and include mid-sentence restarts and tangents. Use informal language, slang expressions, and emotional reactions. This should sound like an unedited transcript of someone speaking spontaneously. Example: "It was determined that" → "So I figured out that... well, actually, what we found, which was pretty interesting, was that... you know what I mean? Like, it really jumped out at us that..."',
     
-    'academic': 'Write like a college professor speaking to students or colleagues - add human elements like occasional hedging, personal perspective, and varied citations while preserving academic integrity. Include moments of first-person reflection, rhetorical questions, and phrases like "I would argue" or "this finding suggests to me." Example: "The study shows" → "From my analysis of the literature, this research suggests—and I find this particularly noteworthy—that the variables have a complex relationship."',
+    'academic': 'Write like a college professor speaking to students or colleagues - add human elements like occasional hedging, personal perspective, and varied citations while preserving academic integrity. Include moments of first-person reflection, rhetorical questions, and phrases like "I would argue" or "this finding suggests to me." Use sophisticated vocabulary and precise terms, but avoid excessive jargon. Maintain formal structure with clear thesis statements and topic sentences, but insert occasional personal insights or measured opinions. Example: "The study shows" → "From my analysis of the literature, this research suggests—and I find this particularly noteworthy—that the variables have a complex relationship. One might reasonably question, however, whether additional factors are at play."',
     
-    'custom': 'Completely transform this text to sound authentically human in exactly the specified tone. Avoid sounding like an AI. Break up long sentences, use everyday language, and write the way a person would talk. Keep it real and slightly imperfect with natural imperfections, varied sentence structures, idiomatic expressions, and subtle inconsistencies that AI detection systems cannot easily identify.'
+    'custom': 'Completely transform this text to sound authentically human in exactly the specified tone. Avoid sounding like an AI. Break up long sentences, use everyday language, and write the way a person would talk. Keep it real and slightly imperfect with natural imperfections, varied sentence structures, idiomatic expressions, and subtle inconsistencies that AI detection systems cannot easily identify. Example: "The analysis indicates" → Write this in the exact style specified, with all the quirks, speech patterns, vocabulary choices, and structural tendencies that would make it instantly recognizable as coming from this specific type of person.'
   };
 
   // For custom style, use the provided tone description if available and enhance it with style anchors
   const styleDescription = style === 'custom' && customTone 
-    ? `Imagine you're ${customTone}. Write in that exact tone and style while making the text sound authentically human and completely undetectable by AI checkers. Break up sentences, use natural language, and write the way a real person with this specific style would write or talk.` 
+    ? `Imagine you ARE ${customTone} writing this text. You must PRECISELY match their tone, vocabulary, sentence patterns, and personality quirks. Analyze exactly how ${customTone} would express these ideas - what unique phrases would they use? What life experiences or references would they mention? How would they structure their thoughts? Include their characteristic expressions, speech patterns, and perspective. Every sentence should feel like it could ONLY have been written by ${customTone}, not a generic imitation. This is not just "writing like" them - it's fully embodying their voice while making the text sound authentically human and completely undetectable by AI checkers.` 
     : styleDescriptions[style] || styleDescriptions.standard;
     
   // Make the style more prominent in the prompt
@@ -804,18 +804,24 @@ export async function generateHumanized(text: string, style: string = 'standard'
     : `[STYLE: ${style.toUpperCase()}]`;
 
   // Adjusting temperature and other generation parameters based on style
-  let temperature = 0.9; // Using high randomness (0.9) for more human-like creativity
+  // Each style uses a different temperature to make the differences more distinct
+  let temperature = 0.9; // Default for standard style (high randomness for creativity)
   let topK = 40; // Narrows word choices slightly, still diverse
   let topP = 0.95; // Keeps natural variability, limits outlier tokens
   
-  // Slight adjustments based on style
+  // Make the style differences more prominent by using more varied temperature settings
   if (style === 'academic') {
-    temperature = 0.7; // Less randomness for academic tone
+    temperature = 0.65; // Less randomness for academic tone (precise, structured)
     topP = 0.85; // More focused word selection for academic writing
-  }
-  if (style === 'formal') {
-    temperature = 0.8; // Moderate randomness for formal tone
+  } else if (style === 'formal') {
+    temperature = 0.75; // Moderate randomness for formal tone
     topP = 0.9; // Slightly more focused word selection
+  } else if (style === 'fluency') {
+    temperature = 0.95; // High randomness for fluent, conversational tone
+    topP = 0.98; // Very wide word selection for natural speech patterns
+  } else if (style === 'custom' && customTone) {
+    temperature = 0.95; // Maximum creativity for custom style
+    topP = 0.98; // Extremely wide word selection for personalized output
   }
 
   const systemPrompt = `You are a writing assistant that rewrites AI-generated text to sound like a real human wrote it.
