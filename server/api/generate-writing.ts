@@ -1,4 +1,4 @@
-import { generateGeminiResponse } from '../utils/gemini-api';
+import { generateWriting as generateAIWriting } from '../services/aiService';
 
 interface GenerateWritingParams {
   originalSample: string;
@@ -49,39 +49,17 @@ export async function generateWriting(params: GenerateWritingParams): Promise<Ge
       referenceText = `Reference this source for factual information: ${referenceUrl}`;
     }
     
-    const prompt = `
-      I'm going to provide you with a sample of my writing. Please analyze my writing style,
-      including word choice, sentence structure, tone, and any stylistic patterns.
-      
-      After analyzing my style, write a new piece on the topic I specify, mimicking my writing style.
-      
-      My writing sample:
-      """
-      ${originalSample}
-      """
-      
-      Topic for the new writing: ${topic}
-      
-      Length: ${wordCount}
-      
-      Style guidelines: ${styleGuide}
-      
-      ${additionalInstructions ? `Additional instructions: ${additionalInstructions}` : ''}
-      ${referenceText}
-      
-      Please generate the new writing piece that matches my style on the requested topic.
-    `;
-
-    const response = await generateGeminiResponse(prompt, 2048);
+    // Use Perplexity API for writing generation through aiService
+    const result = await generateAIWriting({
+      originalSample,
+      topic,
+      style,
+      length,
+      referenceUrl,
+      additionalInstructions
+    });
     
-    // Clean up the response
-    const cleanedResponse = response
-      .replace(/```markdown|```|markdown/gi, '') // Remove markdown code blocks
-      .trim();
-    
-    return {
-      generatedText: cleanedResponse
-    };
+    return result;
   } catch (error) {
     console.error("Error generating writing:", error);
     throw error;
