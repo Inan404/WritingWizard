@@ -133,13 +133,14 @@ async function callGeminiAPI(messages: Message[]): Promise<string> {
       ]
     };
     
-    // Make the API call with a longer timeout for creative content
+    // Make the API call with a longer timeout for creative content using streaming
     const startTime = Date.now();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // Extended to 15 seconds for creative content
     
+    // Use streamGenerateContent endpoint for improved performance
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_MODEL}:streamGenerateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
@@ -156,15 +157,37 @@ async function callGeminiAPI(messages: Message[]): Promise<string> {
       throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
     }
     
-    const result = await response.json() as any;
-    const responseTime = Date.now() - startTime;
-    console.log(`Direct Gemini API response received in ${responseTime}ms`);
+    // Process the response with text() instead of streaming
+    // This is more compatible with different environments
+    const responseText = await response.text();
+    let completeText = '';
     
-    if (!result.candidates || !result.candidates[0] || !result.candidates[0].content) {
-      throw new Error('Invalid response from Gemini API');
+    // Process the server-sent events manually
+    const lines = responseText.split('\n');
+    for (const line of lines) {
+      if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+        try {
+          const jsonStr = line.substring(6); // Remove 'data: ' prefix
+          const data = JSON.parse(jsonStr);
+          
+          // Extract text from chunk
+          if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+            completeText += data.candidates[0].content.parts[0].text;
+          }
+        } catch (e) {
+          console.warn('Error parsing SSE chunk:', e);
+        }
+      }
     }
     
-    return result.candidates[0].content.parts[0].text;
+    const responseTime = Date.now() - startTime;
+    console.log(`Direct Gemini API streaming response received in ${responseTime}ms`);
+    
+    if (!completeText) {
+      throw new Error('No valid content received from Gemini API');
+    }
+    
+    return completeText;
   } catch (error) {
     console.error('Error in direct Gemini API call:', error);
     throw error;
@@ -215,9 +238,17 @@ async function generateWithLibrary(messages: Message[]): Promise<string> {
       }
     });
     
-    // Generate the content with a simple prompt
-    const result = await model.generateContent(fullPrompt);
-    return result.response.text();
+    // Generate the content with streaming for better performance
+    const result = await model.generateContentStream(fullPrompt);
+    
+    // Collect the streaming response
+    let responseText = '';
+    for await (const chunk of result.stream) {
+      const chunkText = chunk.text();
+      responseText += chunkText;
+    }
+    
+    return responseText;
   } catch (error) {
     console.error('Error in library fallback:', error);
     throw error;
@@ -286,11 +317,17 @@ async function generateCompletion(systemPrompt: string, userText: string, temper
     // Combine system prompt and user text
     const prompt = `${systemPrompt}\n\n${userText}`;
     
-    // Generate content
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
+    // Generate content using streaming for better performance
+    const result = await model.generateContentStream(prompt);
     
-    return response;
+    // Collect the streaming response
+    let responseText = '';
+    for await (const chunk of result.stream) {
+      const chunkText = chunk.text();
+      responseText += chunkText;
+    }
+    
+    return responseText;
   } catch (error: any) {
     console.error('Error in Gemini completion:', error);
     throw new Error(`Failed to generate completion: ${error?.message || 'Unknown error'}`);

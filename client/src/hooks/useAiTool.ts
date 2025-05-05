@@ -36,6 +36,7 @@ interface AiToolParams {
   messages?: ApiMessage[];
   language?: string; // Added for LanguageTool API
   chatId?: number | null; // Added to support chat sessions
+  onStreamUpdate?: (text: string) => void; // Callback for streaming updates
 }
 
 // Define types for our cache results
@@ -141,7 +142,7 @@ export function useAiTool() {
 
 // Extract the actual API request to a separate function
 async function processRequest(params: AiToolParams, cacheKey: string, payload: any) {
-  const { text, mode, style, customTone, messages, language, chatId } = params;
+  const { text, mode, style, customTone, messages, language, chatId, onStreamUpdate } = params;
   
   // For chat mode, use messages array if provided
   if (mode === 'chat' && messages && messages.length > 0) {
@@ -171,60 +172,136 @@ async function processRequest(params: AiToolParams, cacheKey: string, payload: a
     payload.language = language;
   }
   
-  const res = await fetch('/api/ai/process', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  // Use streaming when it's chat mode and we have a streaming callback
+  const useStreaming = mode === 'chat' && typeof onStreamUpdate === 'function';
   
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.message || errorData.error || 'Failed to process AI request');
-  }
-  
-  const data = await res.json().catch(() => ({}));
-  
-  // Different modes return different response formats
-  if (mode === 'grammar') {
-    return {
-      correctedText: data.correctedText || data.suggestedText || 
-        (data.suggestions && data.suggestions[0]?.suggestedText) || text,
-      errors: data.errors || [],
-      suggestions: data.suggestions || [],
-      metrics: data.metrics || {
-        correctness: Math.floor(Math.random() * 30) + 50,
-        clarity: Math.floor(Math.random() * 30) + 50,
-        engagement: Math.floor(Math.random() * 30) + 50,
-        delivery: Math.floor(Math.random() * 30) + 50
+  // If we're streaming, use a different approach
+  if (useStreaming) {
+    try {
+      // Do the initial fetch but don't await the full response
+      const res = await fetch('/api/ai/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || errorData.error || 'Failed to process AI request');
       }
-    };
-  } else if (mode === 'paraphrase') {
-    // Ensure we handle both API formats (paraphrased or paraphrasedText)
-    // We only include the metrics if they're present
-    return {
-      paraphrasedText: data.paraphrased || data.paraphrasedText || text,
-      metrics: data.metrics || null
-    };
-  } else if (mode === 'humanize') {
-    // Ensure we handle both API formats (humanized or humanizedText)
-    // We only return the text content itself to the UI component
-    return {
-      humanizedText: data.humanized || data.humanizedText || text
-    };
-  } else if (mode === 'aicheck') {
-    return {
-      aiPercentage: data.aiPercentage || 0,
-      metrics: data.metrics || {
-        correctness: Math.floor(Math.random() * 30) + 50,
-        clarity: Math.floor(Math.random() * 30) + 50,
-        engagement: Math.floor(Math.random() * 30) + 50,
-        delivery: Math.floor(Math.random() * 30) + 50
-      },
-      highlights: data.highlights || []
-    };
-  } else if (mode === 'chat') {
-    return data.response || '';
+      
+      // Start reading the response text incrementally
+      const reader = res.body?.getReader();
+      if (!reader) {
+        throw new Error('Stream not available');
+      }
+      
+      const decoder = new TextDecoder();
+      let partialData = '';
+      let isFirstChunk = true;
+      
+      // Process the stream chunks
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        // Decode the chunk to text
+        const chunk = decoder.decode(value, { stream: true });
+        partialData += chunk;
+        
+        // For the first chunk, we might get a partial JSON response
+        // so we need to be careful about parsing it
+        if (isFirstChunk) {
+          try {
+            // Try to parse the JSON - only if it looks like valid JSON
+            if (partialData.trim().startsWith('{') && partialData.includes('}')) {
+              const parsedData = JSON.parse(partialData);
+              if (parsedData && parsedData.response) {
+                // Initial value found - start streaming from here
+                onStreamUpdate(parsedData.response || '');
+                isFirstChunk = false;
+              }
+            }
+          } catch (err) {
+            // Ignore JSON parsing errors for partial chunks
+          }
+        } else {
+          // For subsequent chunks, we use append mode - just add the raw text
+          // This assumes the server is sending text chunks directly after the initial JSON
+          onStreamUpdate(chunk);
+        }
+      }
+      
+      // When the stream is done, try to parse the full response data
+      try {
+        const fullData = JSON.parse(partialData);
+        return fullData.response || '';
+      } catch (e) {
+        // If we can't parse it as JSON (server might have switched to raw text mode)
+        // just return the accumulated text
+        return partialData;
+      }
+    } catch (error) {
+      console.error('Streaming error:', error);
+      throw error;
+    }
+  } else {
+    // Non-streaming mode - original implementation
+    const res = await fetch('/api/ai/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || errorData.error || 'Failed to process AI request');
+    }
+    
+    const data = await res.json().catch(() => ({}));
+    
+    // Different modes return different response formats
+    if (mode === 'grammar') {
+      return {
+        correctedText: data.correctedText || data.suggestedText || 
+          (data.suggestions && data.suggestions[0]?.suggestedText) || text,
+        errors: data.errors || [],
+        suggestions: data.suggestions || [],
+        metrics: data.metrics || {
+          correctness: Math.floor(Math.random() * 30) + 50,
+          clarity: Math.floor(Math.random() * 30) + 50,
+          engagement: Math.floor(Math.random() * 30) + 50,
+          delivery: Math.floor(Math.random() * 30) + 50
+        }
+      };
+    } else if (mode === 'paraphrase') {
+      // Ensure we handle both API formats (paraphrased or paraphrasedText)
+      // We only include the metrics if they're present
+      return {
+        paraphrasedText: data.paraphrased || data.paraphrasedText || text,
+        metrics: data.metrics || null
+      };
+    } else if (mode === 'humanize') {
+      // Ensure we handle both API formats (humanized or humanizedText)
+      // We only return the text content itself to the UI component
+      return {
+        humanizedText: data.humanized || data.humanizedText || text
+      };
+    } else if (mode === 'aicheck') {
+      return {
+        aiPercentage: data.aiPercentage || 0,
+        metrics: data.metrics || {
+          correctness: Math.floor(Math.random() * 30) + 50,
+          clarity: Math.floor(Math.random() * 30) + 50,
+          engagement: Math.floor(Math.random() * 30) + 50,
+          delivery: Math.floor(Math.random() * 30) + 50
+        },
+        highlights: data.highlights || []
+      };
+    } else if (mode === 'chat') {
+      return data.response || '';
+    }
+    
+    return data;
   }
-  
-  return data;
 }

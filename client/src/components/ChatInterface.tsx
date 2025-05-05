@@ -63,6 +63,9 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
   const { user } = useAuth();
   // Using HTTP API for chat
   const { mutate } = useAiTool();
+  // To track the current streaming message
+  const [streamingContent, setStreamingContent] = useState<string | null>(null);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
 
   // Fetch chat messages if chatId exists AND user is authenticated
   const { data: chatMessagesResponse, isLoading: isLoadingMessages, refetch } = useQuery<{ messages: ChatMessage[] }>({
@@ -206,20 +209,42 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     
     // Then, build conversation history from previous messages, ensuring alternating pattern
     if (messages.length > 0) {
-      // Start with the most recent 10 messages to keep context but stay within token limits
-      const recentMessages = [...messages].slice(-10);
+      // Include the previous 15 messages to maintain memory (as requested)
+      const recentMessages = [...messages].slice(-30); // Get more than we need in case of filtering
+      const processedMessages: Array<{role: 'user' | 'assistant', content: string}> = [];
       
-      // Ensure we have alternating user/assistant pattern
+      // Process messages to ensure proper alternating pattern
+      let lastRole: 'user' | 'assistant' | null = null;
+      
+      // Go through messages in chronological order
       for (let i = 0; i < recentMessages.length; i++) {
         const msg = recentMessages[i];
-        // Skip any assistant messages that would violate the alternating pattern
-        if (i > 0 && recentMessages[i-1].role === msg.role) continue;
         
-        messagesToSend.push({
-          role: msg.role,
-          content: msg.content
-        });
+        // Skip the welcome message (has special ID)
+        if (msg.id === 'initial-message') continue;
+        
+        // Either the first message or a different role than the last message
+        if (lastRole === null || msg.role !== lastRole) {
+          processedMessages.push({
+            role: msg.role,
+            content: msg.content
+          });
+          lastRole = msg.role;
+        }
+        // Same role as previous - merge with the last message to maintain alternating pattern
+        else if (msg.role === lastRole && processedMessages.length > 0) {
+          const lastMsg = processedMessages[processedMessages.length - 1];
+          lastMsg.content += '\n\n' + msg.content;
+        }
       }
+      
+      // Take only the last 15 messages maximum (to stay within token limits)
+      const limitedMessages = processedMessages.slice(-15);
+      
+      // Add them to our messagesToSend array
+      messagesToSend.push(...limitedMessages);
+      
+      console.log(`Added ${limitedMessages.length} history messages to the context`);
     }
     
     // Finally, add the current user message to ensure we end with a user message
@@ -230,26 +255,58 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
     
     console.log('Prepared messages for chat:', messagesToSend);
     
-    // Send via HTTP REST API
+    // Create a placeholder message for streaming
+    const streamingId = `assistant-${Date.now()}`;
+    setStreamingMessageId(streamingId);
+    setStreamingContent('');
+    
+    // Add an empty assistant message to UI that will be filled as streaming progresses
+    const initialStreamingMessage: Message = {
+      id: streamingId,
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+    };
+    
+    setMessages(prev => [...prev, initialStreamingMessage]);
+    
+    // Function to handle streaming updates
+    const handleStreamUpdate = (text: string) => {
+      setStreamingContent(prev => {
+        // If this is the first update, just set it
+        if (!prev) return text;
+        // Otherwise append the new text
+        return prev + text;
+      });
+      
+      // Update the message in the messages array
+      setMessages(prev => {
+        return prev.map(msg => {
+          if (msg.id === streamingId) {
+            return {
+              ...msg,
+              content: text
+            };
+          }
+          return msg;
+        });
+      });
+    };
+    
+    // Send via HTTP REST API with streaming support
     mutate(
       { 
         text: '', 
         mode: 'chat', 
         messages: messagesToSend,
         chatId: chatId,
+        onStreamUpdate: handleStreamUpdate, // Pass streaming callback
       },
       {
         onSuccess: (response) => {
           setIsPending(false);
-          
-          const aiMessage: Message = {
-            id: `assistant-${Date.now()}`,
-            role: 'assistant',
-            content: typeof response === 'string' ? response : 'I encountered an issue processing your request.',
-            timestamp: Date.now(),
-          };
-          
-          setMessages(prev => [...prev, aiMessage]);
+          setStreamingMessageId(null);
+          setStreamingContent(null);
           
           // Invalidate queries to refresh sidebar
           if (chatId) {
@@ -259,6 +316,8 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
         },
         onError: (error) => {
           setIsPending(false);
+          setStreamingMessageId(null);
+          setStreamingContent(null);
           
           toast({
             title: 'Error',
@@ -266,14 +325,18 @@ export function ChatInterface({ chatId = null }: ChatInterfaceProps) {
             variant: 'destructive',
           });
           
-          const errorMessage: Message = {
-            id: `assistant-error-${Date.now()}`,
-            role: 'assistant',
-            content: 'I apologize, but I encountered an error processing your request. Please try again.',
-            timestamp: Date.now(),
-          };
-          
-          setMessages(prev => [...prev, errorMessage]);
+          // If we were in the middle of streaming, update the final message
+          setMessages(prev => {
+            return prev.map(msg => {
+              if (msg.id === streamingId) {
+                return {
+                  ...msg,
+                  content: 'I apologize, but I encountered an error processing your request. Please try again.'
+                };
+              }
+              return msg;
+            });
+          });
         }
       }
     );
