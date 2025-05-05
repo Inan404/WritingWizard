@@ -48,29 +48,17 @@ export async function processAi(req: Request, res: Response) {
           return res.status(400).json({ error: "Text parameter is required for grammar mode" });
         }
         
-        // Check if language parameter is provided for LanguageTool
-        const language = req.body.language || 'en-US';
-        
         try {
-          // Use LanguageTool API for grammar checking
-          console.log("Using LanguageTool API for grammar check");
-          const grammarResult = await checkGrammarWithLanguageTool(text, language);
+          // Using Gemini API exclusively for grammar checking
+          console.log("Using Gemini API for grammar check");
+          const grammarResult = await generateGrammarCheck(text);
           return res.json(grammarResult);
-        } catch (languageToolError) {
-          console.error("LanguageTool grammar check error:", languageToolError);
-          
-          // Fallback to Gemini AI if LanguageTool fails
-          try {
-            console.log("Falling back to Gemini API for grammar check");
-            const grammarResult = await generateGrammarCheck(text);
-            return res.json(grammarResult);
-          } catch (grammarError) {
-            console.error("Grammar check error:", grammarError);
-            return res.status(500).json({ 
-              error: "Grammar check failed", 
-              message: grammarError instanceof Error ? grammarError.message : "Unknown error during grammar check"
-            });
-          }
+        } catch (grammarError) {
+          console.error("Grammar check error:", grammarError);
+          return res.status(500).json({ 
+            error: "Grammar check failed", 
+            message: grammarError instanceof Error ? grammarError.message : "Unknown error during grammar check"
+          });
         }
 
       case "paraphrase":
