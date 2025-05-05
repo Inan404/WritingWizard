@@ -1,3 +1,19 @@
+/**
+ * HumanizerComponent.tsx
+ * 
+ * This component transforms AI-generated text to make it sound more human and natural.
+ * It offers various style options to adjust the tone of the humanized output.
+ * 
+ * Features:
+ * - Several humanization styles (standard, conversational, professional)
+ * - Custom tone option for personalized output
+ * - Animated transitions and feedback
+ * - Copy to clipboard functionality
+ * 
+ * The component leverages the Perplexity API through the useAiTool hook
+ * to perform the text humanization.
+ */
+
 import { useState } from 'react';
 import { useAiTool, Style } from '@/hooks/useAiTool';
 import { Textarea } from '@/components/ui/textarea';

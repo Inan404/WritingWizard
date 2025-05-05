@@ -1,3 +1,21 @@
+/**
+ * useAiTool.ts
+ * 
+ * This hook provides a unified interface for all AI writing tools in the application.
+ * It handles communication with the backend APIs for different modes including chat,
+ * grammar checking, paraphrasing, humanizing, and AI content detection.
+ * 
+ * Features:
+ * - Single consistent API for all AI tools
+ * - Handles request/response formatting
+ * - Integrates with TanStack Query for data fetching
+ * - Supports various writing styles and configurations
+ * - Manages chat history and session persistence
+ * 
+ * This is the primary communication layer between the frontend components
+ * and the backend AI services (Perplexity, LanguageTool, ZeroGPT).
+ */
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
