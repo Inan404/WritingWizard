@@ -1,9 +1,9 @@
 import { Mode } from '@/hooks/useAiTool';
 import { ChatInterface } from './ChatInterface';
-import GrammarChecker from './tools/GrammarChecker';
-import Paraphraser from './tools/Paraphraser';
-import Humanizer from './tools/Humanizer';
-import AIChecker from './tools/AIChecker';
+import { default as GrammarChecker } from './tools/GrammarChecker';
+import { default as Paraphraser } from './tools/Paraphraser';
+import { default as Humanizer } from './tools/Humanizer';
+import { default as AIChecker } from './tools/AIChecker';
 
 interface AiToolProps {
   mode: Mode;
