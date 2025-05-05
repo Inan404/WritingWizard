@@ -210,13 +210,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const result = await generateHumanized(text, style || 'standard');
       console.log("Humanize result:", { 
-        humanizedTextLength: result.humanized?.length,
+        humanizedTextLength: (result as any).humanized?.length || result.humanizedText?.length,
         metricsAvailable: !!result.metrics
       });
       
       // Return result with consistent key names
       res.json({
-        humanizedText: result.humanized,
+        humanizedText: (result as any).humanized || result.humanizedText,
         metrics: result.metrics
       });
     } catch (error) {
