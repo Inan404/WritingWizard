@@ -98,12 +98,12 @@ export const generateHumanized = hasGeminiCredentials
     const result = await geminiHumanize(text, style, customTone);
     
     return {
-      humanized: result.humanized,
+      humanizedText: result.humanizedText,
       metrics: result.metrics
     };
   }
   : () => ({ 
-    humanized: 'This is a mock humanized text. The API key is not available.',
+    humanizedText: 'This is a mock humanized text. The API key is not available.',
     metrics: {
       correctness: 70,
       clarity: 75,
