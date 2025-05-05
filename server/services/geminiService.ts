@@ -782,16 +782,20 @@ METRICS SCORING GUIDELINES:
  */
 export async function generateHumanized(text: string, style: string = 'standard', customTone?: string) {
   const styleDescriptions: Record<string, string> = {
-    'standard': 'Transform the text to sound genuinely human, with natural speech patterns, contractions, occasional sentence fragments, casual transitions, and imperfect grammar at times. Include occasional parenthetical thoughts and use varied sentence structure. Example: "The data is analyzed" → "I went through the data and noticed (actually, this surprised me) several interesting patterns."',
-    'formal': 'Rewrite with human touches while maintaining professionalism - vary sentence length, use occasional first-person perspective, and add thoughtful transitions. Example: "This shows results" → "As we can see from these findings, the results point to several key insights."',
-    'fluency': 'Make it conversational with casual transitions, contractions, parenthetical thoughts, and natural flow. Example: "It was determined that" → "So I figured out that..." or "What we found, which was actually pretty interesting, was that..."',
-    'academic': 'Add human elements like occasional hedging, personal perspective, and varied citations while preserving academic integrity. Example: "The study shows" → "From my analysis of the literature, this research suggests" or "The evidence appears to indicate"',
-    'custom': 'Completely transform this text to sound authentically human in exactly the specified tone, with natural imperfections, varied sentence structures, and idiomatic expressions.'
+    'standard': 'Transform the text to sound genuinely human, with natural speech patterns, contractions, occasional sentence fragments, casual transitions, and imperfect grammar at times. Include occasional parenthetical thoughts, use varied sentence structure, and add filler words like "um" and "like" in moderation. Example: "The data is analyzed" → "I went through the data and noticed (actually, this surprised me) several interesting patterns."',
+    
+    'formal': 'Rewrite with human touches while maintaining professionalism - vary sentence length, use occasional first-person perspective, add thoughtful transitions, and include subtle opinion markers like "in my assessment" or "it seems reasonable to conclude." Example: "This shows results" → "As we can see from these findings, the results point to several key insights that, in my professional opinion, warrant further consideration."',
+    
+    'fluency': 'Make it conversational with casual transitions, contractions, parenthetical thoughts, and natural flow. Add conversational fillers like "you know," "I mean," and "like" in moderation, and include occasional mid-sentence restarts or self-corrections. Example: "It was determined that" → "So I figured out that... well, actually, what we found, which was pretty interesting, was that..."',
+    
+    'academic': 'Add human elements like occasional hedging, personal perspective, and varied citations while preserving academic integrity. Include moments of first-person reflection, rhetorical questions, and phrases like "I would argue" or "this finding suggests to me." Example: "The study shows" → "From my analysis of the literature, this research suggests—and I find this particularly noteworthy—that the variables have a complex relationship."',
+    
+    'custom': 'Completely transform this text to sound authentically human in exactly the specified tone, with natural imperfections, varied sentence structures, idiomatic expressions, and subtle inconsistencies that AI detection systems cannot easily identify.'
   };
 
   // For custom style, use the provided tone description if available
   const styleDescription = style === 'custom' && customTone 
-    ? `Use a ${customTone} tone while making the text sound authentically human and undetectable by AI checkers.` 
+    ? `Use a ${customTone} tone while making the text sound authentically human and completely undetectable by AI checkers.` 
     : styleDescriptions[style] || styleDescriptions.standard;
     
   // Make the style more prominent in the prompt
@@ -799,31 +803,63 @@ export async function generateHumanized(text: string, style: string = 'standard'
     ? `[CUSTOM TONE: ${customTone.toUpperCase()}]` 
     : `[STYLE: ${style.toUpperCase()}]`;
 
-  const systemPrompt = `You are an expert writing coach specializing in making text sound authentically human and UNDETECTABLE by AI content checkers.
+  // Adjusting temperature based on style
+  let temperature = 0.75; // Default
+  if (style === 'fluency') temperature = 0.85;
+  if (style === 'academic') temperature = 0.6;
+  if (style === 'formal') temperature = 0.7;
+  if (style === 'custom') temperature = 0.9; // Most creative for custom
+
+  const systemPrompt = `You are an advanced writing expert specializing in making AI-generated content undetectable by even the most sophisticated AI content detection systems like ZeroGPT, GPTZero, and others.
 
 ${stylePrefix}
 
-Your task is to completely transform the provided AI-generated text to sound genuinely human-written in a way that will pass AI detection tools.
+IMPORTANT CONTEXT: This text must pass AI detection tools and appear completely human-written. The current generation of AI detectors look for patterns in word usage, sentence structure, punctuation patterns, and overall consistency. Your goal is to transform this text to eliminate ALL detectable AI patterns.
 
-CRITICAL INSTRUCTIONS:
-1. Introduce natural human imperfections - include occasional run-on sentences, contractions (don't, I'm, you're), sentence fragments, off-topic asides, and self-corrections
-2. Vary sentence lengths dramatically - mix very short sentences with occasional long ones
-3. Use informal transitions like "anyway", "so", "actually", "you know", "honestly", "I mean"
-4. Add personal touches like "personally", "in my experience", "I've found that", "to be honest"
-5. Incorporate rhetorical questions, especially when transitioning to new points
-6. Include occasional tangential thoughts in parentheses (these make text seem more spontaneous)
-7. Use casual punctuation in places - occasional exclamation points, em dashes, or ellipses...
-8. Incorporate idioms, metaphors, and colloquialisms that AI typically won't generate
-9. DON'T be too perfect or consistent, humans rarely are
+CRITICAL TECHNIQUES TO IMPLEMENT (MUST USE MULTIPLE TECHNIQUES):
+1. HUMAN IMPERFECTIONS: Add grammatical inconsistencies, occasional typos (later fixed), mid-sentence thought changes, and restarts.
+   Example: "The analysis shows" → "When I looked at it, the analysis shows—wait, actually it suggests..."
+
+2. UNPREDICTABILITY: Vary your sentence structures dramatically - intersperse very short sentences (3-5 words) with occasionaly complex ones. Create deliberate inconsistency.
+   Example: "Interesting results emerged. Upon further examination, it became clear that the factors contributing to this phenomenon weren't as straightforward as initially hypothesized. Nope. Not even close."
+
+3. PERSONAL QUIRKS: Include genuine human writing quirks appropriate to the ${style} style:
+   - Parenthetical asides (with personal observations)
+   - Occasional use of ALL CAPS or *emphasis* for emphasis
+   - Sentence fragments. Just like this.
+   - Use numbers sometimes (3 instead of three) but not consistently
+   - Split infinitives occasionally
+   - Begin sentences with conjunctions: And, But, So, Yet
+
+4. CONVERSATIONAL MARKERS:
+   - First-person perspectives: "I think," "from my perspective," "in my experience"
+   - Direct reader address: "you might wonder," "as you can see"
+   - Rhetorical questions (especially when transitioning topics)
+   - Casual transitions: "anyway," "so," "now," "actually," "to be honest"
+   
+5. EMOTION AND OPINION:
+   - Express occasional uncertainty: "I'm not entirely sure," "it seems that," "perhaps"
+   - Show mild emotion where appropriate: "surprisingly," "disappointingly," "thankfully"
+   - Include personal judgments: "which I found fascinating," "and that makes sense because"
+
+6. CREATIVE LANGUAGE:
+   - Add idioms and metaphors people actually use (not clichés)
+   - Include regional expressions appropriate to English variant
+   - Use contractions heavily but inconsistently (don't, I'm, you're, couldn't've)
+
+7. UNIQUE PUNCTUATION PATTERNS:
+   - Use em dashes for interruptions — just like this — within sentences
+   - Add occasional ellipses for trailing thoughts...
+   - Mix punctuation styles! (Sometimes parentheses, sometimes em dashes)
 
 Style specifics: ${styleDescription}
 
-IMPORTANT: Final output should sound completely natural and human, avoiding ANY patterns that AI detectors look for. Make extensive changes to phrasing, structure, and organization.
+IMPORTANT: Manipulate perplexity and burstiness patterns by creating deliberate variability in word predictability and sentence complexity. Create a mix of high-entropy (unpredictable) and low-entropy (common) word choices that mirrors human writing patterns.
 
 IMPORTANT: Provide your response as a raw, valid JSON object with no markdown formatting, no extra text, and no explanation outside the JSON object.
 Respond with ONLY the following JSON format:
 {
-  "humanized": "The humanized text",
+  "humanizedText": "The humanized text that will avoid AI detection",
   "metrics": {
     "correctness": 85,
     "clarity": 70,
@@ -840,14 +876,7 @@ METRICS SCORING GUIDELINES:
 - NEVER return scores of 0 for any category - minimum value should be 50`;
 
   try {
-    // Higher temperatures for more randomness and creativity to avoid AI detection patterns
-    let temperature = 0.85; // Higher default for all humanization
-    if (style === 'fluency') temperature = 0.92;
-    if (style === 'academic') temperature = 0.75; // Still higher than before, but more controlled for academic
-    if (style === 'formal') temperature = 0.8;
-    if (style === 'custom') temperature = 0.95; // Very high for maximum randomness and creativity
-    
-    // Get response from Gemini
+    // Get response from Gemini with style-appropriate temperature
     const response = await generateCompletion(systemPrompt, text, temperature);
     
     try {
@@ -868,12 +897,12 @@ METRICS SCORING GUIDELINES:
         }
       }
       
-      // Try to extract just the text between the "humanized" property quotes
-      const humanizedMatch = response.match(/"humanized"\s*:\s*"([\s\S]*?)(?<!\\)"/);
+      // Try to extract just the text between the "humanizedText" property quotes
+      const humanizedMatch = response.match(/"humanizedText"\s*:\s*"([\s\S]*?)(?<!\\)"/);
       if (humanizedMatch && humanizedMatch[1]) {
-        // We found the text inside the humanized property
+        // We found the text inside the humanizedText property
         return {
-          humanized: humanizedMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n'),
+          humanizedText: humanizedMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n'),
           metrics: {
             correctness: 75,
             clarity: 75,
@@ -885,7 +914,7 @@ METRICS SCORING GUIDELINES:
       
       // If we couldn't extract the humanized text, use the raw content
       return {
-        humanized: response,
+        humanizedText: response,
         metrics: {
           correctness: 50,
           clarity: 50,

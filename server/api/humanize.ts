@@ -10,27 +10,19 @@ interface HumanizeResult {
   };
 }
 
-export async function humanizeText(text: string, style: string = 'standard'): Promise<HumanizeResult> {
+export async function humanizeText(text: string, style: string = 'standard', customTone?: string): Promise<HumanizeResult> {
   try {
-    // Map style to specific instructions
-    const styleInstructions = {
-      standard: "Make the text sound more natural and human-written. Remove AI patterns and formal structures.",
-      fluency: "Focus on conversational flow, use contractions, and varied sentence structures.",
-      formal: "Keep it professional but with natural human writing patterns. Avoid excessive formality.",
-      academic: "Maintain academic tone but with human writing patterns. Add authentic voice.",
-      custom: "Add personality, imperfections, and style variations that AI typically doesn't produce."
-    };
+    // Use Gemini AI for humanizing through aiService with enhanced anti-detection techniques
+    const result = await generateHumanized(text, style, customTone);
     
-    const selectedStyle = styleInstructions[style as keyof typeof styleInstructions] || styleInstructions.standard;
-    
-    // Use Perplexity API for humanizing through aiService
-    const result = await generateHumanized(text, style);
-    
-    // If we get a valid result from Perplexity
+    // If we get a valid result from Gemini
     if (result && 
         result.humanizedText && 
         result.metrics) {
-      return result as HumanizeResult;
+      return {
+        humanizedText: result.humanizedText,
+        metrics: result.metrics
+      };
     } else {
       // Fallback response
       return {
