@@ -420,7 +420,7 @@ export async function generateChatResponseWithStreaming(
       });
       
       // Generate streaming response
-      const result = await chat.sendMessageStream(userRequest);
+      const result = await chat.sendMessageStream([{text: userRequest}]);
       
       // Process the stream
       let fullResponse = '';
