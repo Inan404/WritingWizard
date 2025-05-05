@@ -1,11 +1,8 @@
-// Import core mode type from the hooks
 import { Mode } from '@/hooks/useAiTool';
-
-// Import individual tool components 
-// For chat functionality
 import { ChatInterface } from './ChatInterface';
 
-// Import individual writing tools
+// Using the components from the tools directory
+// These are the cleaned-up, latest versions of our tool components
 import GrammarChecker from './tools/GrammarChecker';
 import Paraphraser from './tools/Paraphraser';
 import Humanizer from './tools/Humanizer';
